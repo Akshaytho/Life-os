@@ -2,10 +2,10 @@ import type { CalendarPreviewItem, SourceRef, TodayViewModel, TrustClass } from 
 
 const navItems = [
   { label: "Today", glyph: "●", active: true },
-  { label: "Journey", glyph: "↗" },
-  { label: "Calendar", glyph: "□" },
-  { label: "Memory", glyph: "⌁" },
-  { label: "You", glyph: "○" },
+  { label: "Journey", glyph: "↗", active: false },
+  { label: "Calendar", glyph: "□", active: false },
+  { label: "Memory", glyph: "⌁", active: false },
+  { label: "You", glyph: "○", active: false },
 ] as const;
 
 const trustLabels: Record<TrustClass, string> = {
