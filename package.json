@@ -1,0 +1,22 @@
+{
+  "name": "life-os",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Private personal operating system for direction, memory, deliberate growth, and return from drift.",
+  "packageManager": "npm@10.8.2",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "echo \"Tests are introduced with the first vertical slice.\"",
+    "lint": "echo \"Linting will be configured with the first executable workspace.\""
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}
