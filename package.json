@@ -9,12 +9,14 @@
     "packages/*"
   ],
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "echo \"Tests are introduced with the first vertical slice.\"",
-    "lint": "echo \"Linting will be configured with the first executable workspace.\""
+    "dev:web": "npm run dev --workspace @life-os/web",
+    "build:web": "npm run build --workspace @life-os/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=20.9"
   },
   "devDependencies": {
     "typescript": "^5.9.2"
