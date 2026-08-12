@@ -60,8 +60,7 @@ function calendarProjection(state: MemoryState, proposal: RoutingProposalRecord)
   if (proposal.destination !== "CALENDAR" || proposal.operation !== "CREATE_CALENDAR_PLAN") return undefined;
   const capture = state.captures.get(proposal.captureId);
   if (!capture || capture.userId !== proposal.userId) return undefined;
-  const plan = proposal.payloadJson.plan as CalendarPlanInput | undefined;
-  if (!plan) return undefined;
+  const plan = proposal.payloadJson as unknown as CalendarPlanInput;
 
   return {
     proposalId: proposal.proposalId,
@@ -130,7 +129,7 @@ export class InMemoryWriteUnitOfWork implements WriteUnitOfWork {
       approvalMode: proposal.approvalMode,
       state: proposal.state,
       reason: "Deterministic test seed",
-      payloadJson: { plan: structuredClone(proposal.plan) },
+      payloadJson: structuredClone(proposal.plan) as unknown as Record<string, unknown>,
       createdAt: proposal.createdAt,
       appliedAt: proposal.appliedAt,
       appliedEntityId: proposal.appliedEntityId,
