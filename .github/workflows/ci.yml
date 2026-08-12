@@ -25,13 +25,6 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Upload lockfile candidate
-        uses: actions/upload-artifact@v6
-        with:
-          name: package-lock-candidate
-          path: package-lock.json
-          retention-days: 1
-
       - name: Typecheck
         run: npm run typecheck
 
