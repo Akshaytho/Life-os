@@ -48,7 +48,6 @@ function storedProposal(overrides: Partial<StoredCalendarProposal> = {}): Stored
 function command(overrides: Partial<ApplyStoredProposalCommand> = {}): ApplyStoredProposalCommand {
   return {
     proposalId: "proposal-1",
-    confirmation: { explicit: true },
     ...overrides,
     confirmation: { explicit: true, ...(overrides.confirmation ?? {}) },
   };
