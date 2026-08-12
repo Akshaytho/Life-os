@@ -114,6 +114,7 @@ export class PostgresWriteUnitOfWork implements WriteUnitOfWork {
 
   async run<T>(work: (transaction: WriteTransaction) => Promise<T>): Promise<T> {
     const client = await this.pool.connect();
+    let discardClient = false;
 
     try {
       await client.query("BEGIN");
@@ -124,12 +125,11 @@ export class PostgresWriteUnitOfWork implements WriteUnitOfWork {
       try {
         await client.query("ROLLBACK");
       } catch {
-        // Preserve the original transaction error. A discarded pooled client will be
-        // released below; production observability can record rollback failure later.
+        discardClient = true;
       }
       throw error;
     } finally {
-      client.release();
+      client.release(discardClient);
     }
   }
 }
