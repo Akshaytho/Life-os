@@ -12,6 +12,7 @@ import type {
   WriteTransaction,
   WriteUnitOfWork,
 } from "../domain/write-boundary";
+import { PostgresUserScope } from "./postgres-user-scope";
 
 function iso(value: Date | string): string {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
@@ -315,21 +316,13 @@ function transactionFor(client: PoolClient): WriteTransaction {
 }
 
 export class PostgresWriteUnitOfWork implements WriteUnitOfWork {
-  constructor(private readonly pool: Pool) {}
+  private readonly userScope: PostgresUserScope;
 
-  async run<T>(work: (transaction: WriteTransaction) => Promise<T>): Promise<T> {
-    const client = await this.pool.connect();
-    let discardClient = false;
-    try {
-      await client.query("BEGIN");
-      const result = await work(transactionFor(client));
-      await client.query("COMMIT");
-      return result;
-    } catch (error) {
-      try { await client.query("ROLLBACK"); } catch { discardClient = true; }
-      throw error;
-    } finally {
-      client.release(discardClient);
-    }
+  constructor(pool: Pool) {
+    this.userScope = new PostgresUserScope(pool);
+  }
+
+  async run<T>(authenticatedUserId: string, work: (transaction: WriteTransaction) => Promise<T>): Promise<T> {
+    return this.userScope.run(authenticatedUserId, async (client) => work(transactionFor(client)));
   }
 }
