@@ -29,7 +29,6 @@ export interface CalendarPlanInput {
   endsAt: string;
   category: CalendarCategory | "UNRESOLVED";
   commitment: CalendarCommitment;
-  occurredAt?: string;
 }
 
 export interface ApplyCalendarPlanProposalCommand {
@@ -78,6 +77,7 @@ export interface AppliedProposalRecord {
   proposalId: string;
   appliedAt: string;
   confirmedByActorId: string;
+  requestFingerprint: string;
   entityType: "calendar_event";
   entityId: string;
   eventId: string;
