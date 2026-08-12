@@ -9,6 +9,7 @@ import type {
   Clock,
   DomainEventRecord,
   IdGenerator,
+  WriteRequestContext,
 } from "../../../packages/domain/write-boundary";
 import { applyCalendarPlanProposal } from "./apply-calendar-plan-proposal";
 
@@ -44,13 +45,7 @@ function command(): ApplyCalendarPlanProposalCommand {
     operation: "CREATE_CALENDAR_PLAN",
     sourceText: "Gym tomorrow at 7 PM.",
     correlationId: "capture-postgres-1",
-    source: "WEB_APP",
-    confirmation: {
-      actorType: "USER",
-      actorId: "user-pg-1",
-      confirmedAt: "2026-08-12T18:59:58.000Z",
-      explicit: true,
-    },
+    confirmation: { explicit: true },
     plan: {
       title: "Gym",
       startsAt: "2026-08-13T13:30:00.000Z",
@@ -58,6 +53,15 @@ function command(): ApplyCalendarPlanProposalCommand {
       category: "Health",
       commitment: "Important",
     },
+  };
+}
+
+function context(requestId = "request-pg-1"): WriteRequestContext {
+  return {
+    principal: { actorType: "USER", userId: "user-pg-1" },
+    source: "WEB_APP",
+    receivedAt: "2026-08-12T18:59:58.000Z",
+    requestId,
   };
 }
 
@@ -72,13 +76,13 @@ beforeEach(async () => {
 
 after(async () => { await pool.end(); });
 
-test("PostgreSQL commits canonical state, event and applied marker together", async () => {
+test("PostgreSQL persists the authenticated user as canonical owner and actor", async () => {
   const unitOfWork = new PostgresWriteUnitOfWork(pool);
-  const receipt = await applyCalendarPlanProposal(command(), {
-    unitOfWork,
-    clock: new FixedClock(),
-    ids: new FixedIds(),
-  });
+  const receipt = await applyCalendarPlanProposal(
+    command(),
+    context(),
+    { unitOfWork, clock: new FixedClock(), ids: new FixedIds() },
+  );
 
   const [calendar, events, applied] = await Promise.all([
     pool.query("SELECT * FROM calendar_event"),
@@ -96,18 +100,21 @@ test("PostgreSQL commits canonical state, event and applied marker together", as
   assert.equal(events.rows[0].event_id, receipt.eventId);
   assert.equal(events.rows[0].actor_type, "USER");
   assert.equal(events.rows[0].actor_id, "user-pg-1");
+  assert.equal(events.rows[0].source, "WEB_APP");
+  assert.equal(events.rows[0].occurred_at.toISOString(), "2026-08-12T18:59:58.000Z");
   assert.equal(events.rows[0].correlation_id, "capture-postgres-1");
   assert.equal(events.rows[0].payload_json.proposalId, "proposal-postgres-1");
   assert.equal("sourceText" in events.rows[0].payload_json, false);
+  assert.equal(applied.rows[0].confirmed_by_actor_id, "user-pg-1");
   assert.equal(applied.rows[0].request_fingerprint.length, 64);
 });
 
-test("PostgreSQL exact replay is idempotent", async () => {
+test("PostgreSQL exact replay ignores transport request id and remains idempotent", async () => {
   const unitOfWork = new PostgresWriteUnitOfWork(pool);
   const dependencies = { unitOfWork, clock: new FixedClock(), ids: new FixedIds() };
 
-  const first = await applyCalendarPlanProposal(command(), dependencies);
-  const second = await applyCalendarPlanProposal(command(), dependencies);
+  const first = await applyCalendarPlanProposal(command(), context("request-first"), dependencies);
+  const second = await applyCalendarPlanProposal(command(), context("request-retry"), dependencies);
 
   assert.equal(second.idempotentReplay, true);
   assert.equal(second.entityId, first.entityId);
