@@ -24,10 +24,17 @@ for (const target of targets) {
   const page = await context.newPage();
   await page.goto('http://127.0.0.1:3000', { waitUntil: 'networkidle' });
   await page.evaluate(() => document.fonts.ready);
+
   await page.screenshot({
-    path: `${outputDir}/${target.name}.png`,
+    path: `${outputDir}/${target.name}-viewport.png`,
+    fullPage: false,
+  });
+
+  await page.screenshot({
+    path: `${outputDir}/${target.name}-full.png`,
     fullPage: true,
   });
+
   await context.close();
 }
 
