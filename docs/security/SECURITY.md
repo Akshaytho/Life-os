@@ -26,6 +26,18 @@ AI access is context-minimal: possession by Life OS does not imply inclusion in 
 
 Use Supabase Auth or an equivalent well-supported authentication path. Sensitive session credentials should not be exposed unnecessarily to browser JavaScript.
 
+### Trusted principal boundary
+
+Canonical writes must never derive the authoritative user ID from request-body, proposal, AI output, MCP payload or other client-controlled fields.
+
+The transport/authentication layer verifies the session and creates a trusted request context containing the authenticated principal. Application services use that principal for canonical ownership and USER event actor identity.
+
+Similarly, event source and authoritative request time come from trusted server/transport context rather than client-provided labels.
+
+A proposal can describe *what* the user wants to change; it cannot declare *who* the authenticated user is.
+
+Authentication proves identity. Authorization must still verify that the principal may act on the referenced proposal/entities before production writes are enabled.
+
 ## Transport and Storage
 
 - HTTPS/TLS for deployed traffic
@@ -47,6 +59,8 @@ Retrieved text is data, not executable instruction. External/imported content mu
 
 AI inference is explicitly labeled and must not silently become canonical fact.
 
+AI-generated payload fields can never substitute for authenticated server identity or authorization context.
+
 ## Approval Tiers
 
 High-impact operations always require explicit approval, including direction changes, active-skill changes, major decision supersession, and destructive canonical-memory operations.
@@ -66,6 +80,8 @@ Security audit examples:
 ## Event Integrity
 
 Historical domain events are append-oriented. Corrections create correcting events rather than rewriting ordinary history. User privacy deletion rights remain capable of overriding internal append-only conventions.
+
+Domain-event USER actor identity is derived from authenticated server context for user-authoritative writes, never from an AI/client assertion.
 
 ## Backups and Portability
 
