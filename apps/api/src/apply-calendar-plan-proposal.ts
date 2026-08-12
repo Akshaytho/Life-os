@@ -1,13 +1,14 @@
 import { createHash } from "node:crypto";
 import type {
   AppliedProposalRecord,
-  ApplyCalendarPlanProposalCommand,
+  ApplyStoredProposalCommand,
   CalendarCategory,
   CalendarPlanRecord,
   Clock,
   CommitReceipt,
   DomainEventRecord,
   IdGenerator,
+  StoredCalendarProposal,
   WriteRequestContext,
   WriteUnitOfWork,
 } from "../../../packages/domain/write-boundary";
@@ -25,112 +26,125 @@ export interface ApplyCalendarPlanDependencies {
   ids: IdGenerator;
 }
 
-type ValidatedCalendarCommand = ApplyCalendarPlanProposalCommand & {
-  plan: ApplyCalendarPlanProposalCommand["plan"] & { category: CalendarCategory };
+type ValidatedStoredCalendarProposal = StoredCalendarProposal & {
+  plan: StoredCalendarProposal["plan"] & { category: CalendarCategory };
+  state: "READY_TO_APPLY";
 };
 
 function requireText(value: string, label: string) {
   if (!value.trim()) throw new ProposalValidationError(`${label} is required`);
 }
 
-function requestFingerprint(command: ApplyCalendarPlanProposalCommand, context: WriteRequestContext) {
-  const semantics = JSON.stringify({
-    authenticatedUserId: context.principal.userId,
-    source: context.source,
-    destination: command.destination,
-    operation: command.operation,
-    sourceText: command.sourceText,
-    correlationId: command.correlationId,
-    approvalMode: command.approvalMode,
-    plan: {
-      title: command.plan.title.trim(),
-      startsAt: command.plan.startsAt,
-      endsAt: command.plan.endsAt,
-      category: command.plan.category,
-      commitment: command.plan.commitment,
-    },
-  });
-
-  return createHash("sha256").update(semantics).digest("hex");
-}
-
-function validate(
-  command: ApplyCalendarPlanProposalCommand,
-  context: WriteRequestContext,
-): asserts command is ValidatedCalendarCommand {
+function validateRequest(command: ApplyStoredProposalCommand, context: WriteRequestContext) {
   requireText(context.principal.userId, "requestContext.principal.userId");
   requireText(context.requestId, "requestContext.requestId");
   requireText(command.proposalId, "proposalId");
-  requireText(command.correlationId, "correlationId");
-  requireText(command.sourceText, "sourceText");
-  requireText(command.plan.title, "plan.title");
 
   if (context.principal.actorType !== "USER") {
     throw new ProposalValidationError("This boundary requires an authenticated user principal");
   }
-
-  if (command.destination !== "CALENDAR" || command.operation !== "CREATE_CALENDAR_PLAN") {
-    throw new ProposalValidationError("This write boundary only accepts CREATE_CALENDAR_PLAN proposals owned by Calendar");
-  }
-
   if (!command.confirmation.explicit) {
     throw new ProposalValidationError("An explicit user Apply/Confirm action is required");
   }
-
-  if (command.approvalMode === "HIGH_AUTHORITY_APPROVAL") {
-    throw new ProposalValidationError("High-authority changes require their own dedicated approval flow");
-  }
-
-  if (command.plan.category === "UNRESOLVED") {
-    throw new ProposalValidationError("Calendar category is unresolved; ask for clarification before commit");
-  }
-
-  const startsAt = Date.parse(command.plan.startsAt);
-  const endsAt = Date.parse(command.plan.endsAt);
-  const receivedAt = Date.parse(context.receivedAt);
-
-  if (!Number.isFinite(startsAt) || !Number.isFinite(endsAt)) {
-    throw new ProposalValidationError("Calendar start and end must be valid timestamps");
-  }
-
-  if (endsAt <= startsAt) {
-    throw new ProposalValidationError("Calendar end must be after start");
-  }
-
-  if (!Number.isFinite(receivedAt)) {
+  if (!Number.isFinite(Date.parse(context.receivedAt))) {
     throw new ProposalValidationError("requestContext.receivedAt must be a valid timestamp");
   }
 }
 
+function validateStoredProposal(
+  proposal: StoredCalendarProposal,
+): asserts proposal is ValidatedStoredCalendarProposal {
+  requireText(proposal.sourceText, "storedProposal.sourceText");
+  requireText(proposal.correlationId, "storedProposal.correlationId");
+  requireText(proposal.plan.title, "storedProposal.plan.title");
+
+  if (proposal.destination !== "CALENDAR" || proposal.operation !== "CREATE_CALENDAR_PLAN") {
+    throw new ProposalValidationError("Stored proposal is not a supported Calendar create operation");
+  }
+  if (proposal.state !== "READY_TO_APPLY") {
+    throw new ProposalValidationError(`Stored proposal is not ready to apply: ${proposal.state}`);
+  }
+  if (proposal.approvalMode === "HIGH_AUTHORITY_APPROVAL") {
+    throw new ProposalValidationError("High-authority changes require their own dedicated approval flow");
+  }
+  if (proposal.plan.category === "UNRESOLVED") {
+    throw new ProposalValidationError("Stored Calendar category is unresolved; clarification is required before apply");
+  }
+
+  const startsAt = Date.parse(proposal.plan.startsAt);
+  const endsAt = Date.parse(proposal.plan.endsAt);
+  if (!Number.isFinite(startsAt) || !Number.isFinite(endsAt)) {
+    throw new ProposalValidationError("Stored Calendar start and end must be valid timestamps");
+  }
+  if (endsAt <= startsAt) {
+    throw new ProposalValidationError("Stored Calendar end must be after start");
+  }
+}
+
+function requestFingerprint(proposal: StoredCalendarProposal, context: WriteRequestContext) {
+  const semantics = JSON.stringify({
+    authenticatedUserId: context.principal.userId,
+    source: context.source,
+    proposalId: proposal.proposalId,
+    captureId: proposal.captureId,
+    destination: proposal.destination,
+    operation: proposal.operation,
+    sourceText: proposal.sourceText,
+    correlationId: proposal.correlationId,
+    approvalMode: proposal.approvalMode,
+    plan: {
+      title: proposal.plan.title.trim(),
+      startsAt: proposal.plan.startsAt,
+      endsAt: proposal.plan.endsAt,
+      category: proposal.plan.category,
+      commitment: proposal.plan.commitment,
+    },
+  });
+  return createHash("sha256").update(semantics).digest("hex");
+}
+
+function replayReceipt(existing: AppliedProposalRecord): CommitReceipt {
+  return {
+    proposalId: existing.proposalId,
+    entityType: existing.entityType,
+    entityId: existing.entityId,
+    eventId: existing.eventId,
+    appliedAt: existing.appliedAt,
+    idempotentReplay: true,
+  };
+}
+
 export async function applyCalendarPlanProposal(
-  command: ApplyCalendarPlanProposalCommand,
+  command: ApplyStoredProposalCommand,
   context: WriteRequestContext,
   dependencies: ApplyCalendarPlanDependencies,
 ): Promise<CommitReceipt> {
-  validate(command, context);
+  validateRequest(command, context);
   const authenticatedUserId = context.principal.userId;
-  const fingerprint = requestFingerprint(command, context);
 
   return dependencies.unitOfWork.run(async (transaction) => {
-    const existing = await transaction.findAppliedProposal(command.proposalId);
-    if (existing) {
-      if (existing.confirmedByActorId !== authenticatedUserId) {
-        throw new ProposalValidationError("This proposal id was already applied by a different authenticated user");
-      }
-      if (existing.requestFingerprint !== fingerprint) {
-        throw new ProposalValidationError("This proposal id was already applied with different content");
-      }
-
-      return {
-        proposalId: existing.proposalId,
-        entityType: existing.entityType,
-        entityId: existing.entityId,
-        eventId: existing.eventId,
-        appliedAt: existing.appliedAt,
-        idempotentReplay: true,
-      };
+    const proposal = await transaction.getStoredCalendarProposalForUpdate(command.proposalId, authenticatedUserId);
+    if (!proposal) {
+      throw new ProposalValidationError("Proposal is unavailable for this authenticated user");
     }
 
+    const existing = await transaction.findAppliedProposal(command.proposalId);
+    if (proposal.state === "APPLIED") {
+      if (!existing || existing.confirmedByActorId !== authenticatedUserId) {
+        throw new Error("Applied proposal integrity mismatch");
+      }
+      if (proposal.appliedEntityId !== existing.entityId || proposal.appliedEventId !== existing.eventId) {
+        throw new Error("Stored proposal receipt does not match applied-proposal marker");
+      }
+      return replayReceipt(existing);
+    }
+
+    if (existing) {
+      throw new Error("Applied-proposal marker exists while stored proposal is not APPLIED");
+    }
+
+    validateStoredProposal(proposal);
+    const fingerprint = requestFingerprint(proposal, context);
     const recordedAt = dependencies.clock.now();
     const entityId = dependencies.ids.next("calendar");
     const eventId = dependencies.ids.next("event");
@@ -138,13 +152,13 @@ export async function applyCalendarPlanProposal(
     const calendarPlan: CalendarPlanRecord = {
       id: entityId,
       userId: authenticatedUserId,
-      title: command.plan.title.trim(),
-      startsAt: command.plan.startsAt,
-      endsAt: command.plan.endsAt,
-      category: command.plan.category,
-      commitment: command.plan.commitment,
+      title: proposal.plan.title.trim(),
+      startsAt: proposal.plan.startsAt,
+      endsAt: proposal.plan.endsAt,
+      category: proposal.plan.category,
+      commitment: proposal.plan.commitment,
       createdAt: recordedAt,
-      sourceProposalId: command.proposalId,
+      sourceProposalId: proposal.proposalId,
     };
 
     const event: DomainEventRecord = {
@@ -158,21 +172,22 @@ export async function applyCalendarPlanProposal(
       entityType: "calendar_event",
       entityId,
       source: context.source,
-      correlationId: command.correlationId,
+      correlationId: proposal.correlationId,
       payloadJson: {
-        proposalId: command.proposalId,
+        proposalId: proposal.proposalId,
+        captureId: proposal.captureId,
         title: calendarPlan.title,
         startsAt: calendarPlan.startsAt,
         endsAt: calendarPlan.endsAt,
         category: calendarPlan.category,
         commitment: calendarPlan.commitment,
-        confirmationMode: command.approvalMode,
+        confirmationMode: proposal.approvalMode,
       },
       schemaVersion: 1,
     };
 
     const applied: AppliedProposalRecord = {
-      proposalId: command.proposalId,
+      proposalId: proposal.proposalId,
       appliedAt: recordedAt,
       confirmedByActorId: authenticatedUserId,
       requestFingerprint: fingerprint,
@@ -184,9 +199,10 @@ export async function applyCalendarPlanProposal(
     await transaction.createCalendarPlan(calendarPlan);
     await transaction.appendDomainEvent(event);
     await transaction.markProposalApplied(applied);
+    await transaction.markStoredProposalApplied(proposal.proposalId, authenticatedUserId, recordedAt, entityId, eventId);
 
     return {
-      proposalId: command.proposalId,
+      proposalId: proposal.proposalId,
       entityType: "calendar_event",
       entityId,
       eventId,
