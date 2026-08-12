@@ -57,6 +57,7 @@ export interface ProposalRejectionRecord {
   proposalId: string;
   userId: string;
   rejectedAt: string;
+  recordedAt: string;
   rejectedByActorId: string;
   reason?: string;
 }
@@ -64,6 +65,7 @@ export interface ProposalRejectionRecord {
 export interface ProposalRejectionReceipt {
   proposalId: string;
   rejectedAt: string;
+  recordedAt: string;
   rejectedByActorId: string;
   reason?: string;
   idempotentReplay: boolean;
