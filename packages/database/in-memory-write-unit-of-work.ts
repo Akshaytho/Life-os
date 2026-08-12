@@ -114,6 +114,7 @@ export class InMemoryWriteUnitOfWork implements WriteUnitOfWork {
       source: "WEB_APP",
       correlationId: proposal.correlationId,
       requestId: `seed:${proposal.proposalId}`,
+      receivedAt: proposal.createdAt,
       recordedAt: proposal.createdAt,
     };
     this.state.captures.set(capture.captureId, capture);
