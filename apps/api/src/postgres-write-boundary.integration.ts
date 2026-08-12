@@ -99,6 +99,21 @@ class IntegrationInterpreter implements CaptureInterpreter {
   }
 }
 
+class BarrierInterpreter implements CaptureInterpreter {
+  calls: CaptureInterpreterInput[] = [];
+  private arrivals = 0;
+  private releaseGate!: () => void;
+  private readonly gate = new Promise<void>((resolve) => { this.releaseGate = resolve; });
+
+  async interpret(input: CaptureInterpreterInput): Promise<CaptureInterpretationResult> {
+    this.calls.push({ ...input });
+    this.arrivals += 1;
+    if (this.arrivals === 2) this.releaseGate();
+    await this.gate;
+    return routingInterpretation();
+  }
+}
+
 function command(): ApplyStoredProposalCommand {
   return { proposalId: "proposal-postgres-1", confirmation: { explicit: true } };
 }
@@ -218,6 +233,39 @@ test("PostgreSQL Capture request replay reuses original records and skips reinte
   assert.equal(second.captureId, first.captureId);
   assert.deepEqual(second.proposalIds, first.proposalIds);
   assert.equal(interpreter.calls.length, 1);
+
+  const counts = await pool.query(`
+    SELECT
+      (SELECT count(*)::int FROM capture_record) AS capture_count,
+      (SELECT count(*)::int FROM routing_interpretation) AS interpretation_count,
+      (SELECT count(*)::int FROM routing_proposal) AS proposal_count
+  `);
+  assert.deepEqual(counts.rows[0], { capture_count: 1, interpretation_count: 1, proposal_count: 2 });
+});
+
+test("simultaneous Capture retries serialize on the stored Capture and share one proposal bundle", async () => {
+  const unitOfWork = new PostgresWriteUnitOfWork(pool);
+  const interpreter = new BarrierInterpreter();
+  const request = context("user-pg-1", "concurrent-capture-request");
+
+  const [first, second] = await Promise.all([
+    captureAndPropose(
+      { rawText: "Gym tomorrow at 7 PM." },
+      request,
+      { unitOfWork, interpreter, clock: new FixedClock(), ids: new FixedRoutingIds() },
+    ),
+    captureAndPropose(
+      { rawText: "Gym tomorrow at 7 PM." },
+      request,
+      { unitOfWork, interpreter, clock: new FixedClock(), ids: new FixedRoutingIds() },
+    ),
+  ]);
+
+  assert.equal(first.captureId, second.captureId);
+  assert.equal(first.interpretationId, second.interpretationId);
+  assert.deepEqual(first.proposalIds, second.proposalIds);
+  assert.deepEqual([first.idempotentReplay, second.idempotentReplay].sort(), [false, true]);
+  assert.equal(interpreter.calls.length, 2);
 
   const counts = await pool.query(`
     SELECT
