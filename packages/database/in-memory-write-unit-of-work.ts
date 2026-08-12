@@ -2,16 +2,22 @@ import type {
   AppliedProposalRecord,
   CalendarPlanRecord,
   DomainEventRecord,
+  StoredCalendarProposal,
   WriteTransaction,
   WriteUnitOfWork,
 } from "../domain/write-boundary";
 
-type FailurePoint = "NONE" | "CREATE_CALENDAR" | "APPEND_EVENT" | "MARK_APPLIED";
+type FailurePoint = "NONE" | "CREATE_CALENDAR" | "APPEND_EVENT" | "MARK_APPLIED" | "MARK_STORED_APPLIED";
 
 interface MemoryState {
   calendarPlans: Map<string, CalendarPlanRecord>;
   domainEvents: Map<string, DomainEventRecord>;
   appliedProposals: Map<string, AppliedProposalRecord>;
+  storedProposals: Map<string, StoredCalendarProposal>;
+}
+
+function cloneProposal(value: StoredCalendarProposal): StoredCalendarProposal {
+  return { ...value, plan: { ...value.plan } };
 }
 
 function cloneState(state: MemoryState): MemoryState {
@@ -19,6 +25,7 @@ function cloneState(state: MemoryState): MemoryState {
     calendarPlans: new Map(state.calendarPlans),
     domainEvents: new Map(state.domainEvents),
     appliedProposals: new Map(state.appliedProposals),
+    storedProposals: new Map([...state.storedProposals].map(([key, value]) => [key, cloneProposal(value)])),
   };
 }
 
@@ -27,9 +34,14 @@ export class InMemoryWriteUnitOfWork implements WriteUnitOfWork {
     calendarPlans: new Map(),
     domainEvents: new Map(),
     appliedProposals: new Map(),
+    storedProposals: new Map(),
   };
 
   private failurePoint: FailurePoint = "NONE";
+
+  seedStoredCalendarProposal(proposal: StoredCalendarProposal) {
+    this.state.storedProposals.set(proposal.proposalId, cloneProposal(proposal));
+  }
 
   failNextAt(point: Exclude<FailurePoint, "NONE">) {
     this.failurePoint = point;
@@ -40,6 +52,7 @@ export class InMemoryWriteUnitOfWork implements WriteUnitOfWork {
       calendarPlans: [...this.state.calendarPlans.values()],
       domainEvents: [...this.state.domainEvents.values()],
       appliedProposals: [...this.state.appliedProposals.values()],
+      storedProposals: [...this.state.storedProposals.values()].map(cloneProposal),
     };
   }
 
@@ -56,6 +69,11 @@ export class InMemoryWriteUnitOfWork implements WriteUnitOfWork {
     };
 
     const transaction: WriteTransaction = {
+      getStoredCalendarProposalForUpdate: async (proposalId, userId) => {
+        const proposal = staged.storedProposals.get(proposalId);
+        if (!proposal || proposal.userId !== userId) return undefined;
+        return cloneProposal(proposal);
+      },
       findAppliedProposal: async (proposalId) => staged.appliedProposals.get(proposalId),
       createCalendarPlan: async (record) => {
         maybeFail("CREATE_CALENDAR");
@@ -71,6 +89,19 @@ export class InMemoryWriteUnitOfWork implements WriteUnitOfWork {
         maybeFail("MARK_APPLIED");
         if (staged.appliedProposals.has(record.proposalId)) throw new Error(`Proposal ${record.proposalId} was already applied`);
         staged.appliedProposals.set(record.proposalId, record);
+      },
+      markStoredProposalApplied: async (proposalId, userId, appliedAt, entityId, eventId) => {
+        maybeFail("MARK_STORED_APPLIED");
+        const proposal = staged.storedProposals.get(proposalId);
+        if (!proposal || proposal.userId !== userId) throw new Error(`Stored proposal ${proposalId} not found`);
+        if (proposal.state === "APPLIED") throw new Error(`Stored proposal ${proposalId} was already applied`);
+        staged.storedProposals.set(proposalId, {
+          ...proposal,
+          state: "APPLIED",
+          appliedAt,
+          appliedEntityId: entityId,
+          appliedEventId: eventId,
+        });
       },
     };
 
