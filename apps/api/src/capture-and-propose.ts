@@ -43,6 +43,15 @@ export interface CaptureAndProposeReceipt {
 
 const calendarCategories = new Set(["Work", "Creator", "Learning", "Health", "Family", "Friends", "Travel", "Personal", "Rest"]);
 const calendarCommitments = new Set(["Fixed", "Important", "Flexible", "Optional"]);
+const interpreterKinds = new Set(["LOCAL_SAMPLE", "LIFE_OS_AI"]);
+const routingIntents = new Set([
+  "DATED_PLAN", "LEARNING", "DIRECTION_RECONSIDERATION", "HEALTH_OBSERVATION",
+  "DRIFT_SIGNAL", "RAW_THOUGHT", "UNKNOWN",
+]);
+const certaintySignals = new Set(["TENTATIVE", "LIKELY", "CONFIRMED", "UNSPECIFIED"]);
+const proposalStates = new Set(["PROPOSED", "NEEDS_CONFIRMATION", "READY_TO_APPLY"]);
+const approvalModes = new Set(["REVIEW_AND_APPLY", "EXPLICIT_CONFIRMATION", "HIGH_AUTHORITY_APPROVAL"]);
+const trustClasses = new Set(["FACT", "REFLECTION", "OBSERVATION", "SUGGESTION", "DECISION"]);
 
 const operationOwners: Record<ProposedOperation, RoutingDestination[]> = {
   CREATE_CALENDAR_PLAN: ["CALENDAR"],
@@ -57,7 +66,7 @@ const operationOwners: Record<ProposedOperation, RoutingDestination[]> = {
 };
 
 function requireText(value: string, label: string) {
-  if (!value.trim()) throw new CaptureProposalPersistenceError(`${label} is required`);
+  if (typeof value !== "string" || !value.trim()) throw new CaptureProposalPersistenceError(`${label} is required`);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -100,6 +109,15 @@ function validateProposal(proposal: InterpretedRoutingProposal) {
   requireText(proposal.summary, "proposal summary");
   requireText(proposal.reason, "proposal reason");
 
+  if (!proposalStates.has(proposal.state as string)) {
+    throw new CaptureProposalPersistenceError(`Interpreter cannot create proposal state ${String(proposal.state)}`);
+  }
+  if (!approvalModes.has(proposal.approvalMode as string)) {
+    throw new CaptureProposalPersistenceError(`Unknown proposal approval mode ${String(proposal.approvalMode)}`);
+  }
+  if (!trustClasses.has(proposal.targetTrustClass as string)) {
+    throw new CaptureProposalPersistenceError(`Unknown proposal trust class ${String(proposal.targetTrustClass)}`);
+  }
   if (!isRecord(proposal.payloadJson)) {
     throw new CaptureProposalPersistenceError(`Proposal ${proposal.key} payload must be an object`);
   }
@@ -107,10 +125,10 @@ function validateProposal(proposal: InterpretedRoutingProposal) {
     throw new CaptureProposalPersistenceError(`Proposal ${proposal.key} must reference Capture provenance instead of copying raw source text`);
   }
 
-  const owners = operationOwners[proposal.operation];
-  if (!owners.includes(proposal.destination)) {
+  const owners = operationOwners[proposal.operation as ProposedOperation];
+  if (!owners || !owners.includes(proposal.destination as RoutingDestination)) {
     throw new CaptureProposalPersistenceError(
-      `${proposal.operation} cannot be routed to ${proposal.destination}; domain ownership must remain explicit`,
+      `${String(proposal.operation)} cannot be routed to ${String(proposal.destination)}; domain ownership must remain explicit`,
     );
   }
 
@@ -124,6 +142,15 @@ function validateProposal(proposal: InterpretedRoutingProposal) {
 }
 
 function validateInterpretation(value: CaptureInterpretationResult) {
+  if (!interpreterKinds.has(value.interpreter as string)) {
+    throw new CaptureProposalPersistenceError(`Unknown interpreter kind ${String(value.interpreter)}`);
+  }
+  if (!routingIntents.has(value.intent as string)) {
+    throw new CaptureProposalPersistenceError(`Unknown routing intent ${String(value.intent)}`);
+  }
+  if (!certaintySignals.has(value.certainty as string)) {
+    throw new CaptureProposalPersistenceError(`Unknown certainty signal ${String(value.certainty)}`);
+  }
   if (!Number.isFinite(value.confidence) || value.confidence < 0 || value.confidence > 1) {
     throw new CaptureProposalPersistenceError("Interpreter confidence must be between 0 and 1");
   }
@@ -131,7 +158,7 @@ function validateInterpretation(value: CaptureInterpretationResult) {
     throw new CaptureProposalPersistenceError("Interpreter result must contain observations and proposals arrays");
   }
   for (const observation of value.observations) {
-    if (observation.trustClass !== "OBSERVATION") {
+    if (!observation || observation.trustClass !== "OBSERVATION") {
       throw new CaptureProposalPersistenceError("Interpreter observations must remain OBSERVATION-class data");
     }
   }
