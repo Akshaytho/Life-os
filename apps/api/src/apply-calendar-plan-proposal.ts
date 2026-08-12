@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type {
   AppliedProposalRecord,
   ApplyCalendarPlanProposalCommand,
@@ -27,7 +28,7 @@ function requireText(value: string, label: string) {
 }
 
 function requestFingerprint(command: ApplyCalendarPlanProposalCommand) {
-  return JSON.stringify({
+  const semantics = JSON.stringify({
     actorId: command.confirmation.actorId,
     destination: command.destination,
     operation: command.operation,
@@ -42,6 +43,8 @@ function requestFingerprint(command: ApplyCalendarPlanProposalCommand) {
       commitment: command.plan.commitment,
     },
   });
+
+  return createHash("sha256").update(semantics).digest("hex");
 }
 
 function validate(command: ApplyCalendarPlanProposalCommand) {
@@ -145,7 +148,6 @@ export async function applyCalendarPlanProposal(
       correlationId: command.correlationId,
       payloadJson: {
         proposalId: command.proposalId,
-        sourceText: command.sourceText,
         title: calendarPlan.title,
         startsAt: calendarPlan.startsAt,
         endsAt: calendarPlan.endsAt,
