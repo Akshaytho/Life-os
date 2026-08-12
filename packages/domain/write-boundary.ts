@@ -14,11 +14,7 @@ export type CalendarCategory =
 
 export type CalendarCommitment = "Fixed" | "Important" | "Flexible" | "Optional";
 export type ProposalApprovalMode = "REVIEW_AND_APPLY" | "EXPLICIT_CONFIRMATION" | "HIGH_AUTHORITY_APPROVAL";
-export type ProposalStateForApply = "READY_TO_APPLY" | "NEEDS_CONFIRMATION";
-
-export interface UserConfirmation {
-  explicit: boolean;
-}
+export type StoredProposalState = "PROPOSED" | "NEEDS_CONFIRMATION" | "READY_TO_APPLY" | "REJECTED" | "APPLIED";
 
 export interface AuthenticatedUserPrincipal {
   actorType: "USER";
@@ -40,16 +36,26 @@ export interface CalendarPlanInput {
   commitment: CalendarCommitment;
 }
 
-export interface ApplyCalendarPlanProposalCommand {
+export interface ApplyStoredProposalCommand {
   proposalId: string;
-  proposalState: ProposalStateForApply;
-  approvalMode: ProposalApprovalMode;
-  destination: "CALENDAR";
-  operation: "CREATE_CALENDAR_PLAN";
+  confirmation: { explicit: boolean };
+}
+
+export interface StoredCalendarProposal {
+  proposalId: string;
+  userId: string;
+  captureId: string;
   sourceText: string;
   correlationId: string;
-  confirmation: UserConfirmation;
+  destination: "CALENDAR";
+  operation: "CREATE_CALENDAR_PLAN";
+  approvalMode: ProposalApprovalMode;
+  state: StoredProposalState;
   plan: CalendarPlanInput;
+  createdAt: string;
+  appliedAt?: string;
+  appliedEntityId?: string;
+  appliedEventId?: string;
 }
 
 export interface CalendarPlanRecord {
@@ -101,10 +107,12 @@ export interface CommitReceipt {
 }
 
 export interface WriteTransaction {
+  getStoredCalendarProposalForUpdate(proposalId: string, userId: string): Promise<StoredCalendarProposal | undefined>;
   findAppliedProposal(proposalId: string): Promise<AppliedProposalRecord | undefined>;
   createCalendarPlan(record: CalendarPlanRecord): Promise<void>;
   appendDomainEvent(event: DomainEventRecord): Promise<void>;
   markProposalApplied(record: AppliedProposalRecord): Promise<void>;
+  markStoredProposalApplied(proposalId: string, userId: string, appliedAt: string, entityId: string, eventId: string): Promise<void>;
 }
 
 export interface WriteUnitOfWork {
