@@ -8,6 +8,7 @@ import type {
   PersistedCaptureProposalReview,
   ProposalReviewReader,
 } from "../domain/proposal-review";
+import { PostgresUserScope } from "./postgres-user-scope";
 
 function iso(value: Date | string): string {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
@@ -130,71 +131,77 @@ function proposalFrom(row: ReviewRow): RoutingProposalRecord | undefined {
 }
 
 export class PostgresProposalReviewReader implements ProposalReviewReader {
-  constructor(private readonly pool: Pool) {}
+  private readonly userScope: PostgresUserScope;
+
+  constructor(pool: Pool) {
+    this.userScope = new PostgresUserScope(pool);
+  }
 
   async getCaptureReview(captureId: string, authenticatedUserId: string): Promise<PersistedCaptureProposalReview | undefined> {
-    const result = await this.pool.query<ReviewRow>(
-      `SELECT
-         c.capture_id,
-         c.user_id,
-         c.raw_text,
-         c.source,
-         c.correlation_id,
-         c.request_id,
-         c.received_at,
-         c.recorded_at,
+    return this.userScope.run(authenticatedUserId, async (client) => {
+      const result = await client.query<ReviewRow>(
+        `SELECT
+           c.capture_id,
+           c.user_id,
+           c.raw_text,
+           c.source,
+           c.correlation_id,
+           c.request_id,
+           c.received_at,
+           c.recorded_at,
 
-         ri.interpretation_id,
-         ri.version AS interpretation_version,
-         ri.interpreter,
-         ri.intent,
-         ri.certainty,
-         ri.confidence,
-         ri.observations_json,
-         ri.clarification,
-         ri.created_at AS interpretation_created_at,
+           ri.interpretation_id,
+           ri.version AS interpretation_version,
+           ri.interpreter,
+           ri.intent,
+           ri.certainty,
+           ri.confidence,
+           ri.observations_json,
+           ri.clarification,
+           ri.created_at AS interpretation_created_at,
 
-         rp.proposal_id,
-         rp.interpreter_proposal_key,
-         rp.destination,
-         rp.operation,
-         rp.summary,
-         rp.target_trust_class,
-         rp.approval_mode,
-         rp.state AS proposal_state,
-         rp.reason,
-         rp.payload_json,
-         rp.created_at AS proposal_created_at,
-         rp.applied_at,
-         rp.applied_entity_id,
-         rp.applied_event_id
-       FROM capture_record c
-       LEFT JOIN routing_interpretation ri
-         ON ri.capture_id = c.capture_id
-        AND ri.user_id = c.user_id
-        AND ri.version = 1
-       LEFT JOIN routing_proposal rp
-         ON rp.interpretation_id = ri.interpretation_id
-        AND rp.capture_id = c.capture_id
-        AND rp.user_id = c.user_id
-       WHERE c.capture_id = $1
-         AND c.user_id = $2
-       ORDER BY rp.created_at NULLS LAST, rp.proposal_id NULLS LAST`,
-      [captureId, authenticatedUserId],
-    );
+           rp.proposal_id,
+           rp.interpreter_proposal_key,
+           rp.destination,
+           rp.operation,
+           rp.summary,
+           rp.target_trust_class,
+           rp.approval_mode,
+           rp.state AS proposal_state,
+           rp.reason,
+           rp.payload_json,
+           rp.created_at AS proposal_created_at,
+           rp.applied_at,
+           rp.applied_entity_id,
+           rp.applied_event_id
+         FROM capture_record c
+         LEFT JOIN routing_interpretation ri
+           ON ri.capture_id = c.capture_id
+          AND ri.user_id = c.user_id
+          AND ri.version = 1
+         LEFT JOIN routing_proposal rp
+           ON rp.interpretation_id = ri.interpretation_id
+          AND rp.capture_id = c.capture_id
+          AND rp.user_id = c.user_id
+         WHERE c.capture_id = $1
+           AND c.user_id = $2
+         ORDER BY rp.created_at NULLS LAST, rp.proposal_id NULLS LAST`,
+        [captureId, authenticatedUserId],
+      );
 
-    const first = result.rows[0];
-    if (!first) return undefined;
+      const first = result.rows[0];
+      if (!first) return undefined;
 
-    const interpretation = interpretationFrom(first);
-    const proposals = result.rows
-      .map(proposalFrom)
-      .filter((value): value is RoutingProposalRecord => Boolean(value));
+      const interpretation = interpretationFrom(first);
+      const proposals = result.rows
+        .map(proposalFrom)
+        .filter((value): value is RoutingProposalRecord => Boolean(value));
 
-    return {
-      capture: captureFrom(first),
-      interpretation,
-      proposals,
-    };
+      return {
+        capture: captureFrom(first),
+        interpretation,
+        proposals,
+      };
+    });
   }
 }
