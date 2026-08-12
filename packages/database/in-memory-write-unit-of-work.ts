@@ -4,6 +4,7 @@ import type {
   CalendarPlanRecord,
   CaptureRecord,
   DomainEventRecord,
+  ProposalRejectionRecord,
   RoutingInterpretationRecord,
   RoutingPersistenceBundle,
   RoutingProposalRecord,
@@ -17,6 +18,8 @@ type FailurePoint =
   | "CREATE_CAPTURE"
   | "CREATE_INTERPRETATION"
   | "CREATE_ROUTING_PROPOSAL"
+  | "CREATE_REJECTION"
+  | "MARK_REJECTED"
   | "CREATE_CALENDAR"
   | "APPEND_EVENT"
   | "MARK_APPLIED"
@@ -26,6 +29,7 @@ interface MemoryState {
   captures: Map<string, CaptureRecord>;
   interpretations: Map<string, RoutingInterpretationRecord>;
   routingProposals: Map<string, RoutingProposalRecord>;
+  proposalRejections: Map<string, ProposalRejectionRecord>;
   calendarPlans: Map<string, CalendarPlanRecord>;
   domainEvents: Map<string, DomainEventRecord>;
   appliedProposals: Map<string, AppliedProposalRecord>;
@@ -44,6 +48,7 @@ function cloneState(state: MemoryState): MemoryState {
     captures: new Map([...state.captures].map(([key, value]) => [key, { ...value }])),
     interpretations: new Map([...state.interpretations].map(([key, value]) => [key, cloneInterpretation(value)])),
     routingProposals: new Map([...state.routingProposals].map(([key, value]) => [key, cloneRoutingProposal(value)])),
+    proposalRejections: new Map([...state.proposalRejections].map(([key, value]) => [key, { ...value }])),
     calendarPlans: new Map(state.calendarPlans),
     domainEvents: new Map(state.domainEvents),
     appliedProposals: new Map(state.appliedProposals),
@@ -93,6 +98,7 @@ export class InMemoryWriteUnitOfWork implements WriteUnitOfWork {
     captures: new Map(),
     interpretations: new Map(),
     routingProposals: new Map(),
+    proposalRejections: new Map(),
     calendarPlans: new Map(),
     domainEvents: new Map(),
     appliedProposals: new Map(),
@@ -141,6 +147,7 @@ export class InMemoryWriteUnitOfWork implements WriteUnitOfWork {
       captures: [...this.state.captures.values()].map((item) => ({ ...item })),
       interpretations: [...this.state.interpretations.values()].map(cloneInterpretation),
       routingProposals: [...this.state.routingProposals.values()].map(cloneRoutingProposal),
+      proposalRejections: [...this.state.proposalRejections.values()].map((item) => ({ ...item })),
       storedProposals: [...this.state.routingProposals.values()]
         .map((proposal) => calendarProjection(this.state, proposal))
         .filter((value): value is StoredCalendarProposal => Boolean(value)),
@@ -214,6 +221,39 @@ export class InMemoryWriteUnitOfWork implements WriteUnitOfWork {
           }
         }
         staged.routingProposals.set(record.proposalId, cloneRoutingProposal(record));
+      },
+      getRoutingProposalForUpdate: async (proposalId, userId) => {
+        requireOwner(userId, "Routing proposal read");
+        const proposal = staged.routingProposals.get(proposalId);
+        if (!proposal || proposal.userId !== authenticatedUserId) return undefined;
+        return cloneRoutingProposal(proposal);
+      },
+      findProposalRejection: async (proposalId) => {
+        const proposal = staged.routingProposals.get(proposalId);
+        if (!proposal || proposal.userId !== authenticatedUserId) return undefined;
+        const rejection = staged.proposalRejections.get(proposalId);
+        return rejection ? { ...rejection } : undefined;
+      },
+      createProposalRejection: async (record) => {
+        requireOwner(record.userId, "Proposal rejection");
+        if (record.rejectedByActorId !== authenticatedUserId) {
+          throw new Error("Proposal rejection actor must match authenticated user scope");
+        }
+        const proposal = staged.routingProposals.get(record.proposalId);
+        if (!proposal || proposal.userId !== authenticatedUserId) throw new Error(`Proposal ${record.proposalId} is unavailable`);
+        maybeFail("CREATE_REJECTION");
+        if (staged.proposalRejections.has(record.proposalId)) throw new Error(`Proposal ${record.proposalId} was already rejected`);
+        staged.proposalRejections.set(record.proposalId, { ...record });
+      },
+      markRoutingProposalRejected: async (proposalId, userId) => {
+        requireOwner(userId, "Routing proposal rejection");
+        maybeFail("MARK_REJECTED");
+        const proposal = staged.routingProposals.get(proposalId);
+        if (!proposal || proposal.userId !== authenticatedUserId) throw new Error(`Proposal ${proposalId} is unavailable`);
+        if (!(["PROPOSED", "NEEDS_CONFIRMATION", "READY_TO_APPLY"] as const).includes(proposal.state as "PROPOSED" | "NEEDS_CONFIRMATION" | "READY_TO_APPLY")) {
+          throw new Error(`Stored proposal ${proposalId} was not rejectable`);
+        }
+        staged.routingProposals.set(proposalId, { ...proposal, state: "REJECTED" });
       },
       getStoredCalendarProposalForUpdate: async (proposalId, userId) => {
         requireOwner(userId, "Stored proposal read");

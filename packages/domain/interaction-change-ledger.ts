@@ -2,6 +2,7 @@ import type {
   AppliedProposalRecord,
   CaptureRecord,
   DomainEventRecord,
+  ProposalRejectionRecord,
   RoutingInterpretationRecord,
   RoutingProposalRecord,
 } from "./write-boundary";
@@ -9,6 +10,7 @@ import type {
 export interface PersistedInteractionProposalTrace {
   proposal: RoutingProposalRecord;
   applied?: AppliedProposalRecord;
+  rejection?: ProposalRejectionRecord;
   event?: DomainEventRecord;
 }
 

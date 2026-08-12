@@ -118,6 +118,7 @@ before(async () => {
     "0002_capture_routing_proposal.sql",
     "0003_proposal_creation_provenance.sql",
     "0004_row_level_authorization.sql",
+    "0005_proposal_rejection_provenance.sql",
   ]) {
     const migration = await readFile(`packages/database/migrations/${file}`, "utf8");
     await ownerPool.query(migration);
@@ -133,7 +134,7 @@ before(async () => {
 
 beforeEach(async () => {
   await ownerPool.query(`
-    TRUNCATE TABLE routing_proposal, routing_interpretation, capture_record,
+    TRUNCATE TABLE proposal_rejection, routing_proposal, routing_interpretation, capture_record,
       applied_proposal, domain_event, calendar_event CASCADE
   `);
 });
@@ -170,6 +171,7 @@ test("pending clarification becomes a user-readable no-write trace under RLS", a
   assert.equal(trace.source.text, "My friend may visit Saturday evening.");
   assert.equal(trace.interpretation?.authorityClass, "OBSERVATION");
   assert.equal(trace.proposals[0].authorityClass, "SUGGESTION");
+  assert.equal(trace.proposals[0].userAction, undefined);
   assert.equal(trace.proposals[0].canonicalChange, undefined);
   assert.deepEqual(trace.projectionEffects, { status: "NOT_RECORDED_YET", items: [] });
 
@@ -208,8 +210,9 @@ test("applied Calendar proposal reconstructs source -> observation -> suggestion
   assert.ok(trace);
   assert.equal(trace.status, "COMMITTED");
   assert.equal(trace.correlationId, capture.correlationId);
-  assert.equal(trace.proposals[0].approval?.action, "APPROVED");
-  assert.equal(trace.proposals[0].approval?.actorId, "user-ledger");
+  assert.equal(trace.proposals[0].userAction?.action, "APPROVED");
+  assert.equal(trace.proposals[0].userAction?.actorId, "user-ledger");
+  assert.equal(trace.proposals[0].userAction?.at, "2026-08-13T03:12:00.000Z");
   assert.equal(trace.proposals[0].canonicalChange?.eventId, applied.eventId);
   assert.equal(trace.proposals[0].canonicalChange?.summary, "Calendar event created: Gym");
   assert.equal(trace.proposals[0].canonicalChange?.details?.category, "Health");
