@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
+import "./v3-overrides.css";
 
 export const metadata: Metadata = {
   title: "Life OS — Today",
@@ -11,7 +12,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#0d0e0f",
+  themeColor: "#ECE9E1",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

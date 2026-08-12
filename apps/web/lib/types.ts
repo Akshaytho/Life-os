@@ -8,6 +8,8 @@ export type SourceRef = {
 };
 
 export type CalendarCommitment = "FIXED" | "IMPORTANT" | "FLEXIBLE" | "OPTIONAL";
+export type CalendarCategory = "WORK" | "BODY" | "CREATOR" | "FAMILY" | "FRIENDS" | "HEALTH" | "PERSONAL" | "REST" | "TRAVEL" | "LEARNING";
+export type TimelineState = "PAST" | "NEXT" | "LATER";
 
 export type CalendarPreviewItem = {
   id: string;
@@ -15,28 +17,45 @@ export type CalendarPreviewItem = {
   endTime: string;
   title: string;
   detail: string;
-  category: "WORK" | "BODY" | "CREATOR" | "FAMILY" | "FRIENDS" | "HEALTH" | "PERSONAL";
+  category: CalendarCategory;
   commitment: CalendarCommitment;
-  completed?: boolean;
+  state: TimelineState;
+  weight: "LONG" | "MEDIUM" | "SHORT";
+  gapAfter?: string;
 };
 
 export type DirectionView = {
-  eyebrow: string;
   title: string;
   statement: string;
   source: SourceRef;
 };
 
+export type FocusItem = {
+  id: string;
+  label: string;
+  reason: string;
+  state: "DONE" | "ACTIVE" | "LATER";
+};
+
+export type EvidenceStage = {
+  label: "Learned" | "Practised" | "Applied" | "Reviewed" | "Repeated";
+  state: "COMPLETE" | "ACTIVE" | "NEXT";
+};
+
 export type SkillFocusView = {
+  journey: string;
   phase: string;
   skill: string;
-  focus: string;
+  technique: string;
   intent: string;
-  evidence: {
+  evidenceStages: EvidenceStage[];
+  evidenceCounts: {
     practices: number;
     reels: number;
     learnings: number;
   };
+  latestLearning: string;
+  nextExperiment: string;
   source: SourceRef;
 };
 
@@ -50,12 +69,22 @@ export type SuggestionView = {
 export type TodayViewModel = {
   demoMode: boolean;
   dateLabel: string;
-  dayNumber: string;
-  monthLabel: string;
-  greeting: string;
+  dayPart: string;
+  heading: string;
   orientation: string;
+  stateLabel: string;
   direction: DirectionView;
-  calendar: CalendarPreviewItem[];
+  day: {
+    sampleClock: string;
+    source: SourceRef;
+    items: CalendarPreviewItem[];
+  };
+  focus: FocusItem[];
   creator: SkillFocusView;
   suggestion: SuggestionView;
+  review: {
+    label: string;
+    title: string;
+    prompt: string;
+  };
 };
