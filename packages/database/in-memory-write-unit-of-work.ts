@@ -174,6 +174,10 @@ export class InMemoryWriteUnitOfWork implements WriteUnitOfWork {
         staged.captures.set(record.captureId, { ...record });
         return { ...record };
       },
+      lockCaptureForRouting: async (captureId, userId) => {
+        const capture = staged.captures.get(captureId);
+        return Boolean(capture && capture.userId === userId);
+      },
       getRoutingBundleForCapture: async (captureId, userId) => routingBundle(staged, captureId, userId),
       createRoutingInterpretation: async (record) => {
         maybeFail("CREATE_INTERPRETATION");
