@@ -14,15 +14,23 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Use Node 20
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "20.20.1"
+          package-manager-cache: false
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+
+      - name: Upload lockfile candidate
+        uses: actions/upload-artifact@v6
+        with:
+          name: package-lock-candidate
+          path: package-lock.json
+          retention-days: 1
 
       - name: Typecheck
         run: npm run typecheck
