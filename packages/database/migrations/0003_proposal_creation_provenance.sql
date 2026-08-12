@@ -1,14 +1,17 @@
 BEGIN;
 
 ALTER TABLE capture_record
-  ADD COLUMN IF NOT EXISTS request_id text;
+  ADD COLUMN IF NOT EXISTS request_id text,
+  ADD COLUMN IF NOT EXISTS received_at timestamptz;
 
 UPDATE capture_record
-   SET request_id = 'legacy:' || capture_id
- WHERE request_id IS NULL;
+   SET request_id = COALESCE(request_id, 'legacy:' || capture_id),
+       received_at = COALESCE(received_at, recorded_at)
+ WHERE request_id IS NULL OR received_at IS NULL;
 
 ALTER TABLE capture_record
-  ALTER COLUMN request_id SET NOT NULL;
+  ALTER COLUMN request_id SET NOT NULL,
+  ALTER COLUMN received_at SET NOT NULL;
 
 ALTER TABLE capture_record
   ADD CONSTRAINT capture_record_request_id_nonempty
