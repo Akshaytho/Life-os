@@ -315,7 +315,7 @@ export function CaptureRouting({ initialInput = captureExamples[0] }: { initialI
 
       <footer className={styles.footer}>
         <span>LOCAL SAMPLE LOGIC · NOT PRODUCTION AI</span>
-        <span>LIFE-OS-CANON-001 / 1.1.0</span>
+        <span>LIFE-OS-CANON-001 / 1.2.0</span>
       </footer>
     </main>
   );
