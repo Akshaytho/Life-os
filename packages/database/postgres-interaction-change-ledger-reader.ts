@@ -3,6 +3,7 @@ import type {
   AppliedProposalRecord,
   CaptureRecord,
   DomainEventRecord,
+  ProposalRejectionRecord,
   RoutingInterpretationRecord,
   RoutingProposalRecord,
 } from "../domain/write-boundary";
@@ -58,6 +59,11 @@ type TraceRow = {
   marker_entity_type: "calendar_event" | null;
   marker_entity_id: string | null;
   marker_event_id: string | null;
+
+  rejection_rejected_at: Date | null;
+  rejection_recorded_at: Date | null;
+  rejected_by_actor_id: string | null;
+  rejection_reason: string | null;
 
   event_id: string | null;
   event_user_id: string | null;
@@ -179,6 +185,26 @@ function appliedFrom(row: TraceRow): AppliedProposalRecord | undefined {
   };
 }
 
+function rejectionFrom(row: TraceRow): ProposalRejectionRecord | undefined {
+  if (!row.rejection_rejected_at) return undefined;
+  if (
+    !row.proposal_id ||
+    !row.rejection_recorded_at ||
+    !row.rejected_by_actor_id
+  ) {
+    throw new Error(`Incomplete proposal-rejection provenance for ${row.proposal_id ?? "unknown proposal"}`);
+  }
+
+  return {
+    proposalId: row.proposal_id,
+    userId: row.user_id,
+    rejectedAt: iso(row.rejection_rejected_at),
+    recordedAt: iso(row.rejection_recorded_at),
+    rejectedByActorId: row.rejected_by_actor_id,
+    reason: row.rejection_reason ?? undefined,
+  };
+}
+
 function eventFrom(row: TraceRow): DomainEventRecord | undefined {
   if (!row.event_id) return undefined;
   if (
@@ -271,6 +297,11 @@ export class PostgresInteractionChangeLedgerReader implements InteractionChangeL
            ap.entity_id AS marker_entity_id,
            ap.event_id AS marker_event_id,
 
+           pr.rejected_at AS rejection_rejected_at,
+           pr.recorded_at AS rejection_recorded_at,
+           pr.rejected_by_actor_id,
+           pr.reason AS rejection_reason,
+
            de.event_id,
            de.user_id AS event_user_id,
            de.occurred_at AS event_occurred_at,
@@ -296,6 +327,9 @@ export class PostgresInteractionChangeLedgerReader implements InteractionChangeL
           AND rp.user_id = c.user_id
          LEFT JOIN applied_proposal ap
            ON ap.proposal_id = rp.proposal_id
+         LEFT JOIN proposal_rejection pr
+           ON pr.proposal_id = rp.proposal_id
+          AND pr.user_id = rp.user_id
          LEFT JOIN domain_event de
            ON de.event_id = ap.event_id
           AND de.user_id = c.user_id
@@ -316,6 +350,7 @@ export class PostgresInteractionChangeLedgerReader implements InteractionChangeL
         proposals.push({
           proposal,
           applied: appliedFrom(row),
+          rejection: rejectionFrom(row),
           event: eventFrom(row),
         });
       }
