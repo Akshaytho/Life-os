@@ -8,7 +8,7 @@ import type {
   RoutingTrustClass,
 } from "../contracts/input-routing";
 
-export type PersistableProposalState = "PROPOSED" | "NEEDS_CONFIRMATION" | "READY_TO_APPLY" | "REJECTED";
+export type InterpreterProposalState = "PROPOSED" | "NEEDS_CONFIRMATION" | "READY_TO_APPLY";
 
 export interface InterpretedRoutingProposal {
   /** Interpreter-local key for traceability only. The backend generates the durable proposal ID. */
@@ -18,7 +18,7 @@ export interface InterpretedRoutingProposal {
   summary: string;
   targetTrustClass: RoutingTrustClass;
   approvalMode: ApprovalMode;
-  state: PersistableProposalState;
+  state: InterpreterProposalState;
   reason: string;
   payloadJson: Record<string, unknown>;
 }
