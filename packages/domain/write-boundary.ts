@@ -86,7 +86,16 @@ export interface WriteTransaction {
   markStoredProposalApplied(proposalId: string, userId: string, appliedAt: string, entityId: string, eventId: string): Promise<void>;
 }
 
-export interface WriteUnitOfWork { run<T>(work: (transaction: WriteTransaction) => Promise<T>): Promise<T>; }
+/**
+ * Private Life OS transactions always run inside a trusted authenticated-user scope.
+ *
+ * PostgreSQL implementations bind this user ID to transaction-local RLS context before
+ * exposing a WriteTransaction. In-memory implementations enforce the same ownership shape
+ * so unit tests cannot accidentally rely on behavior production RLS would reject.
+ */
+export interface WriteUnitOfWork {
+  run<T>(authenticatedUserId: string, work: (transaction: WriteTransaction) => Promise<T>): Promise<T>;
+}
 export interface IdGenerator { next(prefix: "calendar" | "event"): string; }
 export interface RoutingIdGenerator { next(prefix: "capture" | "interpretation" | "proposal"): string; }
 export interface Clock { now(): string; }

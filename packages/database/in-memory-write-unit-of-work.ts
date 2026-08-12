@@ -150,7 +150,9 @@ export class InMemoryWriteUnitOfWork implements WriteUnitOfWork {
     };
   }
 
-  async run<T>(work: (transaction: WriteTransaction) => Promise<T>): Promise<T> {
+  async run<T>(authenticatedUserId: string, work: (transaction: WriteTransaction) => Promise<T>): Promise<T> {
+    if (!authenticatedUserId.trim()) throw new Error("authenticatedUserId is required for a private transaction");
+
     const staged = cloneState(this.state);
     let localFailurePoint = this.failurePoint;
     this.failurePoint = "NONE";
@@ -161,9 +163,13 @@ export class InMemoryWriteUnitOfWork implements WriteUnitOfWork {
         throw new Error(`Injected transaction failure at ${point}`);
       }
     };
+    const requireOwner = (userId: string, label: string) => {
+      if (userId !== authenticatedUserId) throw new Error(`${label} is outside the authenticated user scope`);
+    };
 
     const transaction: WriteTransaction = {
       getOrCreateCaptureRecord: async (record) => {
+        requireOwner(record.userId, "Capture");
         const existing = [...staged.captures.values()].find(
           (item) => item.userId === record.userId && item.requestId === record.requestId,
         );
@@ -175,11 +181,16 @@ export class InMemoryWriteUnitOfWork implements WriteUnitOfWork {
         return { ...record };
       },
       lockCaptureForRouting: async (captureId, userId) => {
+        requireOwner(userId, "Capture lock");
         const capture = staged.captures.get(captureId);
-        return Boolean(capture && capture.userId === userId);
+        return Boolean(capture && capture.userId === authenticatedUserId);
       },
-      getRoutingBundleForCapture: async (captureId, userId) => routingBundle(staged, captureId, userId),
+      getRoutingBundleForCapture: async (captureId, userId) => {
+        requireOwner(userId, "Routing bundle");
+        return routingBundle(staged, captureId, authenticatedUserId);
+      },
       createRoutingInterpretation: async (record) => {
+        requireOwner(record.userId, "Routing interpretation");
         maybeFail("CREATE_INTERPRETATION");
         if (staged.interpretations.has(record.interpretationId)) {
           throw new Error(`Interpretation ${record.interpretationId} already exists`);
@@ -191,43 +202,60 @@ export class InMemoryWriteUnitOfWork implements WriteUnitOfWork {
         staged.interpretations.set(record.interpretationId, cloneInterpretation(record));
       },
       createRoutingProposal: async (record) => {
+        requireOwner(record.userId, "Routing proposal");
         maybeFail("CREATE_ROUTING_PROPOSAL");
         if (staged.routingProposals.has(record.proposalId)) throw new Error(`Proposal ${record.proposalId} already exists`);
         const capture = staged.captures.get(record.captureId);
-        if (!capture || capture.userId !== record.userId) throw new Error(`Capture ${record.captureId} is unavailable`);
+        if (!capture || capture.userId !== authenticatedUserId) throw new Error(`Capture ${record.captureId} is unavailable`);
         if (record.interpretationId) {
           const interpretation = staged.interpretations.get(record.interpretationId);
-          if (!interpretation || interpretation.captureId !== record.captureId || interpretation.userId !== record.userId) {
+          if (!interpretation || interpretation.captureId !== record.captureId || interpretation.userId !== authenticatedUserId) {
             throw new Error(`Interpretation ${record.interpretationId} is unavailable`);
           }
         }
         staged.routingProposals.set(record.proposalId, cloneRoutingProposal(record));
       },
       getStoredCalendarProposalForUpdate: async (proposalId, userId) => {
+        requireOwner(userId, "Stored proposal read");
         const proposal = staged.routingProposals.get(proposalId);
-        if (!proposal || proposal.userId !== userId) return undefined;
+        if (!proposal || proposal.userId !== authenticatedUserId) return undefined;
         return calendarProjection(staged, proposal);
       },
-      findAppliedProposal: async (proposalId) => staged.appliedProposals.get(proposalId),
+      findAppliedProposal: async (proposalId) => {
+        const proposal = staged.routingProposals.get(proposalId);
+        if (!proposal || proposal.userId !== authenticatedUserId) return undefined;
+        return staged.appliedProposals.get(proposalId);
+      },
       createCalendarPlan: async (record) => {
+        requireOwner(record.userId, "Calendar plan");
         maybeFail("CREATE_CALENDAR");
         if (staged.calendarPlans.has(record.id)) throw new Error(`Calendar plan ${record.id} already exists`);
         staged.calendarPlans.set(record.id, record);
       },
       appendDomainEvent: async (event) => {
+        requireOwner(event.userId, "Domain event");
+        if (event.actorType === "USER" && event.actorId !== authenticatedUserId) {
+          throw new Error("USER domain-event actor must match authenticated user scope");
+        }
         maybeFail("APPEND_EVENT");
         if (staged.domainEvents.has(event.eventId)) throw new Error(`Domain event ${event.eventId} already exists`);
         staged.domainEvents.set(event.eventId, event);
       },
       markProposalApplied: async (record) => {
+        if (record.confirmedByActorId !== authenticatedUserId) {
+          throw new Error("Applied proposal actor must match authenticated user scope");
+        }
+        const proposal = staged.routingProposals.get(record.proposalId);
+        if (!proposal || proposal.userId !== authenticatedUserId) throw new Error(`Proposal ${record.proposalId} is unavailable`);
         maybeFail("MARK_APPLIED");
         if (staged.appliedProposals.has(record.proposalId)) throw new Error(`Proposal ${record.proposalId} was already applied`);
         staged.appliedProposals.set(record.proposalId, record);
       },
       markStoredProposalApplied: async (proposalId, userId, appliedAt, entityId, eventId) => {
+        requireOwner(userId, "Stored proposal update");
         maybeFail("MARK_STORED_APPLIED");
         const proposal = staged.routingProposals.get(proposalId);
-        if (!proposal || proposal.userId !== userId) throw new Error(`Stored proposal ${proposalId} not found`);
+        if (!proposal || proposal.userId !== authenticatedUserId) throw new Error(`Stored proposal ${proposalId} not found`);
         if (proposal.state === "APPLIED") throw new Error(`Stored proposal ${proposalId} was already applied`);
         staged.routingProposals.set(proposalId, {
           ...proposal,

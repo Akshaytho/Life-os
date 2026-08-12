@@ -163,11 +163,12 @@ export async function captureAndPropose(
   dependencies: CaptureAndProposeDependencies,
 ): Promise<CaptureAndProposeReceipt> {
   validateRequest(command, context);
+  const authenticatedUserId = context.principal.userId;
 
   const candidateCaptureId = dependencies.ids.next("capture");
   const candidate: CaptureRecord = {
     captureId: candidateCaptureId,
-    userId: context.principal.userId,
+    userId: authenticatedUserId,
     rawText: command.rawText,
     source: context.source,
     correlationId: candidateCaptureId,
@@ -176,12 +177,18 @@ export async function captureAndPropose(
     recordedAt: dependencies.clock.now(),
   };
 
-  const capture = await dependencies.unitOfWork.run((transaction) => transaction.getOrCreateCaptureRecord(candidate));
+  const capture = await dependencies.unitOfWork.run(
+    authenticatedUserId,
+    (transaction) => transaction.getOrCreateCaptureRecord(candidate),
+  );
   if (capture.rawText !== command.rawText || capture.source !== context.source) {
     throw new CaptureProposalPersistenceError("This request ID is already bound to different Capture content");
   }
 
-  const existing = await dependencies.unitOfWork.run((transaction) => transaction.getRoutingBundleForCapture(capture.captureId, capture.userId));
+  const existing = await dependencies.unitOfWork.run(
+    authenticatedUserId,
+    (transaction) => transaction.getRoutingBundleForCapture(capture.captureId, capture.userId),
+  );
   if (existing) return receiptFromBundle(capture, existing, true);
 
   // Interpretation happens after the raw Capture commit and outside a DB transaction.
@@ -221,7 +228,7 @@ export async function captureAndPropose(
     createdAt,
   }));
 
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return dependencies.unitOfWork.run(authenticatedUserId, async (transaction) => {
     // Serialize all proposal-bundle creation for this Capture. A concurrent request that
     // interpreted the same Capture waits here, then sees the winner's committed bundle.
     const locked = await transaction.lockCaptureForRouting(capture.captureId, capture.userId);
