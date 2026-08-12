@@ -160,6 +160,16 @@ test("PostgreSQL keeps applied proposal references visible as read-only provenan
   await seedInterpretationAndProposal();
 
   await pool.query(
+    `INSERT INTO domain_event
+      (event_id, user_id, occurred_at, recorded_at, actor_type, actor_id,
+       event_type, entity_type, entity_id, source, correlation_id,
+       causation_event_id, payload_json, schema_version)
+     VALUES ('event-1', 'review-user', '2026-08-12T19:05:00.000Z', '2026-08-12T19:05:00.000Z',
+             'USER', 'review-user', 'CALENDAR_EVENT_CREATED', 'calendar_event', 'calendar-1',
+             'WEB_APP', 'capture-review-1', NULL, '{"proposalId":"proposal-review-calendar"}'::jsonb, 1)`,
+  );
+
+  await pool.query(
     `UPDATE routing_proposal
         SET state = 'APPLIED',
             applied_at = '2026-08-12T19:05:00.000Z',
