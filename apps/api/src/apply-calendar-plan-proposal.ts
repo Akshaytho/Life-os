@@ -26,6 +26,24 @@ function requireText(value: string, label: string) {
   if (!value.trim()) throw new ProposalValidationError(`${label} is required`);
 }
 
+function requestFingerprint(command: ApplyCalendarPlanProposalCommand) {
+  return JSON.stringify({
+    actorId: command.confirmation.actorId,
+    destination: command.destination,
+    operation: command.operation,
+    sourceText: command.sourceText,
+    correlationId: command.correlationId,
+    approvalMode: command.approvalMode,
+    plan: {
+      title: command.plan.title.trim(),
+      startsAt: command.plan.startsAt,
+      endsAt: command.plan.endsAt,
+      category: command.plan.category,
+      commitment: command.plan.commitment,
+    },
+  });
+}
+
 function validate(command: ApplyCalendarPlanProposalCommand) {
   requireText(command.proposalId, "proposalId");
   requireText(command.correlationId, "correlationId");
@@ -43,10 +61,6 @@ function validate(command: ApplyCalendarPlanProposalCommand) {
 
   if (!command.confirmation.explicit) {
     throw new ProposalValidationError("An explicit user Apply/Confirm action is required");
-  }
-
-  if (command.proposalState === "NEEDS_CONFIRMATION" && !command.confirmation.explicit) {
-    throw new ProposalValidationError("This proposal still needs explicit confirmation");
   }
 
   if (command.approvalMode === "HIGH_AUTHORITY_APPROVAL") {
@@ -79,10 +93,18 @@ export async function applyCalendarPlanProposal(
   dependencies: ApplyCalendarPlanDependencies,
 ): Promise<CommitReceipt> {
   validate(command);
+  const fingerprint = requestFingerprint(command);
 
   return dependencies.unitOfWork.run(async (transaction) => {
     const existing = await transaction.findAppliedProposal(command.proposalId);
     if (existing) {
+      if (existing.confirmedByActorId !== command.confirmation.actorId) {
+        throw new ProposalValidationError("This proposal id was already applied by a different user");
+      }
+      if (existing.requestFingerprint !== fingerprint) {
+        throw new ProposalValidationError("This proposal id was already applied with different content");
+      }
+
       return {
         proposalId: existing.proposalId,
         entityType: existing.entityType,
@@ -112,7 +134,7 @@ export async function applyCalendarPlanProposal(
     const event: DomainEventRecord = {
       eventId,
       userId: command.confirmation.actorId,
-      occurredAt: command.plan.occurredAt ?? command.plan.startsAt,
+      occurredAt: command.confirmation.confirmedAt,
       recordedAt,
       actorType: "USER",
       actorId: command.confirmation.actorId,
@@ -138,6 +160,7 @@ export async function applyCalendarPlanProposal(
       proposalId: command.proposalId,
       appliedAt: recordedAt,
       confirmedByActorId: command.confirmation.actorId,
+      requestFingerprint: fingerprint,
       entityType: "calendar_event",
       entityId,
       eventId,
