@@ -1,6 +1,6 @@
-import { JourneyDashboard } from "../../components/journey-dashboard";
+import { JourneyOverview } from "../../components/journey-overview";
 import { journeySample } from "../../lib/journey-sample-data";
 
 export default function JourneyPage() {
-  return <JourneyDashboard model={journeySample} />;
+  return <JourneyOverview model={journeySample} />;
 }
