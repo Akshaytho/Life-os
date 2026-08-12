@@ -90,7 +90,7 @@ function ReviewLedger({ source, value }: { source: string; value: RoutingInterpr
           <span className={styles.authoritySource}>YOU SAID · USER SOURCE</span>
           <small>highest authority in this review</small>
         </div>
-        <blockquote>{source || "Nothing submitted yet."}</blockquote>
+        <blockquote style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{source || "Nothing submitted yet."}</blockquote>
         <div className={styles.sourceFacts}>
           <span>{sourceWords} words</span>
           <span>actor · user</span>
@@ -250,7 +250,7 @@ export function CaptureRouting({ initialInput = captureExamples[0] }: { initialI
         <form onSubmit={preview}>
           <div className={styles.instrumentTopline}>
             <span>YOUR DRAFT</span>
-            <span>LOCAL SAMPLE INTERPRETER</span>
+            <span>0 CANONICAL WRITES</span>
           </div>
           <textarea
             aria-label="Natural language capture"
