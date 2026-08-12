@@ -6,6 +6,8 @@ import type {
   ProposalState,
   RoutingDestination,
   RoutingInterpretation,
+  RoutingProposal,
+  RoutingTrustClass,
 } from "../../../packages/contracts/input-routing";
 import { captureExamples, interpretCapture } from "../lib/routing-sample";
 import styles from "./capture-routing.module.css";
@@ -23,8 +25,8 @@ const destinationLabels: Record<RoutingDestination, string> = {
 
 const stateLabels: Record<ProposalState, string> = {
   PROPOSED: "Proposed",
-  NEEDS_CONFIRMATION: "Needs confirmation",
-  READY_TO_APPLY: "Ready to review",
+  NEEDS_CONFIRMATION: "Needs you",
+  READY_TO_APPLY: "Review ready",
   REJECTED: "Rejected",
   APPLIED: "Applied",
 };
@@ -32,7 +34,15 @@ const stateLabels: Record<ProposalState, string> = {
 const approvalLabels: Record<ApprovalMode, string> = {
   REVIEW_AND_APPLY: "Review + apply",
   EXPLICIT_CONFIRMATION: "Explicit confirmation",
-  HIGH_AUTHORITY_APPROVAL: "High-authority approval",
+  HIGH_AUTHORITY_APPROVAL: "High-authority review",
+};
+
+const resultLabels: Record<RoutingTrustClass, string> = {
+  FACT: "Fact",
+  REFLECTION: "Reflection",
+  OBSERVATION: "Observation",
+  SUGGESTION: "Suggestion",
+  DECISION: "Decision",
 };
 
 function confidenceLabel(value: number) {
@@ -41,86 +51,157 @@ function confidenceLabel(value: number) {
   return "Low";
 }
 
-function StageRail() {
+function ProcessRail() {
   const stages = [
-    ["01", "Capture", "user source"],
+    ["01", "Capture", "source"],
     ["02", "Interpret", "observation"],
-    ["03", "Route", "owners"],
-    ["04", "Propose", "no write"],
+    ["03", "Propose", "suggestion"],
+    ["04", "Review", "you inspect"],
     ["05", "Confirm", "future"],
     ["06", "Commit", "future"],
   ] as const;
 
   return (
-    <div className={styles.stageRail} aria-label="Routing lifecycle">
-      {stages.map(([number, label, note], index) => (
-        <div className={styles.stage} data-future={index > 3 ? "true" : "false"} key={label}>
-          <span>{number}</span>
-          <strong>{label}</strong>
-          <small>{note}</small>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function InterpretationSummary({ value }: { value: RoutingInterpretation }) {
-  return (
-    <section className={styles.interpretation} aria-label="Interpretation summary">
-      <div className={styles.sectionHeading}>
-        <div><span>INTERPRETATION / OBSERVATION</span><h2>What Life OS thinks you meant.</h2></div>
-        <p>Interpretation confidence describes parser certainty only. It never raises authority.</p>
+    <section className={styles.process} aria-label="Capture to commit lifecycle">
+      <div className={styles.processHeading}>
+        <span>PROVENANCE / FLOW</span>
+        <p>The first four steps can be inspected here. Confirm and Commit remain disconnected.</p>
       </div>
-
-      <div className={styles.readout}>
-        <div><span>Intent</span><strong>{value.intent.replaceAll("_", " ")}</strong></div>
-        <div><span>Certainty</span><strong>{value.certainty.toLowerCase()}</strong></div>
-        <div><span>Interpretation</span><strong>{confidenceLabel(value.confidence)}</strong><small>{Math.round(value.confidence * 100)}% sample confidence</small></div>
-      </div>
-
-      <div className={styles.observations}>
-        {value.observations.map((item) => (
-          <div key={item.id}><span>OBSERVATION</span><strong>{item.label}</strong><p>{item.value}</p></div>
+      <div className={styles.stageRail}>
+        {stages.map(([number, label, note], index) => (
+          <div className={styles.stage} data-future={index > 3 ? "true" : "false"} key={label}>
+            <span>{number}</span>
+            <strong>{label}</strong>
+            <small>{note}</small>
+          </div>
         ))}
       </div>
     </section>
   );
 }
 
+function ReviewLedger({ source, value }: { source: string; value: RoutingInterpretation }) {
+  const sourceWords = useMemo(() => source.trim().split(/\s+/).filter(Boolean).length, [source]);
+
+  return (
+    <section className={styles.reviewLedger} aria-label="Capture review ledger">
+      <article className={styles.sourcePanel}>
+        <div className={styles.authorityLine}>
+          <span className={styles.authoritySource}>YOU SAID · USER SOURCE</span>
+          <small>highest authority in this review</small>
+        </div>
+        <blockquote>{source || "Nothing submitted yet."}</blockquote>
+        <div className={styles.sourceFacts}>
+          <span>{sourceWords} words</span>
+          <span>actor · user</span>
+          <span>canonical write · none</span>
+        </div>
+      </article>
+
+      <article className={styles.observationPanel}>
+        <div className={styles.authorityLine}>
+          <span className={styles.authorityObservation}>LIFE OS SAW · OBSERVATION</span>
+          <small>interpretation, not truth</small>
+        </div>
+
+        <div className={styles.interpretationHeadline}>
+          <div>
+            <small>Likely intent</small>
+            <strong>{value.intent.replaceAll("_", " ").toLowerCase()}</strong>
+          </div>
+          <div>
+            <small>Language certainty</small>
+            <strong>{value.certainty.toLowerCase()}</strong>
+          </div>
+          <div>
+            <small>Interpreter certainty</small>
+            <strong>{confidenceLabel(value.confidence)}</strong>
+          </div>
+        </div>
+
+        <div className={styles.observations}>
+          {value.observations.map((item) => (
+            <div key={item.id}>
+              <span>OBSERVATION</span>
+              <strong>{item.label}</strong>
+              <p>{item.value}</p>
+            </div>
+          ))}
+        </div>
+
+        <details className={styles.interpreterDetails}>
+          <summary>Interpretation provenance</summary>
+          <p>{value.interpreter.replaceAll("_", " ").toLowerCase()} · sample certainty {Math.round(value.confidence * 100)}% · authority remains observation</p>
+        </details>
+      </article>
+    </section>
+  );
+}
+
+function ResultClass({ value }: { value: RoutingTrustClass }) {
+  return (
+    <div className={styles.resultClass} data-result={value}>
+      <span>IF APPROVED</span>
+      <strong>{resultLabels[value]}</strong>
+      <small>proposed result class</small>
+    </div>
+  );
+}
+
+function ProposalRow({ item, index }: { item: RoutingProposal; index: number }) {
+  return (
+    <article className={styles.proposal} data-destination={item.destination}>
+      <div className={styles.proposalIndex}>{String(index + 1).padStart(2, "0")}</div>
+
+      <div className={styles.proposalBody}>
+        <div className={styles.proposalAuthority}>
+          <span>LIFE OS PROPOSES · SUGGESTION</span>
+          <span className={styles.destination}>{destinationLabels[item.destination]}</span>
+        </div>
+        <h3>{item.summary}</h3>
+        <p className={styles.proposalReason}>{item.reason}</p>
+
+        {item.preview && (
+          <div className={styles.previewFields}>
+            {item.preview.map((field) => (
+              <div key={field.label}>
+                <span>{field.label}</span>
+                <strong>{field.value}</strong>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className={styles.proposalMeta}>
+          <span><small>Status</small>{stateLabels[item.state]}</span>
+          <span><small>Approval</small>{approvalLabels[item.approvalMode]}</span>
+          <span><small>Operation</small>{item.operation.replaceAll("_", " ").toLowerCase()}</span>
+        </div>
+      </div>
+
+      <div className={styles.proposalOutcome}>
+        <ResultClass value={item.targetTrustClass} />
+        <button className={styles.apply} disabled>{item.state === "NEEDS_CONFIRMATION" ? "Confirmation unavailable" : "Apply unavailable"}</button>
+      </div>
+    </article>
+  );
+}
+
 function Proposals({ value }: { value: RoutingInterpretation }) {
   return (
-    <section className={styles.proposalSection} aria-label="Proposed routing effects">
+    <section className={styles.proposalSection} aria-label="Proposed consequences">
       <div className={styles.sectionHeading}>
-        <div><span>ROUTE / PROPOSE</span><h2>Where this would go.</h2></div>
-        <p>One sentence can affect more than one owner. Each consequence stays separate and inspectable.</p>
+        <div>
+          <span>PROPOSED CONSEQUENCES</span>
+          <h2>What Life OS would do—only if you approve it.</h2>
+        </div>
+        <p>Every row is still a suggestion. “If approved” describes the resulting record class, not what is true now.</p>
       </div>
 
       <div className={styles.proposalStack}>
-        {value.proposals.map((item, index) => (
-          <article className={styles.proposal} data-destination={item.destination} key={item.id}>
-            <div className={styles.proposalIndex}>{String(index + 1).padStart(2, "0")}</div>
-            <div className={styles.proposalBody}>
-              <div className={styles.proposalTopline}>
-                <span className={styles.destination}>{destinationLabels[item.destination]}</span>
-                <span className={styles.state} data-state={item.state}>{stateLabels[item.state]}</span>
-              </div>
-              <h3>{item.summary}</h3>
-              <div className={styles.proposalMeta}>
-                <span><small>Operation</small>{item.operation.replaceAll("_", " ").toLowerCase()}</span>
-                <span><small>If applied</small>{item.targetTrustClass.toLowerCase()}</span>
-                <span><small>Approval</small>{approvalLabels[item.approvalMode]}</span>
-              </div>
-              {item.preview && (
-                <div className={styles.previewFields}>{item.preview.map((field) => <div key={field.label}><span>{field.label}</span><strong>{field.value}</strong></div>)}</div>
-              )}
-              <details className={styles.reason}>
-                <summary>Why this route?</summary>
-                <p>{item.reason}</p>
-              </details>
-            </div>
-            <button className={styles.apply} disabled>{item.state === "NEEDS_CONFIRMATION" ? "Confirm later" : "Apply later"}</button>
-          </article>
-        ))}
+        {value.proposals.length > 0
+          ? value.proposals.map((item, index) => <ProposalRow item={item} index={index} key={item.id} />)
+          : <div className={styles.noProposal}>No consequence proposed. Your source remains intact.</div>}
       </div>
     </section>
   );
@@ -128,16 +209,19 @@ function Proposals({ value }: { value: RoutingInterpretation }) {
 
 export function CaptureRouting({ initialInput = captureExamples[0] }: { initialInput?: string }) {
   const [draft, setDraft] = useState<string>(initialInput);
+  const [submittedSource, setSubmittedSource] = useState<string>(initialInput);
   const [interpretation, setInterpretation] = useState<RoutingInterpretation>(() => interpretCapture(initialInput));
-  const sourceWords = useMemo(() => interpretation.input.trim().split(/\s+/).filter(Boolean).length, [interpretation.input]);
+  const draftChanged = draft !== submittedSource;
 
   function preview(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setSubmittedSource(draft);
     setInterpretation(interpretCapture(draft));
   }
 
   function chooseExample(value: string) {
     setDraft(value);
+    setSubmittedSource(value);
     setInterpretation(interpretCapture(value));
   }
 
@@ -149,18 +233,25 @@ export function CaptureRouting({ initialInput = captureExamples[0] }: { initialI
       </header>
 
       <section className={styles.hero}>
-        <div className={styles.heroTop}><span>CAPTURE / ROUTING LAB</span><span>NO PERSISTENCE</span></div>
+        <div className={styles.heroTop}>
+          <span>CAPTURE / REVIEW</span>
+          <span>READ-ONLY PROTOTYPE</span>
+        </div>
         <div className={styles.heroGrid}>
-          <div><span className="section-kicker">SAY IT NATURALLY</span><h1>Say it once.<br />See where it would go.</h1></div>
-          <p>Capture owns no life truth. Your words stay the source; Life OS interprets, routes and proposes consequences before anything can become canonical.</p>
+          <div>
+            <span className="section-kicker">BEFORE ANYTHING CHANGES</span>
+            <h1>You said it.<br />Life OS shows its work.</h1>
+          </div>
+          <p>Review your exact words, the system’s observation, and every proposed consequence before anything is allowed to become part of your life record.</p>
         </div>
       </section>
 
-      <StageRail />
-
       <section className={styles.captureInstrument} aria-label="Capture input">
         <form onSubmit={preview}>
-          <div className={styles.instrumentTopline}><span>RAW USER INPUT</span><span>LOCAL SAMPLE INTERPRETER</span></div>
+          <div className={styles.instrumentTopline}>
+            <span>YOUR DRAFT</span>
+            <span>LOCAL SAMPLE INTERPRETER</span>
+          </div>
           <textarea
             aria-label="Natural language capture"
             maxLength={800}
@@ -170,37 +261,56 @@ export function CaptureRouting({ initialInput = captureExamples[0] }: { initialI
             value={draft}
           />
           <div className={styles.inputFooter}>
-            <span>{draft.length}/800</span>
-            <button type="submit">Preview routing <b>→</b></button>
+            <div>
+              <span>{draft.length}/800</span>
+              {draftChanged && <small>Draft changed · review below still reflects your last submission.</small>}
+            </div>
+            <button type="submit">{draftChanged ? "Review changes" : "Review meaning"}<b>→</b></button>
           </div>
         </form>
 
         <div className={styles.examples}>
-          <span>TRY DIFFERENT SEMANTICS</span>
+          <span>TRY DIFFERENT MEANINGS</span>
           <div>{captureExamples.map((example) => <button type="button" onClick={() => chooseExample(example)} key={example}>{example}</button>)}</div>
         </div>
       </section>
 
-      <section className={styles.sourceStrip}>
-        <div><span>SOURCE / USER</span><p>“{interpretation.input || "Nothing captured yet."}”</p></div>
-        <div className={styles.sourceFacts}><span>{sourceWords} words</span><span>actor · USER</span><span>write · NONE</span></div>
+      <section className={styles.reviewLock} aria-label="Write boundary status">
+        <div className={styles.zeroMark}>0</div>
+        <div>
+          <span>CANONICAL WRITES</span>
+          <strong>Review only. Nothing changed.</strong>
+          <p>Today, Calendar, Journey, Memory and You remain untouched.</p>
+        </div>
+        <div className={styles.lockState}><i /> SAFE TO INSPECT</div>
       </section>
+
+      <ReviewLedger source={submittedSource} value={interpretation} />
 
       {interpretation.clarification && (
         <aside className={styles.clarification}>
-          <span>NEEDS YOU</span>
+          <div><span>NEEDS YOU</span><strong>Life OS will not fill this gap by guessing.</strong></div>
           <p>{interpretation.clarification}</p>
-          <small>Life OS asks rather than inventing missing authority or detail.</small>
+          <small>Missing detail or authority remains unresolved until you clarify it.</small>
         </aside>
       )}
 
-      <InterpretationSummary value={interpretation} />
       <Proposals value={interpretation} />
+      <ProcessRail />
 
       <section className={styles.boundary}>
         <div className={styles.boundaryMark}>0</div>
-        <div><span>CANONICAL WRITES</span><h2>Nothing has been changed.</h2><p>Confirm and Apply are intentionally disabled. Persistence comes later with backend revalidation, transactional canonical mutation, and an append-only domain event.</p></div>
-        <div className={styles.boundaryStates}><span>Capture <b>visible</b></span><span>Interpretation <b>visible</b></span><span>Proposal <b>visible</b></span><span>Mutation <b>none</b></span></div>
+        <div>
+          <span>COMMIT BOUNDARY</span>
+          <h2>Still only a review.</h2>
+          <p>Real Confirm and Apply remain intentionally disconnected until persisted proposals, authenticated ownership, authorization, backend revalidation and transactional writes are wired to this screen.</p>
+        </div>
+        <div className={styles.boundaryStates}>
+          <span>Source <b>visible</b></span>
+          <span>Observation <b>visible</b></span>
+          <span>Suggestions <b>visible</b></span>
+          <span>Mutation <b>none</b></span>
+        </div>
       </section>
 
       <footer className={styles.footer}>
