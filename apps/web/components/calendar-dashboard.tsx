@@ -1,27 +1,16 @@
-"use client";
-
 import Link from "next/link";
-import { useMemo, useState, type CSSProperties } from "react";
+import type { CSSProperties } from "react";
 import type { CalendarCategory, CalendarEvent, CalendarLens, CalendarViewModel, RoutedIntent } from "../lib/calendar-types";
 import type { SourceRef, TrustClass } from "../lib/types";
 import styles from "./calendar-dashboard.module.css";
 
-type IconName = "today" | "journey" | "calendar" | "memory" | "you" | "plus" | "spark" | "arrow" | "clock" | "check";
-type NavItem = { label: string; icon: IconName; href?: string; active: boolean };
+type IconName = "spark" | "arrow" | "clock";
 
-const navItems: NavItem[] = [
-  { label: "Today", icon: "today", href: "/", active: false },
-  { label: "Journey", icon: "journey", href: "/journey", active: false },
-  { label: "Calendar", icon: "calendar", href: "/calendar", active: true },
-  { label: "Memory", icon: "memory", active: false },
-  { label: "You", icon: "you", active: false },
-];
-
-const lenses: { id: CalendarLens; label: string; question: string }[] = [
-  { id: "DAY", label: "Day", question: "capacity" },
-  { id: "WEEK", label: "Week", question: "rhythm" },
-  { id: "MONTH", label: "Month", question: "texture" },
-  { id: "YEAR", label: "Year", question: "seasons" },
+const lenses: { id: CalendarLens; label: string; question: string; query: string }[] = [
+  { id: "DAY", label: "Day", question: "capacity", query: "day" },
+  { id: "WEEK", label: "Week", question: "rhythm", query: "week" },
+  { id: "MONTH", label: "Month", question: "texture", query: "month" },
+  { id: "YEAR", label: "Year", question: "seasons", query: "year" },
 ];
 
 const trustLabels: Record<TrustClass, string> = {
@@ -46,16 +35,9 @@ const categoryShort: Record<CalendarCategory, string> = {
 
 function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.7, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
-  if (name === "today") return <svg {...common}><circle cx="12" cy="12" r="7" /><circle cx="12" cy="12" r="2" /><path d="M12 2v3M22 12h-3M12 22v-3M2 12h3" /></svg>;
-  if (name === "journey") return <svg {...common}><path d="M4 18c4-8 7-11 16-13" /><circle cx="5" cy="18" r="2" /><path d="m16 4 4 1-1 4" /></svg>;
-  if (name === "calendar") return <svg {...common}><path d="M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2Z" /><path d="M7 2v4M17 2v4M3 9h18" /></svg>;
-  if (name === "memory") return <svg {...common}><path d="M6 3h10a3 3 0 0 1 3 3v15H8a3 3 0 0 1-3-3V4a1 1 0 0 1 1-1Z" /><path d="M8 21a3 3 0 0 1 0-6h11M9 8h6M9 11h4" /></svg>;
-  if (name === "you") return <svg {...common}><circle cx="12" cy="8" r="3" /><path d="M5.5 20c.8-4.1 3-6.1 6.5-6.1s5.7 2 6.5 6.1" /></svg>;
-  if (name === "plus") return <svg {...common}><path d="M12 5v14M5 12h14" /></svg>;
   if (name === "spark") return <svg {...common}><path d="M12 3c.7 4.3 2.4 6 6.5 6.5C14.4 10 12.7 11.7 12 16c-.7-4.3-2.4-6-6.5-6.5C9.6 9 11.3 7.3 12 3Z" /></svg>;
   if (name === "arrow") return <svg {...common}><path d="M5 12h14M14 7l5 5-5 5" /></svg>;
-  if (name === "clock") return <svg {...common}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>;
-  return <svg {...common}><path d="m5 12 4 4L19 6" /></svg>;
+  return <svg {...common}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>;
 }
 
 function TrustTag({ kind }: { kind: TrustClass }) {
@@ -68,26 +50,6 @@ function Provenance({ source }: { source: SourceRef }) {
       <summary><TrustTag kind={source.trustClass} /><span className="source-word">source</span></summary>
       <div className="source-panel"><strong>{source.label}</strong><span>{source.detail}</span><span>{source.recordedAt}</span></div>
     </details>
-  );
-}
-
-function NavButton({ item }: { item: NavItem }) {
-  const contents = <><Icon name={item.icon} size={20} /><span>{item.label}</span></>;
-  if (item.href) return <Link href={item.href} className={`nav-button ${styles.navLink} ${item.active ? "active" : ""}`} aria-current={item.active ? "page" : undefined}>{contents}</Link>;
-  return <button className="nav-button" disabled>{contents}</button>;
-}
-
-function AppNavigation() {
-  return (
-    <>
-      <aside className="desktop-nav" aria-label="Primary navigation">
-        <div className="desktop-brand"><span>L/O</span><small>PRIVATE</small></div>
-        <div className="desktop-links">{navItems.map((item) => <NavButton item={item} key={item.label} />)}</div>
-        <button className="desktop-capture" disabled><Icon name="plus" size={22} /><span>Capture</span></button>
-      </aside>
-      <nav className="bottom-nav" aria-label="Primary navigation">{navItems.map((item) => <NavButton item={item} key={item.label} />)}</nav>
-      <button className="floating-capture" disabled aria-label="Capture"><Icon name="plus" size={25} /><span>Capture</span></button>
-    </>
   );
 }
 
@@ -134,13 +96,11 @@ function DayLens({ model }: { model: CalendarViewModel }) {
         <div><span>DAY / CAPACITY</span><h2>{model.dayTitle}</h2></div>
         <p>Long commitments occupy real space. Open time stays visible instead of disappearing between cards.</p>
       </div>
-
       <div className={styles.capacityReadout}>
         <div><strong>10h</strong><span>committed</span></div>
         <div><strong>07h</strong><span>unclaimed / transition</span></div>
         <div><strong>03</strong><span>meaningful blocks</span></div>
       </div>
-
       <div className={styles.dayPlane}>
         <div className={styles.dayTimes}>{hours.map((hour) => <span key={hour} style={{ top: `${((hour * 60 - DAY_START) / DAY_SPAN) * 100}%` }}>{String(hour).padStart(2, "0")}</span>)}</div>
         <div className={styles.dayField}>
@@ -149,7 +109,6 @@ function DayLens({ model }: { model: CalendarViewModel }) {
           <div className={styles.nowLine} style={{ top: `${nowTop}%` }}><span>NOW · {model.now}</span><i /></div>
         </div>
       </div>
-
       <div className={styles.dayFooter}>
         <span><i data-category="Work" />fixed reality</span>
         <span><i data-category="Health" />important life</span>
@@ -166,7 +125,6 @@ function WeekLens({ model }: { model: CalendarViewModel }) {
         <div><span>WEEK / RHYTHM</span><h2>What kind of week is this?</h2></div>
         <p>Not seven miniature calendars. Each day is compressed into occupied space, open capacity, and the categories shaping it.</p>
       </div>
-
       <div className={styles.weekField}>
         {model.week.map((day) => {
           const total = day.occupiedMinutes + day.openMinutes;
@@ -181,10 +139,9 @@ function WeekLens({ model }: { model: CalendarViewModel }) {
           );
         })}
       </div>
-
       <div className={styles.weekInsight}>
         <Icon name="spark" size={18} />
-        <div><span>LIFE OS PLANNING READ</span><strong>Friday is pressured; Sunday still has recovery room.</strong><p>Prototype observation only. The future AI can use this shape before proposing another creator session.</p></div>
+        <div><span>LIFE OS PLANNING READ</span><strong>Friday is pressured; Sunday still has recovery room.</strong><p>Prototype observation only. Future Life OS AI can use this shape before proposing another creator session.</p></div>
       </div>
     </section>
   );
@@ -202,7 +159,6 @@ function MonthLens({ model }: { model: CalendarViewModel }) {
         <div><span>MONTH / TEXTURE</span><h2>{model.month.label}</h2></div>
         <p>Repeated work becomes texture. Only meaningful landmarks need words at this scale.</p>
       </div>
-
       <div className={styles.monthWeekdays}>{weekdayLabels.map((label, index) => <span key={`${label}-${index}`}>{label}</span>)}</div>
       <div className={styles.monthGrid}>
         {Array.from({ length: mondayOffset }, (_, index) => <span className={styles.monthBlank} key={`blank-${index}`} />)}
@@ -213,7 +169,6 @@ function MonthLens({ model }: { model: CalendarViewModel }) {
           </article>
         ))}
       </div>
-
       <div className={styles.monthLegend}><span>quiet</span><i data-load="1" /><i data-load="2" /><i data-load="3" /><i data-load="4" /><span>dense</span></div>
     </section>
   );
@@ -226,7 +181,6 @@ function YearLens({ model }: { model: CalendarViewModel }) {
         <div><span>YEAR / SEASONS</span><h2>{model.year.label}</h2></div>
         <p>At year scale, appointments disappear. Pressure, recovery, travel, creator phases and other meaningful spans remain.</p>
       </div>
-
       <div className={styles.yearField}>
         {model.year.months.map((month, index) => (
           <article className={styles.yearMonth} data-current={index === 7 ? "true" : "false"} key={month.label}>
@@ -237,8 +191,7 @@ function YearLens({ model }: { model: CalendarViewModel }) {
           </article>
         ))}
       </div>
-
-      <aside className={styles.yearNote}><span>ORIENTATION, NOT PRECISION</span><p>The year view should help answer “what shaped this year?” Detailed events remain available through month/day drill-down and Memory.</p></aside>
+      <aside className={styles.yearNote}><span>ORIENTATION, NOT PRECISION</span><p>The year view helps answer “what shaped this year?” Detailed events remain available through month/day drill-down and Memory.</p></aside>
     </section>
   );
 }
@@ -272,13 +225,11 @@ function RoutingRail({ model }: { model: CalendarViewModel }) {
   );
 }
 
-export function CalendarDashboard({ model }: { model: CalendarViewModel }) {
-  const [activeLens, setActiveLens] = useState<CalendarLens>("DAY");
-  const activeMeta = useMemo(() => lenses.find((lens) => lens.id === activeLens) ?? lenses[0], [activeLens]);
+export function CalendarDashboard({ model, activeLens = "DAY" }: { model: CalendarViewModel; activeLens?: CalendarLens }) {
+  const activeMeta = lenses.find((lens) => lens.id === activeLens) ?? lenses[0];
 
   return (
     <div className="life-app">
-      <AppNavigation />
       <main className={styles.canvas}>
         <header className="system-bar">
           <div className="wordmark">LIFE<span>/</span>OS</div>
@@ -303,7 +254,11 @@ export function CalendarDashboard({ model }: { model: CalendarViewModel }) {
 
         <section className={styles.lensSwitcher} aria-label="Calendar time lens">
           <div className={styles.switcherRail}>
-            {lenses.map((lens) => <button key={lens.id} className={activeLens === lens.id ? styles.lensActive : ""} onClick={() => setActiveLens(lens.id)}><strong>{lens.label}</strong><span>{lens.question}</span></button>)}
+            {lenses.map((lens) => (
+              <Link key={lens.id} href={lens.id === "DAY" ? "/calendar" : `/calendar?lens=${lens.query}`} className={activeLens === lens.id ? styles.lensActive : ""} aria-current={activeLens === lens.id ? "page" : undefined}>
+                <strong>{lens.label}</strong><span>{lens.question}</span>
+              </Link>
+            ))}
           </div>
           <span className={styles.activeQuestion}>Viewing <strong>{activeMeta.question}</strong>, not merely {activeMeta.label.toLowerCase()} events.</span>
         </section>
