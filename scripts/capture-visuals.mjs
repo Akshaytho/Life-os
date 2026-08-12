@@ -10,10 +10,10 @@ const pages = [
   { name: 'today', path: '/' },
   { name: 'journey-overview', path: '/journey' },
   { name: 'journey-sound-design', path: '/journey/travel-creator/sound-design' },
-  { name: 'calendar-day', path: '/calendar', lens: 'Day', expected: 'DAY / CAPACITY' },
-  { name: 'calendar-week', path: '/calendar', lens: 'Week', expected: 'WEEK / RHYTHM' },
-  { name: 'calendar-month', path: '/calendar', lens: 'Month', expected: 'MONTH / TEXTURE' },
-  { name: 'calendar-year', path: '/calendar', lens: 'Year', expected: 'YEAR / SEASONS' },
+  { name: 'calendar-day', path: '/calendar', expected: 'DAY / CAPACITY' },
+  { name: 'calendar-week', path: '/calendar?lens=week', expected: 'WEEK / RHYTHM' },
+  { name: 'calendar-month', path: '/calendar?lens=month', expected: 'MONTH / TEXTURE' },
+  { name: 'calendar-year', path: '/calendar?lens=year', expected: 'YEAR / SEASONS' },
 ];
 
 const targets = [
@@ -36,15 +36,8 @@ for (const targetPage of pages) {
     await page.goto(`http://127.0.0.1:3000${targetPage.path}`, { waitUntil: 'networkidle' });
     await page.evaluate(() => document.fonts.ready);
 
-    if (targetPage.lens) {
-      // Next's server HTML can be visible before the client event handlers have hydrated.
-      // Wait before testing interactive lens switching so the screenshot proves the real UI state.
-      await page.waitForTimeout(1600);
-      if (targetPage.lens !== 'Day') {
-        await page.getByRole('button', { name: new RegExp(`^${targetPage.lens}`, 'i') }).click();
-      }
+    if (targetPage.expected) {
       await page.getByText(targetPage.expected, { exact: true }).waitFor({ state: 'visible', timeout: 8000 });
-      await page.waitForTimeout(180);
     }
 
     await page.screenshot({
