@@ -3,6 +3,7 @@ import type {
   AppliedProposalRecord,
   ApplyStoredProposalCommand,
   CalendarCategory,
+  CalendarCommitment,
   CalendarPlanRecord,
   Clock,
   CommitReceipt,
@@ -27,12 +28,25 @@ export interface ApplyCalendarPlanDependencies {
 }
 
 type ValidatedStoredCalendarProposal = StoredCalendarProposal & {
-  plan: StoredCalendarProposal["plan"] & { category: CalendarCategory };
+  plan: StoredCalendarProposal["plan"] & { category: CalendarCategory; commitment: CalendarCommitment };
   state: "READY_TO_APPLY";
 };
 
+const calendarCategories: readonly CalendarCategory[] = [
+  "Work", "Creator", "Learning", "Health", "Family", "Friends", "Travel", "Personal", "Rest",
+];
+const calendarCommitments: readonly CalendarCommitment[] = ["Fixed", "Important", "Flexible", "Optional"];
+
 function requireText(value: string, label: string) {
   if (!value.trim()) throw new ProposalValidationError(`${label} is required`);
+}
+
+function isCalendarCategory(value: unknown): value is CalendarCategory {
+  return typeof value === "string" && calendarCategories.includes(value as CalendarCategory);
+}
+
+function isCalendarCommitment(value: unknown): value is CalendarCommitment {
+  return typeof value === "string" && calendarCommitments.includes(value as CalendarCommitment);
 }
 
 function validateRequest(command: ApplyStoredProposalCommand, context: WriteRequestContext) {
@@ -67,8 +81,11 @@ function validateStoredProposal(
   if (proposal.approvalMode === "HIGH_AUTHORITY_APPROVAL") {
     throw new ProposalValidationError("High-authority changes require their own dedicated approval flow");
   }
-  if (proposal.plan.category === "UNRESOLVED") {
-    throw new ProposalValidationError("Stored Calendar category is unresolved; clarification is required before apply");
+  if (!isCalendarCategory(proposal.plan.category)) {
+    throw new ProposalValidationError("Stored Calendar category is unresolved or invalid; clarification is required before apply");
+  }
+  if (!isCalendarCommitment(proposal.plan.commitment)) {
+    throw new ProposalValidationError("Stored Calendar commitment is invalid");
   }
 
   const startsAt = Date.parse(proposal.plan.startsAt);
