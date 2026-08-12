@@ -1,0 +1,53 @@
+name: Life OS Visual Review
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Use Node 20
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20.20.1"
+
+      - name: Install application dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Install Playwright for visual review
+        run: |
+          npm install --no-save --no-audit --no-fund @playwright/test@1.62.0
+          npx playwright install --with-deps chromium
+
+      - name: Start Life OS
+        run: |
+          npm run dev:web -- --hostname 0.0.0.0 > /tmp/life-os-web.log 2>&1 &
+          for i in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:3000 > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/life-os-web.log
+          exit 1
+
+      - name: Capture responsive screenshots
+        run: node scripts/capture-visuals.mjs
+
+      - name: Upload visual review artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: life-os-visual-review
+          path: visual-artifacts/*.png
+          if-no-files-found: error
+          retention-days: 14
