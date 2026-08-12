@@ -10,6 +10,7 @@ const pages = [
   { name: 'today', path: '/' },
   { name: 'journey-overview', path: '/journey' },
   { name: 'journey-sound-design', path: '/journey/travel-creator/sound-design' },
+  { name: 'calendar', path: '/calendar' },
 ];
 
 const targets = [
