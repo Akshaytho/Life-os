@@ -10,6 +10,8 @@
   ],
   "scripts": {
     "dev:web": "npm run dev --workspace @life-os/web",
+    "dev:api": "npm run dev --workspace @life-os/api",
+    "start:api": "npm run start --workspace @life-os/api",
     "build:web": "npm run build --workspace @life-os/web",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "tsx --test apps/api/src/*.test.ts",
