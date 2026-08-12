@@ -8,6 +8,7 @@ import type {
   CommitReceipt,
   DomainEventRecord,
   IdGenerator,
+  WriteRequestContext,
   WriteUnitOfWork,
 } from "../../../packages/domain/write-boundary";
 
@@ -32,9 +33,10 @@ function requireText(value: string, label: string) {
   if (!value.trim()) throw new ProposalValidationError(`${label} is required`);
 }
 
-function requestFingerprint(command: ApplyCalendarPlanProposalCommand) {
+function requestFingerprint(command: ApplyCalendarPlanProposalCommand, context: WriteRequestContext) {
   const semantics = JSON.stringify({
-    actorId: command.confirmation.actorId,
+    authenticatedUserId: context.principal.userId,
+    source: context.source,
     destination: command.destination,
     operation: command.operation,
     sourceText: command.sourceText,
@@ -52,19 +54,23 @@ function requestFingerprint(command: ApplyCalendarPlanProposalCommand) {
   return createHash("sha256").update(semantics).digest("hex");
 }
 
-function validate(command: ApplyCalendarPlanProposalCommand): asserts command is ValidatedCalendarCommand {
+function validate(
+  command: ApplyCalendarPlanProposalCommand,
+  context: WriteRequestContext,
+): asserts command is ValidatedCalendarCommand {
+  requireText(context.principal.userId, "requestContext.principal.userId");
+  requireText(context.requestId, "requestContext.requestId");
   requireText(command.proposalId, "proposalId");
   requireText(command.correlationId, "correlationId");
   requireText(command.sourceText, "sourceText");
-  requireText(command.confirmation.actorId, "confirmation.actorId");
   requireText(command.plan.title, "plan.title");
+
+  if (context.principal.actorType !== "USER") {
+    throw new ProposalValidationError("This boundary requires an authenticated user principal");
+  }
 
   if (command.destination !== "CALENDAR" || command.operation !== "CREATE_CALENDAR_PLAN") {
     throw new ProposalValidationError("This write boundary only accepts CREATE_CALENDAR_PLAN proposals owned by Calendar");
-  }
-
-  if (command.confirmation.actorType !== "USER") {
-    throw new ProposalValidationError("The authoritative confirmation must come from the user");
   }
 
   if (!command.confirmation.explicit) {
@@ -81,7 +87,7 @@ function validate(command: ApplyCalendarPlanProposalCommand): asserts command is
 
   const startsAt = Date.parse(command.plan.startsAt);
   const endsAt = Date.parse(command.plan.endsAt);
-  const confirmedAt = Date.parse(command.confirmation.confirmedAt);
+  const receivedAt = Date.parse(context.receivedAt);
 
   if (!Number.isFinite(startsAt) || !Number.isFinite(endsAt)) {
     throw new ProposalValidationError("Calendar start and end must be valid timestamps");
@@ -91,23 +97,25 @@ function validate(command: ApplyCalendarPlanProposalCommand): asserts command is
     throw new ProposalValidationError("Calendar end must be after start");
   }
 
-  if (!Number.isFinite(confirmedAt)) {
-    throw new ProposalValidationError("confirmation.confirmedAt must be a valid timestamp");
+  if (!Number.isFinite(receivedAt)) {
+    throw new ProposalValidationError("requestContext.receivedAt must be a valid timestamp");
   }
 }
 
 export async function applyCalendarPlanProposal(
   command: ApplyCalendarPlanProposalCommand,
+  context: WriteRequestContext,
   dependencies: ApplyCalendarPlanDependencies,
 ): Promise<CommitReceipt> {
-  validate(command);
-  const fingerprint = requestFingerprint(command);
+  validate(command, context);
+  const authenticatedUserId = context.principal.userId;
+  const fingerprint = requestFingerprint(command, context);
 
   return dependencies.unitOfWork.run(async (transaction) => {
     const existing = await transaction.findAppliedProposal(command.proposalId);
     if (existing) {
-      if (existing.confirmedByActorId !== command.confirmation.actorId) {
-        throw new ProposalValidationError("This proposal id was already applied by a different user");
+      if (existing.confirmedByActorId !== authenticatedUserId) {
+        throw new ProposalValidationError("This proposal id was already applied by a different authenticated user");
       }
       if (existing.requestFingerprint !== fingerprint) {
         throw new ProposalValidationError("This proposal id was already applied with different content");
@@ -129,7 +137,7 @@ export async function applyCalendarPlanProposal(
 
     const calendarPlan: CalendarPlanRecord = {
       id: entityId,
-      userId: command.confirmation.actorId,
+      userId: authenticatedUserId,
       title: command.plan.title.trim(),
       startsAt: command.plan.startsAt,
       endsAt: command.plan.endsAt,
@@ -141,15 +149,15 @@ export async function applyCalendarPlanProposal(
 
     const event: DomainEventRecord = {
       eventId,
-      userId: command.confirmation.actorId,
-      occurredAt: command.confirmation.confirmedAt,
+      userId: authenticatedUserId,
+      occurredAt: context.receivedAt,
       recordedAt,
       actorType: "USER",
-      actorId: command.confirmation.actorId,
+      actorId: authenticatedUserId,
       eventType: "CALENDAR_EVENT_CREATED",
       entityType: "calendar_event",
       entityId,
-      source: command.source,
+      source: context.source,
       correlationId: command.correlationId,
       payloadJson: {
         proposalId: command.proposalId,
@@ -166,7 +174,7 @@ export async function applyCalendarPlanProposal(
     const applied: AppliedProposalRecord = {
       proposalId: command.proposalId,
       appliedAt: recordedAt,
-      confirmedByActorId: command.confirmation.actorId,
+      confirmedByActorId: authenticatedUserId,
       requestFingerprint: fingerprint,
       entityType: "calendar_event",
       entityId,
