@@ -40,19 +40,24 @@ function Destination({ item, path, desktop = false }: { item: NavItem; path: str
 
 export function AppNavigation() {
   const path = usePathname();
+  const captureActive = path.startsWith("/capture");
 
   return (
     <>
       <aside className={styles.desktopDock} aria-label="Primary navigation">
         <div className={styles.brand}><strong>L/O</strong><span>PRIVATE</span></div>
         <div className={styles.desktopLinks}>{navItems.map((item) => <Destination item={item} path={path} desktop key={item.label} />)}</div>
-        <button className={styles.desktopCapture} disabled><Icon name="plus" size={22} /><span>Capture</span></button>
+        <Link href="/capture" className={`${styles.desktopCapture} ${captureActive ? styles.captureActive : ""}`} aria-current={captureActive ? "page" : undefined}>
+          <Icon name="plus" size={22} /><span>Capture</span>
+        </Link>
       </aside>
 
       <nav className={styles.mobileDock} aria-label="Primary navigation">
         <Destination item={navItems[0]} path={path} />
         <Destination item={navItems[1]} path={path} />
-        <button className={styles.mobileCapture} disabled aria-label="Capture"><Icon name="plus" size={23} /><span>Capture</span></button>
+        <Link href="/capture" className={`${styles.mobileCapture} ${captureActive ? styles.captureActive : ""}`} aria-label="Capture" aria-current={captureActive ? "page" : undefined}>
+          <Icon name="plus" size={23} /><span>Capture</span>
+        </Link>
         <Destination item={navItems[2]} path={path} />
         <Destination item={navItems[3]} path={path} />
         <Destination item={navItems[4]} path={path} />
