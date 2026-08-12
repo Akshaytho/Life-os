@@ -122,16 +122,8 @@ function transactionFor(client: PoolClient): WriteTransaction {
           (capture_id, user_id, raw_text, source, correlation_id, request_id, received_at, recorded_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          ON CONFLICT (user_id, request_id) DO NOTHING`,
-        [
-          record.captureId,
-          record.userId,
-          record.rawText,
-          record.source,
-          record.correlationId,
-          record.requestId,
-          record.receivedAt,
-          record.recordedAt,
-        ],
+        [record.captureId, record.userId, record.rawText, record.source, record.correlationId,
+          record.requestId, record.receivedAt, record.recordedAt],
       );
 
       const result = await client.query<CaptureRow>(
@@ -143,6 +135,17 @@ function transactionFor(client: PoolClient): WriteTransaction {
       const row = result.rows[0];
       if (!row) throw new Error("Capture persistence did not return the requested record");
       return captureFromRow(row);
+    },
+
+    async lockCaptureForRouting(captureId, userId) {
+      const result = await client.query(
+        `SELECT capture_id
+           FROM capture_record
+          WHERE capture_id = $1 AND user_id = $2
+          FOR UPDATE`,
+        [captureId, userId],
+      );
+      return result.rowCount === 1;
     },
 
     async getRoutingBundleForCapture(captureId, userId): Promise<RoutingPersistenceBundle | undefined> {
@@ -178,19 +181,9 @@ function transactionFor(client: PoolClient): WriteTransaction {
           (interpretation_id, capture_id, user_id, version, interpreter, intent, certainty,
            confidence, observations_json, clarification, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11)`,
-        [
-          record.interpretationId,
-          record.captureId,
-          record.userId,
-          record.version,
-          record.interpreter,
-          record.intent,
-          record.certainty,
-          record.confidence,
-          JSON.stringify(record.observations),
-          record.clarification ?? null,
-          record.createdAt,
-        ],
+        [record.interpretationId, record.captureId, record.userId, record.version, record.interpreter,
+          record.intent, record.certainty, record.confidence, JSON.stringify(record.observations),
+          record.clarification ?? null, record.createdAt],
       );
     },
 
@@ -201,44 +194,21 @@ function transactionFor(client: PoolClient): WriteTransaction {
            destination, operation, summary, target_trust_class, approval_mode, state,
            reason, payload_json, created_at, applied_at, applied_entity_id, applied_event_id)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14, $15, $16, $17)`,
-        [
-          record.proposalId,
-          record.interpreterProposalKey,
-          record.userId,
-          record.captureId,
-          record.interpretationId ?? null,
-          record.destination,
-          record.operation,
-          record.summary,
-          record.targetTrustClass,
-          record.approvalMode,
-          record.state,
-          record.reason,
-          JSON.stringify(record.payloadJson),
-          record.createdAt,
-          record.appliedAt ?? null,
-          record.appliedEntityId ?? null,
-          record.appliedEventId ?? null,
-        ],
+        [record.proposalId, record.interpreterProposalKey, record.userId, record.captureId,
+          record.interpretationId ?? null, record.destination, record.operation, record.summary,
+          record.targetTrustClass, record.approvalMode, record.state, record.reason,
+          JSON.stringify(record.payloadJson), record.createdAt, record.appliedAt ?? null,
+          record.appliedEntityId ?? null, record.appliedEventId ?? null],
       );
     },
 
     async getStoredCalendarProposalForUpdate(proposalId, userId) {
       const result = await client.query<{
-        proposal_id: string;
-        user_id: string;
-        capture_id: string;
-        raw_text: string;
-        correlation_id: string;
-        destination: "CALENDAR";
-        operation: "CREATE_CALENDAR_PLAN";
-        approval_mode: StoredCalendarProposal["approvalMode"];
-        state: StoredCalendarProposal["state"];
-        payload_json: CalendarPlanInput;
-        created_at: Date;
-        applied_at: Date | null;
-        applied_entity_id: string | null;
-        applied_event_id: string | null;
+        proposal_id: string; user_id: string; capture_id: string; raw_text: string; correlation_id: string;
+        destination: "CALENDAR"; operation: "CREATE_CALENDAR_PLAN";
+        approval_mode: StoredCalendarProposal["approvalMode"]; state: StoredCalendarProposal["state"];
+        payload_json: CalendarPlanInput; created_at: Date; applied_at: Date | null;
+        applied_entity_id: string | null; applied_event_id: string | null;
       }>(
         `SELECT rp.proposal_id, rp.user_id, rp.capture_id, c.raw_text, c.correlation_id,
                 rp.destination, rp.operation, rp.approval_mode, rp.state, rp.payload_json,
@@ -256,7 +226,6 @@ function transactionFor(client: PoolClient): WriteTransaction {
 
       const row = result.rows[0];
       if (!row) return undefined;
-
       return {
         proposalId: row.proposal_id,
         userId: row.user_id,
@@ -277,13 +246,8 @@ function transactionFor(client: PoolClient): WriteTransaction {
 
     async findAppliedProposal(proposalId) {
       const result = await client.query<{
-        proposal_id: string;
-        applied_at: Date;
-        confirmed_by_actor_id: string;
-        request_fingerprint: string;
-        entity_type: "calendar_event";
-        entity_id: string;
-        event_id: string;
+        proposal_id: string; applied_at: Date; confirmed_by_actor_id: string; request_fingerprint: string;
+        entity_type: "calendar_event"; entity_id: string; event_id: string;
       }>(
         `SELECT proposal_id, applied_at, confirmed_by_actor_id, request_fingerprint,
                 entity_type, entity_id, event_id
@@ -291,10 +255,8 @@ function transactionFor(client: PoolClient): WriteTransaction {
           WHERE proposal_id = $1`,
         [proposalId],
       );
-
       const row = result.rows[0];
       if (!row) return undefined;
-
       return {
         proposalId: row.proposal_id,
         appliedAt: iso(row.applied_at),
@@ -358,18 +320,13 @@ export class PostgresWriteUnitOfWork implements WriteUnitOfWork {
   async run<T>(work: (transaction: WriteTransaction) => Promise<T>): Promise<T> {
     const client = await this.pool.connect();
     let discardClient = false;
-
     try {
       await client.query("BEGIN");
       const result = await work(transactionFor(client));
       await client.query("COMMIT");
       return result;
     } catch (error) {
-      try {
-        await client.query("ROLLBACK");
-      } catch {
-        discardClient = true;
-      }
+      try { await client.query("ROLLBACK"); } catch { discardClient = true; }
       throw error;
     } finally {
       client.release(discardClient);
