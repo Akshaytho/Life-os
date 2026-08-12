@@ -46,12 +46,14 @@ export interface InteractionObservationStep {
   createdAt: string;
 }
 
-export interface InteractionApprovalStep {
+export interface InteractionUserActionStep {
   authorityClass: "DECISION";
-  action: "APPROVED";
+  action: "APPROVED" | "REJECTED";
   actorType: "USER";
   actorId: string;
   at: string;
+  recordedAt: string;
+  reason?: string;
 }
 
 export interface InteractionCanonicalChange {
@@ -80,7 +82,7 @@ export interface InteractionProposalTrace {
   summary: string;
   reason: string;
   createdAt: string;
-  approval?: InteractionApprovalStep;
+  userAction?: InteractionUserActionStep;
   canonicalChange?: InteractionCanonicalChange;
 }
 
