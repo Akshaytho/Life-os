@@ -75,10 +75,13 @@ test("commits canonical Calendar state, domain event and applied-proposal marker
   assert.equal(event.eventId, receipt.eventId);
   assert.equal(event.actorType, "USER");
   assert.equal(event.actorId, "user-1");
+  assert.equal(event.occurredAt, "2026-08-12T18:29:58.000Z");
+  assert.equal(event.recordedAt, "2026-08-12T18:30:00.000Z");
   assert.equal(event.correlationId, "capture-1");
   assert.equal(event.payloadJson.proposalId, "proposal-1");
   assert.equal(applied.entityId, plan.id);
   assert.equal(applied.eventId, event.eventId);
+  assert.equal(applied.confirmedByActorId, "user-1");
 });
 
 test("rolls back the Calendar row when event append fails", async () => {
@@ -120,6 +123,36 @@ test("is idempotent when the same proposal is applied twice", async () => {
   assert.equal(state.calendarPlans.length, 1);
   assert.equal(state.domainEvents.length, 1);
   assert.equal(state.appliedProposals.length, 1);
+});
+
+test("rejects reuse of a proposal id with different content", async () => {
+  const unitOfWork = new InMemoryWriteUnitOfWork();
+  const deps = dependencies(unitOfWork);
+
+  await applyCalendarPlanProposal(command(), deps);
+
+  await assert.rejects(
+    () => applyCalendarPlanProposal(command({ plan: { ...command().plan, title: "Different plan" } }), deps),
+    (error: unknown) => error instanceof ProposalValidationError && /different content/.test(error.message),
+  );
+
+  const state = unitOfWork.snapshot();
+  assert.equal(state.calendarPlans.length, 1);
+  assert.equal(state.domainEvents.length, 1);
+});
+
+test("rejects reuse of a proposal id by a different user", async () => {
+  const unitOfWork = new InMemoryWriteUnitOfWork();
+  const deps = dependencies(unitOfWork);
+
+  await applyCalendarPlanProposal(command(), deps);
+
+  await assert.rejects(
+    () => applyCalendarPlanProposal(command({ confirmation: { ...command().confirmation, actorId: "user-2" } }), deps),
+    (error: unknown) => error instanceof ProposalValidationError && /different user/.test(error.message),
+  );
+
+  assert.equal(unitOfWork.snapshot().calendarPlans.length, 1);
 });
 
 test("refuses to commit unresolved category data", async () => {
