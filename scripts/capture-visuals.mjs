@@ -37,11 +37,14 @@ for (const targetPage of pages) {
     await page.evaluate(() => document.fonts.ready);
 
     if (targetPage.lens) {
-      await page.waitForTimeout(450);
+      // Next's server HTML can be visible before the client event handlers have hydrated.
+      // Wait before testing interactive lens switching so the screenshot proves the real UI state.
+      await page.waitForTimeout(1600);
       if (targetPage.lens !== 'Day') {
         await page.getByRole('button', { name: new RegExp(`^${targetPage.lens}`, 'i') }).click();
       }
-      await page.getByText(targetPage.expected, { exact: true }).waitFor({ state: 'visible' });
+      await page.getByText(targetPage.expected, { exact: true }).waitFor({ state: 'visible', timeout: 8000 });
+      await page.waitForTimeout(180);
     }
 
     await page.screenshot({
