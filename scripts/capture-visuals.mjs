@@ -10,11 +10,9 @@ const pages = [
   { name: 'today', path: '/' },
   { name: 'capture-routing', path: '/capture', expected: 'Where this would go.' },
   {
-    name: 'capture-confirmed-travel',
-    path: '/capture',
-    expected: 'Where this would go.',
-    example: 'Yes, Sep 12-16 is decided.',
-    expectedAfter: 'Preserve that these dates were explicitly decided, with the capture as provenance.',
+    name: 'capture-confirmed-dates',
+    path: '/capture?sample=confirmed',
+    expected: 'Preserve that these dates were explicitly decided, with the capture as provenance.',
   },
   { name: 'journey-overview', path: '/journey' },
   { name: 'journey-sound-design', path: '/journey/travel-creator/sound-design' },
@@ -46,12 +44,6 @@ for (const targetPage of pages) {
 
     if (targetPage.expected) {
       await page.getByText(targetPage.expected, { exact: true }).waitFor({ state: 'visible', timeout: 8000 });
-    }
-
-    if (targetPage.example) {
-      await page.waitForTimeout(500);
-      await page.getByRole('button', { name: targetPage.example, exact: true }).click();
-      await page.getByText(targetPage.expectedAfter, { exact: true }).waitFor({ state: 'visible', timeout: 8000 });
     }
 
     await page.screenshot({
