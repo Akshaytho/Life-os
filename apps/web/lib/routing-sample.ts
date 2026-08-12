@@ -211,37 +211,37 @@ export function interpretCapture(rawInput: string): RoutingInterpretation {
   }
 
   if ((hasDateLanguage || hasFriend || hasTravel) && (isConfirmed || !isTentative)) {
-    const travelDecision = hasTravel && isConfirmed;
+    const explicitDecision = isConfirmed && hasDateLanguage;
     const proposals: RoutingProposal[] = [
       proposal({
         id: "calendar-plan",
         destination: "CALENDAR",
         operation: "CREATE_CALENDAR_PLAN",
-        summary: travelDecision
+        summary: explicitDecision
           ? "Create the confirmed dated plan on Calendar."
           : "Create a dated plan after the missing commitment details are confirmed.",
         targetTrustClass: "FACT",
-        approvalMode: travelDecision ? "REVIEW_AND_APPLY" : "EXPLICIT_CONFIRMATION",
-        state: travelDecision ? "READY_TO_APPLY" : "NEEDS_CONFIRMATION",
+        approvalMode: explicitDecision ? "REVIEW_AND_APPLY" : "EXPLICIT_CONFIRMATION",
+        state: explicitDecision ? "READY_TO_APPLY" : "NEEDS_CONFIRMATION",
         reason: "Calendar owns time-bound reality and plans.",
         preview: [
-          { label: "Category", value: hasTravel ? "Travel" : hasFriend ? "Friends" : "Personal" },
-          { label: "Commitment", value: travelDecision ? "Important / confirmed" : "Needs confirmation" },
+          { label: "Category", value: hasTravel ? "Travel" : hasFriend ? "Friends" : "Unresolved" },
+          { label: "Commitment", value: explicitDecision ? "Confirmed" : "Needs confirmation" },
         ],
       }),
     ];
 
-    if (travelDecision) {
+    if (explicitDecision) {
       proposals.push(
         proposal({
-          id: "travel-decision",
+          id: "dated-decision",
           destination: "MEMORY",
           operation: "RECORD_DECISION",
-          summary: "Preserve that these travel dates were explicitly decided, with the capture as provenance.",
+          summary: "Preserve that these dates were explicitly decided, with the capture as provenance.",
           targetTrustClass: "DECISION",
           approvalMode: "REVIEW_AND_APPLY",
           state: "READY_TO_APPLY",
-          reason: "The user's wording explicitly finalizes the plan; the decision history should remain retrievable separately from the Calendar projection.",
+          reason: "The user's wording explicitly finalizes the dated plan; decision history remains retrievable separately from the Calendar projection. Missing category context is not invented.",
         }),
       );
     }
@@ -249,14 +249,17 @@ export function interpretCapture(rawInput: string): RoutingInterpretation {
     return {
       input,
       intent: "DATED_PLAN",
-      certainty: travelDecision ? "CONFIRMED" : "LIKELY",
+      certainty: explicitDecision ? "CONFIRMED" : "LIKELY",
       confidence: 0.91,
       observations: [
-        observation("intent", "Intent", travelDecision ? "Confirmed dated plan" : "Dated social / personal plan"),
+        observation("intent", "Intent", explicitDecision ? "Confirmed dated plan" : "Dated social / personal plan"),
         observation("time", "Time language", "Detected in user input"),
+        ...(explicitDecision && !hasTravel && !hasFriend
+          ? [observation("category", "Category", "Not enough context — left unresolved")]
+          : []),
       ],
       proposals,
-      clarification: travelDecision ? undefined : "Should this become a real Calendar commitment, and what exact time should Life OS reserve?",
+      clarification: explicitDecision ? undefined : "Should this become a real Calendar commitment, and what exact time should Life OS reserve?",
       interpreter: "LOCAL_SAMPLE",
       sourceActor: "USER",
     };
