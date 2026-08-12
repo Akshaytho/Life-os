@@ -8,6 +8,12 @@ const browser = await chromium.launch({ headless: true });
 
 const pages = [
   { name: 'today', path: '/' },
+  { name: 'capture-routing', path: '/capture', expected: 'Where this would go.' },
+  {
+    name: 'capture-confirmed-dates',
+    path: '/capture?sample=confirmed',
+    expected: 'Preserve that these dates were explicitly decided, with the capture as provenance.',
+  },
   { name: 'journey-overview', path: '/journey' },
   { name: 'journey-sound-design', path: '/journey/travel-creator/sound-design' },
   { name: 'calendar-day', path: '/calendar', expected: 'DAY / CAPACITY' },

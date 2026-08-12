@@ -54,10 +54,13 @@
   color: white;
   background: var(--signal);
   box-shadow: 0 8px 20px rgba(240,94,55,.23), inset 0 1px rgba(255,255,255,.25);
-  cursor: not-allowed;
+  cursor: pointer;
+  text-decoration: none;
 }
 
 .mobileCapture span { font: 700 6px/1 var(--mono); text-transform: uppercase; letter-spacing: .04em; }
+.mobileCapture.captureActive { box-shadow: 0 0 0 3px rgba(240,94,55,.16), 0 9px 24px rgba(240,94,55,.34), inset 0 1px rgba(255,255,255,.28); }
+.mobileCapture:focus-visible { outline: 2px solid var(--ocean); outline-offset: 3px; }
 .desktopDock { display: none; }
 
 @media (min-width: 1000px) {
@@ -100,9 +103,13 @@
     border-radius: 20px;
     color: white;
     background: var(--signal);
-    cursor: not-allowed;
+    cursor: pointer;
+    text-decoration: none;
+    box-shadow: 0 10px 24px rgba(240,94,55,.18), inset 0 1px rgba(255,255,255,.18);
   }
   .desktopCapture span { font: 650 7px/1 var(--mono); text-transform: uppercase; }
+  .desktopCapture.captureActive { box-shadow: 0 0 0 4px rgba(240,94,55,.14), 0 12px 28px rgba(240,94,55,.30), inset 0 1px rgba(255,255,255,.22); }
+  .desktopCapture:focus-visible { outline: 2px solid var(--ocean); outline-offset: 4px; }
 }
 
 @media (min-width: 1320px) {
