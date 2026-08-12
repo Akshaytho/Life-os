@@ -73,14 +73,18 @@ function persistedReview(): PersistedCaptureProposalReview {
   };
 }
 
+const MISS = Symbol("MISS");
+type FixtureValue = PersistedCaptureProposalReview | typeof MISS;
+
 class FixtureReader implements ProposalReviewReader {
   lastArgs?: { captureId: string; userId: string };
 
-  constructor(private readonly value: PersistedCaptureProposalReview | undefined = persistedReview()) {}
+  constructor(private readonly value: FixtureValue = persistedReview()) {}
 
   async getCaptureReview(captureId: string, authenticatedUserId: string) {
     this.lastArgs = { captureId, userId: authenticatedUserId };
-    return this.value ? structuredClone(this.value) : undefined;
+    if (this.value === MISS) return undefined;
+    return structuredClone(this.value);
   }
 }
 
@@ -155,7 +159,7 @@ test("passes only the authenticated principal identity into the ownership-scoped
 });
 
 test("returns unavailable for a reader-scoped miss without leaking cross-user existence", async () => {
-  const review = await getCaptureProposalReview("capture-private", context, { reader: new FixtureReader(undefined) });
+  const review = await getCaptureProposalReview("capture-private", context, { reader: new FixtureReader(MISS) });
   assert.equal(review, undefined);
 });
 
