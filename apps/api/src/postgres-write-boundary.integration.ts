@@ -37,14 +37,14 @@ class FixedIds implements IdGenerator {
 }
 
 class FixedRoutingIds implements RoutingIdGenerator {
-  private captureIndex = 0;
-  private interpretationIndex = 0;
-  private proposalIndex = 0;
+  private static captureIndex = 0;
+  private static interpretationIndex = 0;
+  private static proposalIndex = 0;
 
   next(prefix: "capture" | "interpretation" | "proposal") {
-    if (prefix === "capture") return `capture-created-${++this.captureIndex}`;
-    if (prefix === "interpretation") return `interpretation-created-${++this.interpretationIndex}`;
-    return `proposal-created-${++this.proposalIndex}`;
+    if (prefix === "capture") return `capture-created-${++FixedRoutingIds.captureIndex}`;
+    if (prefix === "interpretation") return `interpretation-created-${++FixedRoutingIds.interpretationIndex}`;
+    return `proposal-created-${++FixedRoutingIds.proposalIndex}`;
   }
 }
 
