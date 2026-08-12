@@ -17,10 +17,19 @@ export type ProposalApprovalMode = "REVIEW_AND_APPLY" | "EXPLICIT_CONFIRMATION" 
 export type ProposalStateForApply = "READY_TO_APPLY" | "NEEDS_CONFIRMATION";
 
 export interface UserConfirmation {
-  actorType: "USER";
-  actorId: string;
-  confirmedAt: string;
   explicit: boolean;
+}
+
+export interface AuthenticatedUserPrincipal {
+  actorType: "USER";
+  userId: string;
+}
+
+export interface WriteRequestContext {
+  principal: AuthenticatedUserPrincipal;
+  source: "WEB_APP";
+  receivedAt: string;
+  requestId: string;
 }
 
 export interface CalendarPlanInput {
@@ -39,7 +48,6 @@ export interface ApplyCalendarPlanProposalCommand {
   operation: "CREATE_CALENDAR_PLAN";
   sourceText: string;
   correlationId: string;
-  source: "WEB_APP";
   confirmation: UserConfirmation;
   plan: CalendarPlanInput;
 }
