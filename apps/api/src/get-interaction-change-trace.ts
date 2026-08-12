@@ -104,13 +104,15 @@ export async function getInteractionChangeTrace(
       }
     : undefined;
 
-  const proposals: InteractionProposalTrace[] = persisted.proposals.map(({ proposal, applied, event }) => {
+  const proposals: InteractionProposalTrace[] = persisted.proposals.map(({ proposal, applied, rejection, event }) => {
     if (proposal.userId !== principal.userId || proposal.captureId !== persisted.capture.captureId) {
       throw new InteractionChangeTraceError(`Proposal ${proposal.proposalId} is outside Capture ownership`);
     }
 
     if (proposal.state === "APPLIED") {
-      if (!applied || !event) throw new InteractionChangeTraceError(`Applied proposal ${proposal.proposalId} is missing approval/event provenance`);
+      if (!applied || !event || rejection) {
+        throw new InteractionChangeTraceError(`Applied proposal ${proposal.proposalId} is missing or contradicts commit provenance`);
+      }
       if (applied.proposalId !== proposal.proposalId || applied.confirmedByActorId !== principal.userId) {
         throw new InteractionChangeTraceError(`Applied proposal ${proposal.proposalId} has invalid user provenance`);
       }
@@ -120,8 +122,19 @@ export async function getInteractionChangeTrace(
       if (event.correlationId !== persisted.capture.correlationId) {
         throw new InteractionChangeTraceError(`Event ${event.eventId} does not belong to the Capture correlation chain`);
       }
-    } else if (applied || event) {
-      throw new InteractionChangeTraceError(`Non-applied proposal ${proposal.proposalId} unexpectedly has commit provenance`);
+    } else if (proposal.state === "REJECTED") {
+      if (!rejection || applied || event) {
+        throw new InteractionChangeTraceError(`Rejected proposal ${proposal.proposalId} is missing or contradicts rejection provenance`);
+      }
+      if (
+        rejection.proposalId !== proposal.proposalId ||
+        rejection.userId !== principal.userId ||
+        rejection.rejectedByActorId !== principal.userId
+      ) {
+        throw new InteractionChangeTraceError(`Rejected proposal ${proposal.proposalId} has invalid user provenance`);
+      }
+    } else if (applied || rejection || event) {
+      throw new InteractionChangeTraceError(`Open proposal ${proposal.proposalId} unexpectedly has terminal provenance`);
     }
 
     const item: InteractionProposalTrace = {
@@ -138,12 +151,13 @@ export async function getInteractionChangeTrace(
     };
 
     if (applied && event) {
-      item.approval = {
+      item.userAction = {
         authorityClass: "DECISION",
         action: "APPROVED",
         actorType: "USER",
         actorId: applied.confirmedByActorId,
-        at: applied.appliedAt,
+        at: event.occurredAt,
+        recordedAt: applied.appliedAt,
       };
 
       if (event.eventType === "CALENDAR_EVENT_CREATED" && event.entityType === "calendar_event") {
@@ -151,6 +165,18 @@ export async function getInteractionChangeTrace(
       } else {
         throw new InteractionChangeTraceError(`Unsupported V1 canonical event ${event.eventType}/${event.entityType}`);
       }
+    }
+
+    if (rejection) {
+      item.userAction = {
+        authorityClass: "DECISION",
+        action: "REJECTED",
+        actorType: "USER",
+        actorId: rejection.rejectedByActorId,
+        at: rejection.rejectedAt,
+        recordedAt: rejection.recordedAt,
+        reason: rejection.reason,
+      };
     }
 
     return item;
