@@ -79,13 +79,13 @@ function committedTrace(): PersistedInteractionChangeTrace {
         reason: "The user supplied a confirmed time.",
         payloadJson: {},
         createdAt: "2026-08-13T10:00:02.000Z",
-        appliedAt: "2026-08-13T10:05:00.000Z",
+        appliedAt: "2026-08-13T10:05:01.000Z",
         appliedEntityId: "calendar-1",
         appliedEventId: "event-1",
       },
       applied: {
         proposalId: "proposal-gym",
-        appliedAt: "2026-08-13T10:05:00.000Z",
+        appliedAt: "2026-08-13T10:05:01.000Z",
         confirmedByActorId: "user-1",
         requestFingerprint: "a".repeat(64),
         entityType: "calendar_event",
@@ -120,6 +120,20 @@ function committedTrace(): PersistedInteractionChangeTrace {
   return trace;
 }
 
+function rejectedTrace(): PersistedInteractionChangeTrace {
+  const trace = pendingTrace();
+  trace.proposals[0].proposal.state = "REJECTED";
+  trace.proposals[0].rejection = {
+    proposalId: "proposal-1",
+    userId: "user-1",
+    rejectedAt: "2026-08-13T10:03:00.000Z",
+    recordedAt: "2026-08-13T10:03:01.000Z",
+    rejectedByActorId: "user-1",
+    reason: "I want to keep Saturday open.",
+  };
+  return trace;
+}
+
 function readerFor(value: PersistedInteractionChangeTrace | undefined): InteractionChangeLedgerReader {
   return {
     async getTrace() {
@@ -144,6 +158,7 @@ test("pending trace keeps source, observation and suggestion separate without in
   assert.equal(result.proposals[0].authorityClass, "SUGGESTION");
   assert.equal(result.proposals[0].proposedResultClass, "FACT");
   assert.equal(result.proposals[0].canonicalChange, undefined);
+  assert.equal(result.proposals[0].userAction, undefined);
   assert.deepEqual(result.projectionEffects, { status: "NOT_RECORDED_YET", items: [] });
 
   const serialized = JSON.stringify(result);
@@ -151,7 +166,7 @@ test("pending trace keeps source, observation and suggestion separate without in
   assert.equal(serialized.includes("requestFingerprint"), false);
 });
 
-test("committed trace exposes approval and canonical event without leaking technical fingerprint", async () => {
+test("committed trace exposes approval occurrence and storage time separately", async () => {
   const result = await getInteractionChangeTrace(
     "capture-1",
     { actorType: "USER", userId: "user-1" },
@@ -160,12 +175,13 @@ test("committed trace exposes approval and canonical event without leaking techn
 
   assert.ok(result);
   assert.equal(result.status, "COMMITTED");
-  assert.deepEqual(result.proposals[0].approval, {
+  assert.deepEqual(result.proposals[0].userAction, {
     authorityClass: "DECISION",
     action: "APPROVED",
     actorType: "USER",
     actorId: "user-1",
     at: "2026-08-13T10:05:00.000Z",
+    recordedAt: "2026-08-13T10:05:01.000Z",
   });
   assert.equal(result.proposals[0].canonicalChange?.resultClass, "FACT");
   assert.equal(result.proposals[0].canonicalChange?.summary, "Calendar event created: Gym");
@@ -177,6 +193,27 @@ test("committed trace exposes approval and canonical event without leaking techn
     commitment: "Important",
   });
   assert.equal(JSON.stringify(result).includes("a".repeat(64)), false);
+});
+
+test("rejected trace becomes CLOSED_NO_CHANGE with explicit user action and no canonical event", async () => {
+  const result = await getInteractionChangeTrace(
+    "capture-1",
+    { actorType: "USER", userId: "user-1" },
+    { reader: readerFor(rejectedTrace()) },
+  );
+
+  assert.ok(result);
+  assert.equal(result.status, "CLOSED_NO_CHANGE");
+  assert.deepEqual(result.proposals[0].userAction, {
+    authorityClass: "DECISION",
+    action: "REJECTED",
+    actorType: "USER",
+    actorId: "user-1",
+    at: "2026-08-13T10:03:00.000Z",
+    recordedAt: "2026-08-13T10:03:01.000Z",
+    reason: "I want to keep Saturday open.",
+  });
+  assert.equal(result.proposals[0].canonicalChange, undefined);
 });
 
 test("mixed applied and unresolved proposals become PARTIALLY_COMMITTED rather than pretending the interaction is finished", async () => {
@@ -203,6 +240,20 @@ test("applied event must remain inside the original Capture correlation chain", 
       { reader: readerFor(trace) },
     ),
     (error: unknown) => error instanceof InteractionChangeTraceError && /correlation chain/.test(error.message),
+  );
+});
+
+test("rejected proposal cannot carry a canonical event or applied marker", async () => {
+  const trace = rejectedTrace();
+  trace.proposals[0].applied = committedTrace().proposals[0].applied;
+
+  await assert.rejects(
+    () => getInteractionChangeTrace(
+      "capture-1",
+      { actorType: "USER", userId: "user-1" },
+      { reader: readerFor(trace) },
+    ),
+    (error: unknown) => error instanceof InteractionChangeTraceError && /contradicts rejection provenance/.test(error.message),
   );
 });
 
