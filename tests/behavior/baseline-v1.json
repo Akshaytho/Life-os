@@ -1,0 +1,51 @@
+{
+  "baselineVersion": 1,
+  "canonicalArtifact": "LIFE-OS-CANON-001@1.2.0",
+  "scenarios": [
+    {
+      "scenarioId": "tentative-calendar-needs-user",
+      "status": "NEEDS_USER",
+      "proposalCount": 1,
+      "proposals": [
+        {
+          "destination": "CALENDAR",
+          "operation": "CREATE_CALENDAR_PLAN",
+          "state": "NEEDS_CONFIRMATION",
+          "proposedResultClass": "FACT"
+        }
+      ],
+      "projectionEffectsStatus": "NOT_RECORDED_YET"
+    },
+    {
+      "scenarioId": "confirmed-calendar-approved",
+      "status": "COMMITTED",
+      "proposalCount": 1,
+      "proposals": [
+        {
+          "destination": "CALENDAR",
+          "operation": "CREATE_CALENDAR_PLAN",
+          "state": "APPLIED",
+          "proposedResultClass": "FACT",
+          "userAction": "APPROVED",
+          "canonicalEventType": "CALENDAR_EVENT_CREATED"
+        }
+      ],
+      "projectionEffectsStatus": "NOT_RECORDED_YET"
+    },
+    {
+      "scenarioId": "tentative-calendar-rejected",
+      "status": "CLOSED_NO_CHANGE",
+      "proposalCount": 1,
+      "proposals": [
+        {
+          "destination": "CALENDAR",
+          "operation": "CREATE_CALENDAR_PLAN",
+          "state": "REJECTED",
+          "proposedResultClass": "FACT",
+          "userAction": "REJECTED"
+        }
+      ],
+      "projectionEffectsStatus": "NOT_RECORDED_YET"
+    }
+  ]
+}
