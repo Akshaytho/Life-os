@@ -10,6 +10,10 @@ const pages = [
   { name: 'today', path: '/' },
   { name: 'journey-overview', path: '/journey' },
   { name: 'journey-sound-design', path: '/journey/travel-creator/sound-design' },
+  { name: 'calendar-day', path: '/calendar', expected: 'DAY / CAPACITY' },
+  { name: 'calendar-week', path: '/calendar?lens=week', expected: 'WEEK / RHYTHM' },
+  { name: 'calendar-month', path: '/calendar?lens=month', expected: 'MONTH / TEXTURE' },
+  { name: 'calendar-year', path: '/calendar?lens=year', expected: 'YEAR / SEASONS' },
 ];
 
 const targets = [
@@ -31,6 +35,10 @@ for (const targetPage of pages) {
     const page = await context.newPage();
     await page.goto(`http://127.0.0.1:3000${targetPage.path}`, { waitUntil: 'networkidle' });
     await page.evaluate(() => document.fonts.ready);
+
+    if (targetPage.expected) {
+      await page.getByText(targetPage.expected, { exact: true }).waitFor({ state: 'visible', timeout: 8000 });
+    }
 
     await page.screenshot({
       path: `${outputDir}/${targetPage.name}-${target.name}-viewport.png`,

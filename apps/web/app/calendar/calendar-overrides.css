@@ -1,0 +1,37 @@
+[aria-label="Calendar time lens"] a {
+  min-height: 55px;
+  padding: 9px 6px;
+  display: grid;
+  gap: 4px;
+  place-items: center;
+  border-radius: 13px;
+  background: transparent;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+[aria-label="Calendar time lens"] a strong {
+  font-size: 12px;
+}
+
+[aria-label="Calendar time lens"] a span {
+  font: 650 8px/1 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+[aria-label="Calendar time lens"] a[aria-current="page"] {
+  color: #f5f4ef;
+  background: var(--ocean);
+  box-shadow: 0 10px 24px rgba(12,47,55,.15);
+}
+
+[aria-label="Calendar time lens"] a[aria-current="page"] span {
+  color: var(--sea);
+}
+
+@media (max-width: 899px) {
+  body:has([aria-label="Calendar time lens"]) .floating-capture {
+    display: none;
+  }
+}
