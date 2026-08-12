@@ -25,10 +25,10 @@ SUGGESTION × N
 routing proposal(s)
       ↓
 USER ACTION
-only when approval provenance exists
+APPROVED or REJECTED when trusted provenance exists
       ↓
 CANONICAL CHANGE
-only when a real domain event exists
+only after an approved proposal creates a real domain event
       ↓
 DERIVED SCREEN EFFECTS
 NOT_RECORDED_YET in V1
@@ -53,10 +53,13 @@ The projection never flattens the chain into an “AI result.”
 - raw Capture -> `USER_SOURCE`
 - interpreter -> `OBSERVATION`
 - routing proposal -> `SUGGESTION`
-- explicit applied marker -> user `APPROVED` action / `DECISION` authority
+- explicit applied marker + event -> user `APPROVED` action / `DECISION` authority
+- explicit proposal-rejection marker -> user `REJECTED` action / `DECISION` authority
 - committed event -> canonical change with the proposal's intended result class
 
 A proposal that would become a FACT remains a SUGGESTION until approval and a valid canonical event exist.
+
+Rejecting a suggestion closes that proposed consequence but does not manufacture a canonical life change.
 
 ## Data sources
 
@@ -66,6 +69,7 @@ V1 reads:
 - `routing_interpretation`
 - `routing_proposal`
 - `applied_proposal`
+- `proposal_rejection`
 - `domain_event`
 
 The read is scoped through `PostgresUserScope` and explicit authenticated ownership predicates.
@@ -74,11 +78,12 @@ Another user's Capture is represented as unavailable, not as an authorization-de
 
 ## Provenance validation
 
-The application projection rejects inconsistent committed history.
+The application projection rejects inconsistent terminal history.
 
 For an `APPLIED` proposal, V1 requires:
 
 - applied-proposal marker exists
+- no rejection marker exists
 - marker proposal ID matches the routing proposal
 - confirming actor matches authenticated user
 - domain event exists
@@ -86,9 +91,46 @@ For an `APPLIED` proposal, V1 requires:
 - event user matches authenticated user
 - event correlation ID matches the original Capture correlation ID
 
-A non-applied proposal must not carry commit provenance.
+For a `REJECTED` proposal, V1 requires:
 
-These checks keep the human-readable ledger anchored to the same trusted chain used for canonical writes.
+- proposal-rejection marker exists
+- no applied marker or canonical event exists
+- marker proposal ID matches the routing proposal
+- rejection owner and actor match authenticated user
+- trusted `rejected_at` and persistence `recorded_at` remain distinct
+
+An open proposal must not carry either terminal provenance type.
+
+These checks keep the human-readable ledger anchored to the same trusted chain used by the write boundaries.
+
+## Rejection semantics
+
+Proposal rejection is a **meaningful no-write outcome**.
+
+```text
+SUGGESTION
+    ↓
+USER REJECTED
+    ↓
+proposal state = REJECTED
+    ↓
+proposal_rejection provenance
+    ↓
+NO canonical life-domain event
+```
+
+The rejection record stores:
+
+- proposal ID
+- authenticated user owner
+- trusted user-action time (`rejected_at`)
+- backend persistence time (`recorded_at`)
+- authenticated rejecting actor
+- optional user feedback/reason
+
+Exact retries return the original rejection. A retry with different feedback is rejected rather than silently rewriting history; editing prior feedback would require a separate explicit correction flow later.
+
+An already APPLIED proposal cannot later be rewritten as rejected. A high-authority suggestion may still be declined safely because rejecting a suggestion does not alter the existing durable direction/decision.
 
 ## Safe event projection
 
@@ -99,6 +141,17 @@ V1 supports the currently executable canonical event:
 The user-facing trace exposes a deliberate Calendar summary and safe fields such as title, start/end, category and commitment when present.
 
 Arbitrary `payload_json` is not copied wholesale into the UI contract. Future event types receive explicit projections when their owning domains become executable.
+
+## User-action time
+
+Approval and rejection expose both action occurrence and storage where provenance supports it.
+
+- approved action occurrence comes from the trusted canonical event `occurred_at`
+- approval storage comes from the applied marker time
+- rejected action occurrence comes from `proposal_rejection.rejected_at`
+- rejection storage comes from `proposal_rejection.recorded_at`
+
+This prevents a database commit timestamp from being presented as if it were necessarily the exact moment the user acted.
 
 ## Derived screen effects
 
@@ -137,9 +190,9 @@ Correlation ID and domain entity/event IDs remain part of provenance where neede
 
 ## PostgreSQL proof
 
-The integration suite uses a login-capable non-owner, non-superuser, `NOBYPASSRLS` application role.
+The integration suites use login-capable non-owner, non-superuser, `NOBYPASSRLS` application roles.
 
-It proves two representative traces:
+Representative traces include:
 
 ### Pending/no-write
 
@@ -148,6 +201,17 @@ It proves two representative traces:
   -> OBSERVATION: tentative
   -> SUGGESTION: Calendar candidate
   -> NEEDS_USER
+  -> zero Calendar rows
+  -> zero domain events
+```
+
+### Rejected/no-write
+
+```text
+same suggestion
+  -> USER REJECTED
+  -> rejection actor/time/reason persisted
+  -> CLOSED_NO_CHANGE
   -> zero Calendar rows
   -> zero domain events
 ```
@@ -164,7 +228,7 @@ It proves two representative traces:
   -> COMMITTED
 ```
 
-Cross-user trace retrieval remains unavailable and an unscoped application-role query still sees zero private rows.
+Cross-user trace/rejection remains unavailable and an unscoped application-role query still sees zero private rows.
 
 ## Interaction & Change Ledger development use
 
@@ -173,7 +237,8 @@ This read model becomes a foundation for later testing and deployment feedback b
 - expected user intent
 - actual interpreter behavior
 - proposal outcome
-- committed event
+- approval/rejection behavior
+- committed event when one exists
 - future rendered screen impact
 - user correction/feedback
 - software/model version from separate technical telemetry
@@ -185,11 +250,11 @@ The user-visible trace remains private product data. It must not be exported int
 - new permanent navigation destination
 - user-visible Ledger screen
 - derived-screen impact persistence
-- rejection actor/time persistence
+- rejection-feedback edit/correction flow
 - technical telemetry store
 - production analytics
 - Supabase/Railway connection
 - production Life OS AI
 - real personal data
 
-V1 only establishes the trustworthy read contract and PostgreSQL projection over existing synthetic/test data.
+V1 only establishes the trustworthy read/write provenance over existing synthetic/test data.
