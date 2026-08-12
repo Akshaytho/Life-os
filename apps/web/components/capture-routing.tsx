@@ -126,10 +126,9 @@ function Proposals({ value }: { value: RoutingInterpretation }) {
   );
 }
 
-export function CaptureRouting() {
-  const initial = captureExamples[0];
-  const [draft, setDraft] = useState<string>(initial);
-  const [interpretation, setInterpretation] = useState<RoutingInterpretation>(() => interpretCapture(initial));
+export function CaptureRouting({ initialInput = captureExamples[0] }: { initialInput?: string }) {
+  const [draft, setDraft] = useState<string>(initialInput);
+  const [interpretation, setInterpretation] = useState<RoutingInterpretation>(() => interpretCapture(initialInput));
   const sourceWords = useMemo(() => interpretation.input.trim().split(/\s+/).filter(Boolean).length, [interpretation.input]);
 
   function preview(event: FormEvent<HTMLFormElement>) {
