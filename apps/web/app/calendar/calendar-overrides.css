@@ -1,0 +1,5 @@
+@media (max-width: 899px) {
+  body:has([aria-label="Calendar time lens"]) .floating-capture {
+    display: none;
+  }
+}
