@@ -1,3 +1,14 @@
+import type {
+  ApprovalMode,
+  CertaintySignal,
+  ProposalState,
+  ProposedOperation,
+  RoutingDestination,
+  RoutingIntent,
+  RoutingObservation,
+  RoutingTrustClass,
+} from "../contracts/input-routing";
+
 export type WriteActorType = "USER" | "LIFE_OS" | "LIFE_OS_AI" | "CHATGPT" | "SYSTEM" | "EXTERNAL_INTEGRATION";
 export type WriteSource = "WEB_APP" | "MCP" | "SCHEDULED_JOB" | "AI_CHAT" | "IMPORT";
 
@@ -13,8 +24,8 @@ export type CalendarCategory =
   | "Rest";
 
 export type CalendarCommitment = "Fixed" | "Important" | "Flexible" | "Optional";
-export type ProposalApprovalMode = "REVIEW_AND_APPLY" | "EXPLICIT_CONFIRMATION" | "HIGH_AUTHORITY_APPROVAL";
-export type StoredProposalState = "PROPOSED" | "NEEDS_CONFIRMATION" | "READY_TO_APPLY" | "REJECTED" | "APPLIED";
+export type ProposalApprovalMode = ApprovalMode;
+export type StoredProposalState = ProposalState;
 
 export interface AuthenticatedUserPrincipal {
   actorType: "USER";
@@ -26,6 +37,55 @@ export interface WriteRequestContext {
   source: "WEB_APP";
   receivedAt: string;
   requestId: string;
+}
+
+export interface CaptureRecord {
+  captureId: string;
+  userId: string;
+  rawText: string;
+  source: WriteSource;
+  correlationId: string;
+  requestId: string;
+  recordedAt: string;
+}
+
+export interface RoutingInterpretationRecord {
+  interpretationId: string;
+  captureId: string;
+  userId: string;
+  version: 1;
+  interpreter: "LOCAL_SAMPLE" | "LIFE_OS_AI";
+  intent: RoutingIntent;
+  certainty: CertaintySignal;
+  confidence: number;
+  observations: RoutingObservation[];
+  clarification?: string;
+  createdAt: string;
+}
+
+export interface RoutingProposalRecord {
+  proposalId: string;
+  interpreterProposalKey: string;
+  userId: string;
+  captureId: string;
+  interpretationId?: string;
+  destination: RoutingDestination;
+  operation: ProposedOperation;
+  summary: string;
+  targetTrustClass: RoutingTrustClass;
+  approvalMode: ApprovalMode;
+  state: ProposalState;
+  reason: string;
+  payloadJson: Record<string, unknown>;
+  createdAt: string;
+  appliedAt?: string;
+  appliedEntityId?: string;
+  appliedEventId?: string;
+}
+
+export interface RoutingPersistenceBundle {
+  interpretation: RoutingInterpretationRecord;
+  proposals: RoutingProposalRecord[];
 }
 
 export interface CalendarPlanInput {
@@ -107,6 +167,11 @@ export interface CommitReceipt {
 }
 
 export interface WriteTransaction {
+  getOrCreateCaptureRecord(record: CaptureRecord): Promise<CaptureRecord>;
+  getRoutingBundleForCapture(captureId: string, userId: string): Promise<RoutingPersistenceBundle | undefined>;
+  createRoutingInterpretation(record: RoutingInterpretationRecord): Promise<void>;
+  createRoutingProposal(record: RoutingProposalRecord): Promise<void>;
+
   getStoredCalendarProposalForUpdate(proposalId: string, userId: string): Promise<StoredCalendarProposal | undefined>;
   findAppliedProposal(proposalId: string): Promise<AppliedProposalRecord | undefined>;
   createCalendarPlan(record: CalendarPlanRecord): Promise<void>;
@@ -121,6 +186,10 @@ export interface WriteUnitOfWork {
 
 export interface IdGenerator {
   next(prefix: "calendar" | "event"): string;
+}
+
+export interface RoutingIdGenerator {
+  next(prefix: "capture" | "interpretation" | "proposal"): string;
 }
 
 export interface Clock {
