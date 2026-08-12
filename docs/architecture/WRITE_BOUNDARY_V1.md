@@ -68,7 +68,9 @@ A proposal may be submitted more than once because of double taps, browser retri
 
 `proposalId` is the idempotency key for this boundary.
 
-The applied marker stores both the confirming user and a deterministic fingerprint of the authoritative request semantics. On replay:
+The applied marker stores the confirming user plus a SHA-256 fingerprint of the authoritative request semantics. It does not need a second raw copy of the Capture text merely to detect retries.
+
+On replay:
 
 - same proposal ID + same user + same content → return the original receipt
 - same proposal ID + different user → reject
@@ -104,8 +106,10 @@ The first event includes:
 - `calendar_event` entity ID
 - `WEB_APP` source
 - correlation ID carried from the Capture/proposal chain
-- payload containing proposal ID and the committed Calendar semantics
+- proposal ID plus the committed Calendar semantics
 - schema version
+
+The event references the proposal/correlation chain instead of copying the raw Capture sentence again. The full source remains retrievable from its owning provenance record when that persistence layer is introduced.
 
 For `CALENDAR_EVENT_CREATED`, `occurred_at` is the time the user performed the authoritative confirmation that created the Calendar record. The future appointment's `startsAt` / `endsAt` remain Calendar payload/state and are not confused with the creation event time.
 
@@ -146,7 +150,7 @@ V1 must prove at least:
 - success produces exactly one Calendar record, one domain event and one applied marker
 - the event actor is USER
 - event `occurred_at` is the user confirmation time and `recorded_at` is the commit clock
-- correlation/proposal provenance survives
+- correlation/proposal provenance survives without duplicating raw Capture text in the event
 - event failure rolls back the canonical Calendar record
 - applied-marker failure rolls back both Calendar record and event
 - exact duplicate application is idempotent
@@ -179,6 +183,6 @@ These are intentionally later. The goal of this slice is to make the write rule 
 - **ALIGNED:** provenance and correlation remain inspectable.
 - **ALIGNED:** high-authority changes do not use a low-risk path.
 - **ALIGNED:** core system does not depend on AI.
-- **REFINEMENT:** adds collision-safe applied-proposal idempotency as part of trustworthy write semantics.
+- **REFINEMENT:** adds collision-safe, data-minimized applied-proposal idempotency as part of trustworthy write semantics.
 - **EXTENSION:** introduces the first executable application-service and unit-of-work contract.
 - **NO CONFLICT:** no production data, autonomous write or direct AI database access is added.
