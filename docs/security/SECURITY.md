@@ -38,6 +38,24 @@ A proposal can describe *what* the user wants to change; it cannot declare *who*
 
 Authentication proves identity. Authorization must still verify that the principal may act on the referenced proposal/entities before production writes are enabled.
 
+### Session credential handling
+
+The transport credential is opaque application-secret material. The product contract does not require it to be exposed to client JavaScript; a future production adapter may use a secure cookie, bearer credential, or another well-supported mechanism appropriate to the chosen auth provider.
+
+Raw session credentials:
+
+- go only to the session-verification adapter
+- never become part of `WriteRequestContext`
+- never enter Capture, proposal, Calendar, Memory, or domain-event records
+- never enter idempotency fingerprints
+- are never echoed in client-facing authentication errors
+- must not be sent to Life OS AI, ChatGPT, or MCP tools
+- must not be stored in security-audit records
+
+The trusted backend captures authoritative `receivedAt` when the request reaches the transport boundary and generates its own `requestId`. Client fields with the same names have no authority. Capturing request time before potentially slow session verification preserves the original temporal meaning of relative phrases such as “tomorrow.”
+
+An invalid/expired session and an unavailable authentication provider are different operational states. Client-facing errors remain credential-safe, while future security observability may record the category without recording raw credential material.
+
 ## Transport and Storage
 
 - HTTPS/TLS for deployed traffic
@@ -76,6 +94,8 @@ Security audit examples:
 - MCP tool calls
 - exports
 - credential/security changes
+
+Security audit records may identify the request/session category or server request ID where appropriate, but must never store raw session credentials.
 
 ## Event Integrity
 
