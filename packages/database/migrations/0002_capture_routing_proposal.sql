@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS routing_proposal (
   created_at timestamptz NOT NULL,
   applied_at timestamptz,
   applied_entity_id text,
-  applied_event_id text,
+  applied_event_id text REFERENCES domain_event(event_id) ON DELETE RESTRICT,
   FOREIGN KEY (capture_id, user_id) REFERENCES capture_record(capture_id, user_id) ON DELETE RESTRICT,
   CHECK (
     (state = 'APPLIED' AND applied_at IS NOT NULL AND applied_entity_id IS NOT NULL AND applied_event_id IS NOT NULL)
@@ -36,5 +36,9 @@ CREATE TABLE IF NOT EXISTS routing_proposal (
 
 CREATE INDEX IF NOT EXISTS routing_proposal_user_state_idx
   ON routing_proposal (user_id, state, created_at DESC);
+
+ALTER TABLE applied_proposal
+  ADD CONSTRAINT applied_proposal_routing_proposal_fk
+  FOREIGN KEY (proposal_id) REFERENCES routing_proposal(proposal_id) ON DELETE RESTRICT;
 
 COMMIT;
