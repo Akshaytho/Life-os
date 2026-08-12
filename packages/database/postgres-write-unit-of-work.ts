@@ -5,6 +5,7 @@ import type {
   CalendarPlanRecord,
   CaptureRecord,
   DomainEventRecord,
+  ProposalRejectionRecord,
   RoutingInterpretationRecord,
   RoutingPersistenceBundle,
   RoutingProposalRecord,
@@ -201,6 +202,65 @@ function transactionFor(client: PoolClient): WriteTransaction {
           JSON.stringify(record.payloadJson), record.createdAt, record.appliedAt ?? null,
           record.appliedEntityId ?? null, record.appliedEventId ?? null],
       );
+    },
+
+    async getRoutingProposalForUpdate(proposalId, userId) {
+      const result = await client.query<ProposalRow>(
+        `SELECT proposal_id, interpreter_proposal_key, user_id, capture_id, interpretation_id,
+                destination, operation, summary, target_trust_class, approval_mode, state,
+                reason, payload_json, created_at, applied_at, applied_entity_id, applied_event_id
+           FROM routing_proposal
+          WHERE proposal_id = $1 AND user_id = $2
+          FOR UPDATE`,
+        [proposalId, userId],
+      );
+      const row = result.rows[0];
+      return row ? proposalFromRow(row) : undefined;
+    },
+
+    async findProposalRejection(proposalId) {
+      const result = await client.query<{
+        proposal_id: string;
+        user_id: string;
+        rejected_at: Date;
+        rejected_by_actor_id: string;
+        reason: string | null;
+      }>(
+        `SELECT proposal_id, user_id, rejected_at, rejected_by_actor_id, reason
+           FROM proposal_rejection
+          WHERE proposal_id = $1`,
+        [proposalId],
+      );
+      const row = result.rows[0];
+      if (!row) return undefined;
+      return {
+        proposalId: row.proposal_id,
+        userId: row.user_id,
+        rejectedAt: iso(row.rejected_at),
+        rejectedByActorId: row.rejected_by_actor_id,
+        reason: row.reason ?? undefined,
+      } satisfies ProposalRejectionRecord;
+    },
+
+    async createProposalRejection(record) {
+      await client.query(
+        `INSERT INTO proposal_rejection
+          (proposal_id, user_id, rejected_at, rejected_by_actor_id, reason)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [record.proposalId, record.userId, record.rejectedAt, record.rejectedByActorId, record.reason ?? null],
+      );
+    },
+
+    async markRoutingProposalRejected(proposalId, userId) {
+      const result = await client.query(
+        `UPDATE routing_proposal
+            SET state = 'REJECTED'
+          WHERE proposal_id = $1
+            AND user_id = $2
+            AND state IN ('PROPOSED', 'NEEDS_CONFIRMATION', 'READY_TO_APPLY')`,
+        [proposalId, userId],
+      );
+      if (result.rowCount !== 1) throw new Error(`Stored proposal ${proposalId} was not rejectable`);
     },
 
     async getStoredCalendarProposalForUpdate(proposalId, userId) {
