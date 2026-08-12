@@ -27,5 +27,8 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Test write boundary
+        run: npm test
+
       - name: Build web
         run: npm run build:web
