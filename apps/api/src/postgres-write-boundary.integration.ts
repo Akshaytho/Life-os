@@ -18,9 +18,7 @@ if (!databaseUrl) throw new Error("DATABASE_URL is required for PostgreSQL integ
 const pool = new Pool({ connectionString: databaseUrl, max: 4 });
 
 class FixedClock implements Clock {
-  now() {
-    return "2026-08-12T19:00:00.000Z";
-  }
+  now() { return "2026-08-12T19:00:00.000Z"; }
 }
 
 class FixedIds implements IdGenerator {
@@ -30,10 +28,10 @@ class FixedIds implements IdGenerator {
   next(prefix: "calendar" | "event") {
     if (prefix === "calendar") {
       this.calendarIndex += 1;
-      return `10000000-0000-4000-8000-${String(this.calendarIndex).padStart(12, "0")}`;
+      return `calendar-pg-${this.calendarIndex}`;
     }
     this.eventIndex += 1;
-    return `20000000-0000-4000-8000-${String(this.eventIndex).padStart(12, "0")}`;
+    return `event-pg-${this.eventIndex}`;
   }
 }
 
@@ -49,7 +47,7 @@ function command(): ApplyCalendarPlanProposalCommand {
     source: "WEB_APP",
     confirmation: {
       actorType: "USER",
-      actorId: "30000000-0000-4000-8000-000000000001",
+      actorId: "user-pg-1",
       confirmedAt: "2026-08-12T18:59:58.000Z",
       explicit: true,
     },
@@ -72,9 +70,7 @@ beforeEach(async () => {
   await pool.query("TRUNCATE TABLE applied_proposal, domain_event, calendar_event CASCADE");
 });
 
-after(async () => {
-  await pool.end();
-});
+after(async () => { await pool.end(); });
 
 test("PostgreSQL commits canonical state, event and applied marker together", async () => {
   const unitOfWork = new PostgresWriteUnitOfWork(pool);
@@ -95,9 +91,11 @@ test("PostgreSQL commits canonical state, event and applied marker together", as
   assert.equal(events.rowCount, 1);
   assert.equal(applied.rowCount, 1);
   assert.equal(calendar.rows[0].id, receipt.entityId);
+  assert.equal(calendar.rows[0].user_id, "user-pg-1");
   assert.equal(events.rows[0].entity_id, receipt.entityId);
   assert.equal(events.rows[0].event_id, receipt.eventId);
   assert.equal(events.rows[0].actor_type, "USER");
+  assert.equal(events.rows[0].actor_id, "user-pg-1");
   assert.equal(events.rows[0].correlation_id, "capture-postgres-1");
   assert.equal(events.rows[0].payload_json.proposalId, "proposal-postgres-1");
   assert.equal("sourceText" in events.rows[0].payload_json, false);
@@ -129,8 +127,8 @@ test("PostgreSQL rolls back a canonical row when a later event insert violates s
   const unitOfWork = new PostgresWriteUnitOfWork(pool);
 
   const plan: CalendarPlanRecord = {
-    id: "10000000-0000-4000-8000-000000000099",
-    userId: "30000000-0000-4000-8000-000000000001",
+    id: "calendar-rollback-proof",
+    userId: "user-pg-1",
     title: "Rollback proof",
     startsAt: "2026-08-14T10:00:00.000Z",
     endsAt: "2026-08-14T11:00:00.000Z",
@@ -141,7 +139,7 @@ test("PostgreSQL rolls back a canonical row when a later event insert violates s
   };
 
   const invalidEvent = {
-    eventId: "20000000-0000-4000-8000-000000000099",
+    eventId: "event-rollback-proof",
     userId: plan.userId,
     occurredAt: "2026-08-12T18:59:58.000Z",
     recordedAt: "2026-08-12T19:00:00.000Z",
