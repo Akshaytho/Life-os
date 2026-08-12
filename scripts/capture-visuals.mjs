@@ -14,7 +14,7 @@ const pages = [
     path: '/capture',
     expected: 'Where this would go.',
     example: 'Yes, Sep 12-16 is decided.',
-    expectedAfter: 'Preserve that these travel dates were explicitly decided, with the capture as provenance.',
+    expectedAfter: 'Preserve that these dates were explicitly decided, with the capture as provenance.',
   },
   { name: 'journey-overview', path: '/journey' },
   { name: 'journey-sound-design', path: '/journey/travel-creator/sound-design' },
