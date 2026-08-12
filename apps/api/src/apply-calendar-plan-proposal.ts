@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type {
   AppliedProposalRecord,
   ApplyCalendarPlanProposalCommand,
+  CalendarCategory,
   CalendarPlanRecord,
   Clock,
   CommitReceipt,
@@ -22,6 +23,10 @@ export interface ApplyCalendarPlanDependencies {
   clock: Clock;
   ids: IdGenerator;
 }
+
+type ValidatedCalendarCommand = ApplyCalendarPlanProposalCommand & {
+  plan: ApplyCalendarPlanProposalCommand["plan"] & { category: CalendarCategory };
+};
 
 function requireText(value: string, label: string) {
   if (!value.trim()) throw new ProposalValidationError(`${label} is required`);
@@ -47,7 +52,7 @@ function requestFingerprint(command: ApplyCalendarPlanProposalCommand) {
   return createHash("sha256").update(semantics).digest("hex");
 }
 
-function validate(command: ApplyCalendarPlanProposalCommand) {
+function validate(command: ApplyCalendarPlanProposalCommand): asserts command is ValidatedCalendarCommand {
   requireText(command.proposalId, "proposalId");
   requireText(command.correlationId, "correlationId");
   requireText(command.sourceText, "sourceText");
