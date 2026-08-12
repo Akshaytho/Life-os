@@ -2,17 +2,21 @@
 
 **Canonical artifact reviewed:** `LIFE-OS-CANON-001` v1.1.0  
 **Change classification:** EXTENSION + REFINEMENT  
-**Status:** first executable write-boundary contract
+**Status:** executable write-boundary contract with PostgreSQL proof
 
 ## Product question
 
-How can Life OS turn an approved proposal into canonical state without allowing AI interpretation, partial failure, duplicate clicks, idempotency collisions, or missing provenance to corrupt the user's life record?
+How can Life OS turn an approved proposal into canonical state without allowing AI interpretation, client-supplied identity, partial failure, duplicate clicks, idempotency collisions, or missing provenance to corrupt the user's life record?
 
 ## Core invariant
 
 For every meaningful canonical mutation:
 
 ```text
+AUTHENTICATED SERVER CONTEXT
+        +
+USER APPLY / CONFIRM
+        ↓
 CANONICAL STATE CHANGE
         +
 MEANINGFUL DOMAIN EVENT
@@ -22,167 +26,138 @@ APPLIED-PROPOSAL MARKER
 ONE TRANSACTION
 ```
 
-Either all three commit or none do.
-
-A UI success message without its domain event is an integrity failure. An event claiming a change that was not persisted is also an integrity failure.
+Either the canonical mutation, event and applied marker all commit or none do.
 
 ## First supported mutation
 
-V1 proves the boundary with one ordinary operation:
+V1 proves the boundary with `CREATE_CALENDAR_PLAN` after Capture → Interpret → Route → Propose.
 
-`CREATE_CALENDAR_PLAN`
+The application contract has both in-memory unit tests and a PostgreSQL integration proof.
 
-The proposal has already passed Capture → Interpret → Route → Propose. The user then performs the authoritative Apply/Confirm action.
+## Identity / authority rule
 
-This slice does **not** connect a production database yet. It defines the application contract plus an atomic in-memory adapter used to prove transaction semantics in automated tests. A PostgreSQL/Supabase adapter will implement the same `WriteUnitOfWork` contract later.
+The proposal or HTTP body is **not** an authority source for user identity.
 
-## Authority rule
+The application service receives two different shapes:
 
-The proposal may originate from deterministic parsing, Life OS AI, ChatGPT or another approved source in the future, but the committed V1 Calendar event is authoritative because the **user explicitly confirmed it**.
+1. proposal/command data — untrusted request semantics to validate
+2. `WriteRequestContext` — trusted server context populated by the authentication/transport layer
 
-Therefore the resulting domain event actor is `USER`, not `LIFE_OS_AI` or `CHATGPT`.
+The trusted context supplies:
 
-The original proposal and capture remain provenance.
+- authenticated USER principal ID
+- transport/source classification
+- server-side request-received timestamp
+- request ID
+
+The command intentionally does not own actor ID, event source or confirmation timestamp.
+
+A malicious payload may contain extra fields named `actorId`, `source` or `confirmedAt`; they must not affect canonical ownership, event actor/source, or event occurrence time.
+
+The proposal may eventually originate from deterministic parsing, Life OS AI or ChatGPT, but a user-confirmed Calendar event is authoritative because the authenticated user performed the Apply/Confirm action. The event actor is therefore `USER`.
 
 ## Backend revalidation
 
-Apply is never a blind replay of UI state. Before opening the transaction the application service revalidates:
+Apply is never a blind replay of UI state. Before the transaction, the application service validates at least:
 
-- proposal identity exists in the command
+- authenticated user ID exists in trusted request context
+- trusted request ID exists
+- trusted request timestamp is valid
+- proposal identity exists
 - destination is Calendar
 - operation is `CREATE_CALENDAR_PLAN`
-- confirmation actor is USER
-- the user performed an explicit Apply/Confirm action
+- explicit Apply/Confirm occurred
 - high-authority approval is not being smuggled through the ordinary Calendar path
 - title exists
 - category is resolved
-- timestamps are valid
+- Calendar timestamps are valid
 - end is after start
-- confirmation timestamp is valid
 
-Future database-backed versions will also revalidate proposal persistence, current entity revisions, permissions and conflict/capacity rules as relevant.
+Once proposal persistence/auth are connected, the backend must additionally revalidate stored proposal ownership/state, current entity revisions, authorization and relevant Calendar conflicts.
 
 ## Idempotency
 
-A proposal may be submitted more than once because of double taps, browser retries, network retries or client recovery.
+`proposalId` is the logical idempotency key.
 
-`proposalId` is the idempotency key for this boundary.
+The applied marker stores the authenticated user plus a SHA-256 fingerprint of authoritative mutation semantics. The fingerprint includes the trusted authenticated user/source, but excludes transport-only `requestId` and `receivedAt`, so a legitimate network retry can return the original receipt.
 
-The applied marker stores the confirming user plus a SHA-256 fingerprint of the authoritative request semantics. It does not need a second raw copy of the Capture text merely to detect retries.
+Replay behavior:
 
-On replay:
+- same proposal + same authenticated user + same mutation semantics → original receipt
+- same proposal + different authenticated user → reject
+- same proposal + different mutation semantics → reject
 
-- same proposal ID + same user + same content → return the original receipt
-- same proposal ID + different user → reject
-- same proposal ID + different content → reject
-
-This prevents an old idempotency key from silently accepting a different mutation.
-
-A real PostgreSQL adapter must enforce the applied proposal key with a database uniqueness constraint so concurrent retries cannot create duplicates.
+The PostgreSQL schema also protects proposal identity with uniqueness constraints.
 
 ## Transaction steps
 
-Inside one unit of work:
+Inside one `WriteUnitOfWork`:
 
-1. Check whether `proposalId` was already applied.
-2. Validate any replay against the original user/request fingerprint.
-3. Create the canonical Calendar record.
-4. Append `CALENDAR_EVENT_CREATED`.
-5. Mark the proposal as applied with entity/event references and request fingerprint.
-6. Commit the transaction.
+1. inspect existing applied proposal
+2. validate replay user/fingerprint when present
+3. create canonical Calendar record
+4. append `CALENDAR_EVENT_CREATED`
+5. mark proposal applied with entity/event references and request fingerprint
+6. commit
 
-If the canonical row, event append or applied marker fails, the transaction rolls back all staged changes.
+Any failure rolls back the transaction. The PostgreSQL adapter discards its pooled client if rollback itself fails.
 
 ## Event semantics
 
-The first event includes:
+For the first Calendar create event:
 
-- event ID
-- user ID
-- occurred_at
-- recorded_at
-- actor type / actor ID
-- `CALENDAR_EVENT_CREATED`
-- `calendar_event` entity ID
-- `WEB_APP` source
-- correlation ID carried from the Capture/proposal chain
-- proposal ID plus the committed Calendar semantics
-- schema version
-
-The event references the proposal/correlation chain instead of copying the raw Capture sentence again. The full source remains retrievable from its owning provenance record when that persistence layer is introduced.
-
-For `CALENDAR_EVENT_CREATED`, `occurred_at` is the time the user performed the authoritative confirmation that created the Calendar record. The future appointment's `startsAt` / `endsAt` remain Calendar payload/state and are not confused with the creation event time.
-
-`recorded_at` is the backend commit clock. This preserves the distinction between when the authoritative action occurred and when Life OS persisted it.
+- `user_id` and `actor_id` come from authenticated server context
+- `actor_type` is USER
+- `source` comes from trusted transport context
+- `occurred_at` is the server-side request-received time for the authoritative Apply/Confirm action
+- `recorded_at` is the persistence commit clock
+- future appointment `startsAt`/`endsAt` remain Calendar state, not event occurrence time
+- correlation/proposal IDs preserve provenance
+- raw Capture text is not duplicated into the event payload
 
 ## Trust boundary
 
-This work intentionally keeps four things separate:
-
 ```text
-USER SOURCE
-    ↓
-AI/PARSER INTERPRETATION       observation
-    ↓
-PROPOSAL                       suggestion / proposed consequence
-    ↓
-USER APPLY / CONFIRM           authoritative action
-    ↓
-CANONICAL STATE + EVENT        fact / decision according to domain
+USER WORDS / PROPOSAL DATA        untrusted input semantics
+             ↓
+AI/PARSER INTERPRETATION          OBSERVATION
+             ↓
+PROPOSAL                          SUGGESTION / proposed effect
+             ↓
+AUTHENTICATED USER + APPLY        authoritative action
+             ↓
+CANONICAL STATE + EVENT           domain truth/history
 ```
 
-AI confidence never bypasses the user confirmation boundary.
+AI confidence, client actor fields and client source labels cannot bypass this boundary.
 
-## Failure behavior
+## Automated proof
 
-The automated test adapter can inject failures at:
+Unit tests prove application authority, idempotency and rollback behavior. PostgreSQL integration tests prove the same transaction invariant against a real disposable database.
 
-- Calendar record creation
-- event append
-- applied-proposal marker
+The suite includes explicit proof that forged identity/source/time fields hidden in proposal-shaped input do not control committed ownership or event provenance.
 
-Tests assert that no partial state survives.
+## Still not implemented
 
-## Test requirements
-
-V1 must prove at least:
-
-- success produces exactly one Calendar record, one domain event and one applied marker
-- the event actor is USER
-- event `occurred_at` is the user confirmation time and `recorded_at` is the commit clock
-- correlation/proposal provenance survives without duplicating raw Capture text in the event
-- event failure rolls back the canonical Calendar record
-- applied-marker failure rolls back both Calendar record and event
-- exact duplicate application is idempotent
-- proposal-ID reuse with different content is rejected
-- proposal-ID reuse by another user is rejected
-- unresolved category is rejected before commit
-- absent explicit confirmation is rejected before commit
-- invalid time range is rejected before commit
-
-CI runs these tests on every pull request and push to main.
-
-## Not implemented yet
-
-- PostgreSQL/Supabase persistence adapter
-- authentication / authorization
-- persisted proposal store
-- real Calendar mutation UI
-- conflict checking against live Calendar state
-- outbox delivery
+- production Supabase connection
+- authentication middleware/provider verification
+- authorization / RLS
+- persisted Capture/proposal store
+- live Calendar Apply endpoint/UI
+- Calendar conflict checking against live state
 - production Life OS AI
 - ChatGPT proposal writes
 - high-authority decision commits
 
-These are intentionally later. The goal of this slice is to make the write rule executable before adding more authority or data.
+The current `WriteRequestContext` is the port an eventual authentication layer must populate; tests use fake trusted contexts only.
 
-## Pre-build canonical comparison
+## Canonical comparison
 
 - **ALIGNED:** canonical mutation + domain event are transactional.
-- **ALIGNED:** user approval is the authority source for an applied AI/parser proposal.
-- **ALIGNED:** provenance and correlation remain inspectable.
+- **ALIGNED:** user approval is the authority source for applied AI/parser proposals.
+- **ALIGNED:** authentication identity must be server-trusted rather than client-asserted.
+- **ALIGNED:** provenance/correlation remain inspectable.
 - **ALIGNED:** high-authority changes do not use a low-risk path.
-- **ALIGNED:** core system does not depend on AI.
-- **REFINEMENT:** adds collision-safe, data-minimized applied-proposal idempotency as part of trustworthy write semantics.
-- **EXTENSION:** introduces the first executable application-service and unit-of-work contract.
-- **NO CONFLICT:** no production data, autonomous write or direct AI database access is added.
+- **ALIGNED:** core behavior does not depend on AI.
+- **REFINEMENT:** transport identity/source/time are moved out of proposal data into trusted request context.
+- **NO CONFLICT:** no production auth, real data, autonomous write, or direct AI database access is added.
