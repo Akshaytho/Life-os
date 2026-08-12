@@ -12,13 +12,14 @@
     "dev:web": "npm run dev --workspace @life-os/web",
     "build:web": "npm run build --workspace @life-os/web",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present",
+    "test": "tsx --test apps/api/src/*.test.ts",
     "lint": "npm run lint --workspaces --if-present"
   },
   "engines": {
     "node": ">=20.9"
   },
   "devDependencies": {
+    "tsx": "^4.23.1",
     "typescript": "^5.9.2"
   }
 }

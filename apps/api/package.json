@@ -1,0 +1,12 @@
+{
+  "name": "@life-os/api",
+  "private": true,
+  "version": "0.0.1",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "tsx --test src/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.0"
+  }
+}
