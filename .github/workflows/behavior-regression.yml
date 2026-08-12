@@ -1,0 +1,109 @@
+name: Life OS Behavior Regression
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  behavior-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: postgres://lifeos:lifeos@127.0.0.1:5432/lifeos_test
+      LIFE_OS_ENVIRONMENT: ci
+      BEHAVIOR_REPORT_PATH: artifacts/behavior-regression.json
+    services:
+      postgres:
+        image: postgres:18.4-bookworm
+        env:
+          POSTGRES_USER: lifeos
+          POSTGRES_PASSWORD: lifeos
+          POSTGRES_DB: lifeos_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U lifeos -d lifeos_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Use Node 20
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20.20.1"
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Generate behavior regression report
+        run: npx tsx scripts/generate-behavior-regression.mts
+
+      - name: Validate expected behavior and privacy shape
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'artifacts/behavior-regression.json';
+          const raw = fs.readFileSync(path, 'utf8');
+          const report = JSON.parse(raw);
+
+          if (report.schemaVersion !== 1) throw new Error('Unexpected behavior report schema version');
+          if (report.runtime.releaseSha !== process.env.GITHUB_SHA) throw new Error('Behavior report is not tied to this commit');
+
+          const scenarios = Object.fromEntries(report.scenarios.map((item) => [item.scenarioId, item]));
+          const tentative = scenarios['tentative-calendar-needs-user'];
+          const approved = scenarios['confirmed-calendar-approved'];
+          const rejected = scenarios['tentative-calendar-rejected'];
+
+          if (!tentative || tentative.status !== 'NEEDS_USER') throw new Error('Tentative scenario regressed');
+          if (tentative.proposals?.[0]?.state !== 'NEEDS_CONFIRMATION') throw new Error('Tentative proposal state regressed');
+          if (tentative.proposals?.[0]?.canonicalEventType) throw new Error('Tentative scenario unexpectedly committed');
+
+          if (!approved || approved.status !== 'COMMITTED') throw new Error('Approved scenario regressed');
+          if (approved.proposals?.[0]?.userAction !== 'APPROVED') throw new Error('Approval action regressed');
+          if (approved.proposals?.[0]?.canonicalEventType !== 'CALENDAR_EVENT_CREATED') throw new Error('Approved canonical event regressed');
+
+          if (!rejected || rejected.status !== 'CLOSED_NO_CHANGE') throw new Error('Rejected scenario regressed');
+          if (rejected.proposals?.[0]?.userAction !== 'REJECTED') throw new Error('Rejection action regressed');
+          if (rejected.proposals?.[0]?.canonicalEventType) throw new Error('Rejected scenario unexpectedly committed');
+
+          const forbiddenKeys = new Set([
+            'text', 'rawText', 'sourceText', 'reason', 'summary', 'payloadJson', 'details',
+            'userId', 'actorId', 'requestId', 'captureId', 'proposalId', 'eventId',
+            'deploymentId', 'serviceName', 'databaseUrl', 'errorMessage'
+          ]);
+
+          function inspect(value) {
+            if (!value || typeof value !== 'object') return;
+            for (const [key, child] of Object.entries(value)) {
+              if (forbiddenKeys.has(key)) throw new Error(`Private/unstable field leaked into behavior artifact: ${key}`);
+              inspect(child);
+            }
+          }
+          inspect(report);
+
+          for (const privateFixture of [
+            'Synthetic tentative friend plan',
+            'Synthetic confirmed gym plan',
+            'Synthetic rejection feedback',
+            'synthetic-user-'
+          ]) {
+            if (raw.includes(privateFixture)) throw new Error('Synthetic source/user content leaked into behavior artifact');
+          }
+          NODE
+
+      - name: Upload behavior regression artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: life-os-behavior-regression-${{ github.sha }}
+          path: artifacts/behavior-regression.json
+          if-no-files-found: error
+          retention-days: 14
