@@ -1,46 +1,141 @@
 import type {
   AppliedProposalRecord,
+  CalendarPlanInput,
   CalendarPlanRecord,
+  CaptureRecord,
   DomainEventRecord,
+  RoutingInterpretationRecord,
+  RoutingPersistenceBundle,
+  RoutingProposalRecord,
   StoredCalendarProposal,
   WriteTransaction,
   WriteUnitOfWork,
 } from "../domain/write-boundary";
 
-type FailurePoint = "NONE" | "CREATE_CALENDAR" | "APPEND_EVENT" | "MARK_APPLIED" | "MARK_STORED_APPLIED";
+type FailurePoint =
+  | "NONE"
+  | "CREATE_CAPTURE"
+  | "CREATE_INTERPRETATION"
+  | "CREATE_ROUTING_PROPOSAL"
+  | "CREATE_CALENDAR"
+  | "APPEND_EVENT"
+  | "MARK_APPLIED"
+  | "MARK_STORED_APPLIED";
 
 interface MemoryState {
+  captures: Map<string, CaptureRecord>;
+  interpretations: Map<string, RoutingInterpretationRecord>;
+  routingProposals: Map<string, RoutingProposalRecord>;
   calendarPlans: Map<string, CalendarPlanRecord>;
   domainEvents: Map<string, DomainEventRecord>;
   appliedProposals: Map<string, AppliedProposalRecord>;
-  storedProposals: Map<string, StoredCalendarProposal>;
 }
 
-function cloneProposal(value: StoredCalendarProposal): StoredCalendarProposal {
-  return { ...value, plan: { ...value.plan } };
+function cloneInterpretation(value: RoutingInterpretationRecord): RoutingInterpretationRecord {
+  return {
+    ...value,
+    observations: value.observations.map((item) => ({ ...item })),
+  };
+}
+
+function cloneRoutingProposal(value: RoutingProposalRecord): RoutingProposalRecord {
+  return {
+    ...value,
+    payloadJson: structuredClone(value.payloadJson),
+  };
 }
 
 function cloneState(state: MemoryState): MemoryState {
   return {
+    captures: new Map([...state.captures].map(([key, value]) => [key, { ...value }])),
+    interpretations: new Map([...state.interpretations].map(([key, value]) => [key, cloneInterpretation(value)])),
+    routingProposals: new Map([...state.routingProposals].map(([key, value]) => [key, cloneRoutingProposal(value)])),
     calendarPlans: new Map(state.calendarPlans),
     domainEvents: new Map(state.domainEvents),
     appliedProposals: new Map(state.appliedProposals),
-    storedProposals: new Map([...state.storedProposals].map(([key, value]) => [key, cloneProposal(value)])),
+  };
+}
+
+function calendarProjection(state: MemoryState, proposal: RoutingProposalRecord): StoredCalendarProposal | undefined {
+  if (proposal.destination !== "CALENDAR" || proposal.operation !== "CREATE_CALENDAR_PLAN") return undefined;
+  const capture = state.captures.get(proposal.captureId);
+  if (!capture || capture.userId !== proposal.userId) return undefined;
+  const plan = proposal.payloadJson.plan as CalendarPlanInput | undefined;
+  if (!plan) return undefined;
+
+  return {
+    proposalId: proposal.proposalId,
+    userId: proposal.userId,
+    captureId: proposal.captureId,
+    sourceText: capture.rawText,
+    correlationId: capture.correlationId,
+    destination: "CALENDAR",
+    operation: "CREATE_CALENDAR_PLAN",
+    approvalMode: proposal.approvalMode,
+    state: proposal.state,
+    plan: structuredClone(plan),
+    createdAt: proposal.createdAt,
+    appliedAt: proposal.appliedAt,
+    appliedEntityId: proposal.appliedEntityId,
+    appliedEventId: proposal.appliedEventId,
+  };
+}
+
+function routingBundle(state: MemoryState, captureId: string, userId: string): RoutingPersistenceBundle | undefined {
+  const interpretation = [...state.interpretations.values()].find(
+    (item) => item.captureId === captureId && item.userId === userId && item.version === 1,
+  );
+  if (!interpretation) return undefined;
+
+  return {
+    interpretation: cloneInterpretation(interpretation),
+    proposals: [...state.routingProposals.values()]
+      .filter((item) => item.interpretationId === interpretation.interpretationId && item.userId === userId)
+      .map(cloneRoutingProposal),
   };
 }
 
 export class InMemoryWriteUnitOfWork implements WriteUnitOfWork {
   private state: MemoryState = {
+    captures: new Map(),
+    interpretations: new Map(),
+    routingProposals: new Map(),
     calendarPlans: new Map(),
     domainEvents: new Map(),
     appliedProposals: new Map(),
-    storedProposals: new Map(),
   };
 
   private failurePoint: FailurePoint = "NONE";
 
   seedStoredCalendarProposal(proposal: StoredCalendarProposal) {
-    this.state.storedProposals.set(proposal.proposalId, cloneProposal(proposal));
+    const capture: CaptureRecord = {
+      captureId: proposal.captureId,
+      userId: proposal.userId,
+      rawText: proposal.sourceText,
+      source: "WEB_APP",
+      correlationId: proposal.correlationId,
+      requestId: `seed:${proposal.proposalId}`,
+      recordedAt: proposal.createdAt,
+    };
+    this.state.captures.set(capture.captureId, capture);
+    this.state.routingProposals.set(proposal.proposalId, {
+      proposalId: proposal.proposalId,
+      interpreterProposalKey: `seed:${proposal.proposalId}`,
+      userId: proposal.userId,
+      captureId: proposal.captureId,
+      destination: proposal.destination,
+      operation: proposal.operation,
+      summary: "Seeded Calendar proposal",
+      targetTrustClass: "FACT",
+      approvalMode: proposal.approvalMode,
+      state: proposal.state,
+      reason: "Deterministic test seed",
+      payloadJson: { plan: structuredClone(proposal.plan) },
+      createdAt: proposal.createdAt,
+      appliedAt: proposal.appliedAt,
+      appliedEntityId: proposal.appliedEntityId,
+      appliedEventId: proposal.appliedEventId,
+    });
   }
 
   failNextAt(point: Exclude<FailurePoint, "NONE">) {
@@ -49,10 +144,15 @@ export class InMemoryWriteUnitOfWork implements WriteUnitOfWork {
 
   snapshot() {
     return {
+      captures: [...this.state.captures.values()].map((item) => ({ ...item })),
+      interpretations: [...this.state.interpretations.values()].map(cloneInterpretation),
+      routingProposals: [...this.state.routingProposals.values()].map(cloneRoutingProposal),
+      storedProposals: [...this.state.routingProposals.values()]
+        .map((proposal) => calendarProjection(this.state, proposal))
+        .filter((value): value is StoredCalendarProposal => Boolean(value)),
       calendarPlans: [...this.state.calendarPlans.values()],
       domainEvents: [...this.state.domainEvents.values()],
       appliedProposals: [...this.state.appliedProposals.values()],
-      storedProposals: [...this.state.storedProposals.values()].map(cloneProposal),
     };
   }
 
@@ -69,10 +169,46 @@ export class InMemoryWriteUnitOfWork implements WriteUnitOfWork {
     };
 
     const transaction: WriteTransaction = {
+      getOrCreateCaptureRecord: async (record) => {
+        const existing = [...staged.captures.values()].find(
+          (item) => item.userId === record.userId && item.requestId === record.requestId,
+        );
+        if (existing) return { ...existing };
+
+        maybeFail("CREATE_CAPTURE");
+        if (staged.captures.has(record.captureId)) throw new Error(`Capture ${record.captureId} already exists`);
+        staged.captures.set(record.captureId, { ...record });
+        return { ...record };
+      },
+      getRoutingBundleForCapture: async (captureId, userId) => routingBundle(staged, captureId, userId),
+      createRoutingInterpretation: async (record) => {
+        maybeFail("CREATE_INTERPRETATION");
+        if (staged.interpretations.has(record.interpretationId)) {
+          throw new Error(`Interpretation ${record.interpretationId} already exists`);
+        }
+        const duplicate = [...staged.interpretations.values()].find(
+          (item) => item.captureId === record.captureId && item.userId === record.userId && item.version === record.version,
+        );
+        if (duplicate) throw new Error(`Capture ${record.captureId} already has interpretation version ${record.version}`);
+        staged.interpretations.set(record.interpretationId, cloneInterpretation(record));
+      },
+      createRoutingProposal: async (record) => {
+        maybeFail("CREATE_ROUTING_PROPOSAL");
+        if (staged.routingProposals.has(record.proposalId)) throw new Error(`Proposal ${record.proposalId} already exists`);
+        const capture = staged.captures.get(record.captureId);
+        if (!capture || capture.userId !== record.userId) throw new Error(`Capture ${record.captureId} is unavailable`);
+        if (record.interpretationId) {
+          const interpretation = staged.interpretations.get(record.interpretationId);
+          if (!interpretation || interpretation.captureId !== record.captureId || interpretation.userId !== record.userId) {
+            throw new Error(`Interpretation ${record.interpretationId} is unavailable`);
+          }
+        }
+        staged.routingProposals.set(record.proposalId, cloneRoutingProposal(record));
+      },
       getStoredCalendarProposalForUpdate: async (proposalId, userId) => {
-        const proposal = staged.storedProposals.get(proposalId);
+        const proposal = staged.routingProposals.get(proposalId);
         if (!proposal || proposal.userId !== userId) return undefined;
-        return cloneProposal(proposal);
+        return calendarProjection(staged, proposal);
       },
       findAppliedProposal: async (proposalId) => staged.appliedProposals.get(proposalId),
       createCalendarPlan: async (record) => {
@@ -92,10 +228,10 @@ export class InMemoryWriteUnitOfWork implements WriteUnitOfWork {
       },
       markStoredProposalApplied: async (proposalId, userId, appliedAt, entityId, eventId) => {
         maybeFail("MARK_STORED_APPLIED");
-        const proposal = staged.storedProposals.get(proposalId);
+        const proposal = staged.routingProposals.get(proposalId);
         if (!proposal || proposal.userId !== userId) throw new Error(`Stored proposal ${proposalId} not found`);
         if (proposal.state === "APPLIED") throw new Error(`Stored proposal ${proposalId} was already applied`);
-        staged.storedProposals.set(proposalId, {
+        staged.routingProposals.set(proposalId, {
           ...proposal,
           state: "APPLIED",
           appliedAt,
