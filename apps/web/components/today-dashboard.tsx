@@ -1,12 +1,13 @@
+import Link from "next/link";
 import type { CalendarPreviewItem, EvidenceStage, SourceRef, TodayViewModel, TrustClass } from "../lib/types";
 
 type IconName = "today" | "journey" | "calendar" | "memory" | "you" | "plus" | "compass" | "spark" | "check" | "arrow";
 
-type NavItem = { label: string; icon: IconName; active: boolean };
+type NavItem = { label: string; icon: IconName; active: boolean; href?: string };
 
 const navItems: NavItem[] = [
-  { label: "Today", icon: "today", active: true },
-  { label: "Journey", icon: "journey", active: false },
+  { label: "Today", icon: "today", active: true, href: "/" },
+  { label: "Journey", icon: "journey", active: false, href: "/journey" },
   { label: "Calendar", icon: "calendar", active: false },
   { label: "Memory", icon: "memory", active: false },
   { label: "You", icon: "you", active: false },
@@ -116,7 +117,11 @@ function EvidencePath({ stages }: { stages: EvidenceStage[] }) {
 }
 
 function NavButton({ item }: { item: NavItem }) {
-  return <button className={`nav-button ${item.active ? "active" : ""}`} disabled={!item.active} aria-current={item.active ? "page" : undefined}><Icon name={item.icon} size={20} /><span>{item.label}</span></button>;
+  const content = <><Icon name={item.icon} size={20} /><span>{item.label}</span></>;
+  if (item.href) {
+    return <Link href={item.href} className={`nav-button ${item.active ? "active" : ""}`} aria-current={item.active ? "page" : undefined} style={{ textDecoration: "none", cursor: "pointer" }}>{content}</Link>;
+  }
+  return <button className="nav-button" disabled>{content}</button>;
 }
 
 function AppNavigation() {
@@ -234,7 +239,7 @@ export function TodayDashboard({ model }: { model: TodayViewModel }) {
           <button disabled>Evening review <Icon name="arrow" size={18} /></button>
         </section>
 
-        <footer className="page-footer"><span>Life OS / V3 instrument study</span><span>sample state · provenance visible · writes disabled</span></footer>
+        <footer className="page-footer"><span>Life OS / V3 instrument study</span><span>sample state · provenance visible · no hidden writes</span></footer>
       </main>
     </div>
   );
