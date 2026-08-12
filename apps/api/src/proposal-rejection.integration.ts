@@ -120,7 +120,10 @@ test("rejection is a durable user action with zero canonical life mutation", asy
   const routingIds = ids();
   let tick = 0;
   const clock = {
-    now: () => new Date(Date.parse("2026-08-13T03:31:00.000Z") + ++tick * 1000).toISOString(),
+    // Capture and interpretation consume earlier ticks. Keep the persistence clock
+    // anchored at/after the later trusted rejection action rather than violating
+    // the rejected_at <= recorded_at provenance invariant with an artificial fixture.
+    now: () => new Date(Date.parse("2026-08-13T03:33:00.000Z") + ++tick * 1000).toISOString(),
   };
 
   const capture = await captureAndPropose(
