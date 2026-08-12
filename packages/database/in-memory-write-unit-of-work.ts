@@ -32,17 +32,11 @@ interface MemoryState {
 }
 
 function cloneInterpretation(value: RoutingInterpretationRecord): RoutingInterpretationRecord {
-  return {
-    ...value,
-    observations: value.observations.map((item) => ({ ...item })),
-  };
+  return { ...value, observations: value.observations.map((item) => ({ ...item })) };
 }
 
 function cloneRoutingProposal(value: RoutingProposalRecord): RoutingProposalRecord {
-  return {
-    ...value,
-    payloadJson: structuredClone(value.payloadJson),
-  };
+  return { ...value, payloadJson: structuredClone(value.payloadJson) };
 }
 
 function cloneState(state: MemoryState): MemoryState {
@@ -243,6 +237,9 @@ export class InMemoryWriteUnitOfWork implements WriteUnitOfWork {
 
     const result = await work(transaction);
     this.state = staged;
+    if (localFailurePoint !== "NONE" && this.failurePoint === "NONE") {
+      this.failurePoint = localFailurePoint;
+    }
     return result;
   }
 }
