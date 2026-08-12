@@ -46,6 +46,16 @@ export async function createTrustedWebRequestContext(
   request: UntrustedWebTransportInput,
   dependencies: TrustedWebRequestContextDependencies,
 ): Promise<WriteRequestContext> {
+  // Capture authoritative transport metadata as soon as the trusted backend receives
+  // the request. Authentication may take time, but it must not move receivedAt.
+  const receivedAt = dependencies.clock.now();
+  const requestId = dependencies.requestIds.next();
+
+  requireServerValue(requestId, "requestId");
+  if (!Number.isFinite(Date.parse(receivedAt))) {
+    throw new TrustedTransportConfigurationError("receivedAt must be a valid trusted backend timestamp");
+  }
+
   const credential = request.credential;
   if (typeof credential !== "string" || !credential.trim()) {
     throw new AuthenticationRequiredError();
@@ -62,14 +72,6 @@ export async function createTrustedWebRequestContext(
 
   if (!verified || typeof verified.userId !== "string" || !verified.userId.trim()) {
     throw new AuthenticationRequiredError();
-  }
-
-  const receivedAt = dependencies.clock.now();
-  const requestId = dependencies.requestIds.next();
-
-  requireServerValue(requestId, "requestId");
-  if (!Number.isFinite(Date.parse(receivedAt))) {
-    throw new TrustedTransportConfigurationError("receivedAt must be a valid trusted backend timestamp");
   }
 
   return {
