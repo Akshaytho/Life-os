@@ -45,11 +45,28 @@ export interface CalendarPlanInput {
 }
 
 export interface ApplyStoredProposalCommand { proposalId: string; confirmation: { explicit: boolean }; }
+export interface RejectStoredProposalCommand { proposalId: string; reason?: string; }
 
 export interface StoredCalendarProposal {
   proposalId: string; userId: string; captureId: string; sourceText: string; correlationId: string;
   destination: "CALENDAR"; operation: "CREATE_CALENDAR_PLAN"; approvalMode: ProposalApprovalMode; state: StoredProposalState;
   plan: CalendarPlanInput; createdAt: string; appliedAt?: string; appliedEntityId?: string; appliedEventId?: string;
+}
+
+export interface ProposalRejectionRecord {
+  proposalId: string;
+  userId: string;
+  rejectedAt: string;
+  rejectedByActorId: string;
+  reason?: string;
+}
+
+export interface ProposalRejectionReceipt {
+  proposalId: string;
+  rejectedAt: string;
+  rejectedByActorId: string;
+  reason?: string;
+  idempotentReplay: boolean;
 }
 
 export interface CalendarPlanRecord {
@@ -78,6 +95,10 @@ export interface WriteTransaction {
   getRoutingBundleForCapture(captureId: string, userId: string): Promise<RoutingPersistenceBundle | undefined>;
   createRoutingInterpretation(record: RoutingInterpretationRecord): Promise<void>;
   createRoutingProposal(record: RoutingProposalRecord): Promise<void>;
+  getRoutingProposalForUpdate(proposalId: string, userId: string): Promise<RoutingProposalRecord | undefined>;
+  findProposalRejection(proposalId: string): Promise<ProposalRejectionRecord | undefined>;
+  createProposalRejection(record: ProposalRejectionRecord): Promise<void>;
+  markRoutingProposalRejected(proposalId: string, userId: string): Promise<void>;
   getStoredCalendarProposalForUpdate(proposalId: string, userId: string): Promise<StoredCalendarProposal | undefined>;
   findAppliedProposal(proposalId: string): Promise<AppliedProposalRecord | undefined>;
   createCalendarPlan(record: CalendarPlanRecord): Promise<void>;
