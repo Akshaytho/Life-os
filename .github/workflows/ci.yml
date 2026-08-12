@@ -50,5 +50,45 @@ jobs:
       - name: Test PostgreSQL transaction boundary
         run: npm run test:integration
 
+      - name: Smoke API liveness and database readiness
+        run: |
+          LIFE_OS_ENVIRONMENT=ci PORT=4010 npm run start:api > /tmp/life-os-api.log 2>&1 &
+          API_PID=$!
+          trap 'kill "$API_PID" 2>/dev/null || true' EXIT
+
+          node <<'NODE'
+          const base = 'http://127.0.0.1:4010';
+          const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+          async function waitFor(path, expectedStatus, expectedBody) {
+            let lastError;
+            for (let attempt = 0; attempt < 40; attempt += 1) {
+              try {
+                const response = await fetch(`${base}${path}`);
+                const body = await response.json();
+                if (response.status === expectedStatus && body.status === expectedBody) return;
+                lastError = new Error(`${path} returned ${response.status} ${JSON.stringify(body)}`);
+              } catch (error) {
+                lastError = error;
+              }
+              await sleep(250);
+            }
+            throw lastError ?? new Error(`${path} never became available`);
+          }
+
+          await waitFor('/health/live', 200, 'ok');
+          await waitFor('/health/ready', 200, 'ready');
+          NODE
+
+          kill -TERM "$API_PID"
+          wait "$API_PID" || true
+          trap - EXIT
+
+          if grep -Eq 'postgres://|lifeos_test|DATABASE_URL' /tmp/life-os-api.log; then
+            echo "API log unexpectedly exposed database configuration"
+            cat /tmp/life-os-api.log
+            exit 1
+          fi
+
       - name: Build web
         run: npm run build:web
