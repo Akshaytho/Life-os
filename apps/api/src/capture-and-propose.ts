@@ -21,17 +21,13 @@ export class CaptureProposalPersistenceError extends Error {
   }
 }
 
-export interface CaptureAndProposeCommand {
-  rawText: string;
-}
-
+export interface CaptureAndProposeCommand { rawText: string; }
 export interface CaptureAndProposeDependencies {
   unitOfWork: WriteUnitOfWork;
   interpreter: CaptureInterpreter;
   clock: Clock;
   ids: RoutingIdGenerator;
 }
-
 export interface CaptureAndProposeReceipt {
   captureId: string;
   correlationId: string;
@@ -44,10 +40,7 @@ export interface CaptureAndProposeReceipt {
 const calendarCategories = new Set(["Work", "Creator", "Learning", "Health", "Family", "Friends", "Travel", "Personal", "Rest"]);
 const calendarCommitments = new Set(["Fixed", "Important", "Flexible", "Optional"]);
 const interpreterKinds = new Set(["LOCAL_SAMPLE", "LIFE_OS_AI"]);
-const routingIntents = new Set([
-  "DATED_PLAN", "LEARNING", "DIRECTION_RECONSIDERATION", "HEALTH_OBSERVATION",
-  "DRIFT_SIGNAL", "RAW_THOUGHT", "UNKNOWN",
-]);
+const routingIntents = new Set(["DATED_PLAN", "LEARNING", "DIRECTION_RECONSIDERATION", "HEALTH_OBSERVATION", "DRIFT_SIGNAL", "RAW_THOUGHT", "UNKNOWN"]);
 const certaintySignals = new Set(["TENTATIVE", "LIKELY", "CONFIRMED", "UNSPECIFIED"]);
 const proposalStates = new Set(["PROPOSED", "NEEDS_CONFIRMATION", "READY_TO_APPLY"]);
 const approvalModes = new Set(["REVIEW_AND_APPLY", "EXPLICIT_CONFIRMATION", "HIGH_AUTHORITY_APPROVAL"]);
@@ -74,23 +67,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function validateReadyCalendarPayload(proposal: InterpretedRoutingProposal) {
-  if (!isRecord(proposal.payloadJson)) {
-    throw new CaptureProposalPersistenceError("A ready Calendar proposal must provide a structured payload");
-  }
-
-  const title = proposal.payloadJson.title;
-  const startsAt = proposal.payloadJson.startsAt;
-  const endsAt = proposal.payloadJson.endsAt;
-  const category = proposal.payloadJson.category;
-  const commitment = proposal.payloadJson.commitment;
-
-  if (typeof title !== "string" || !title.trim()) {
-    throw new CaptureProposalPersistenceError("A ready Calendar proposal requires a title");
-  }
+  if (!isRecord(proposal.payloadJson)) throw new CaptureProposalPersistenceError("A ready Calendar proposal must provide a structured payload");
+  const { title, startsAt, endsAt, category, commitment } = proposal.payloadJson;
+  if (typeof title !== "string" || !title.trim()) throw new CaptureProposalPersistenceError("A ready Calendar proposal requires a title");
   if (typeof startsAt !== "string" || typeof endsAt !== "string") {
     throw new CaptureProposalPersistenceError("A ready Calendar proposal requires explicit start and end timestamps");
   }
-
   const start = Date.parse(startsAt);
   const end = Date.parse(endsAt);
   if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
@@ -108,7 +90,6 @@ function validateProposal(proposal: InterpretedRoutingProposal) {
   requireText(proposal.key, "interpreter proposal key");
   requireText(proposal.summary, "proposal summary");
   requireText(proposal.reason, "proposal reason");
-
   if (!proposalStates.has(proposal.state as string)) {
     throw new CaptureProposalPersistenceError(`Interpreter cannot create proposal state ${String(proposal.state)}`);
   }
@@ -118,39 +99,26 @@ function validateProposal(proposal: InterpretedRoutingProposal) {
   if (!trustClasses.has(proposal.targetTrustClass as string)) {
     throw new CaptureProposalPersistenceError(`Unknown proposal trust class ${String(proposal.targetTrustClass)}`);
   }
-  if (!isRecord(proposal.payloadJson)) {
-    throw new CaptureProposalPersistenceError(`Proposal ${proposal.key} payload must be an object`);
-  }
+  if (!isRecord(proposal.payloadJson)) throw new CaptureProposalPersistenceError(`Proposal ${proposal.key} payload must be an object`);
   if ("rawText" in proposal.payloadJson || "sourceText" in proposal.payloadJson) {
     throw new CaptureProposalPersistenceError(`Proposal ${proposal.key} must reference Capture provenance instead of copying raw source text`);
   }
-
   const owners = operationOwners[proposal.operation as ProposedOperation];
   if (!owners || !owners.includes(proposal.destination as RoutingDestination)) {
-    throw new CaptureProposalPersistenceError(
-      `${String(proposal.operation)} cannot be routed to ${String(proposal.destination)}; domain ownership must remain explicit`,
-    );
+    throw new CaptureProposalPersistenceError(`${String(proposal.operation)} cannot be routed to ${String(proposal.destination)}; domain ownership must remain explicit`);
   }
-
   if (proposal.approvalMode === "HIGH_AUTHORITY_APPROVAL" && proposal.state === "READY_TO_APPLY") {
     throw new CaptureProposalPersistenceError("High-authority proposals cannot enter the ordinary ready-to-apply path");
   }
-
   if (proposal.destination === "CALENDAR" && proposal.operation === "CREATE_CALENDAR_PLAN" && proposal.state === "READY_TO_APPLY") {
     validateReadyCalendarPayload(proposal);
   }
 }
 
 function validateInterpretation(value: CaptureInterpretationResult) {
-  if (!interpreterKinds.has(value.interpreter as string)) {
-    throw new CaptureProposalPersistenceError(`Unknown interpreter kind ${String(value.interpreter)}`);
-  }
-  if (!routingIntents.has(value.intent as string)) {
-    throw new CaptureProposalPersistenceError(`Unknown routing intent ${String(value.intent)}`);
-  }
-  if (!certaintySignals.has(value.certainty as string)) {
-    throw new CaptureProposalPersistenceError(`Unknown certainty signal ${String(value.certainty)}`);
-  }
+  if (!interpreterKinds.has(value.interpreter as string)) throw new CaptureProposalPersistenceError(`Unknown interpreter kind ${String(value.interpreter)}`);
+  if (!routingIntents.has(value.intent as string)) throw new CaptureProposalPersistenceError(`Unknown routing intent ${String(value.intent)}`);
+  if (!certaintySignals.has(value.certainty as string)) throw new CaptureProposalPersistenceError(`Unknown certainty signal ${String(value.certainty)}`);
   if (!Number.isFinite(value.confidence) || value.confidence < 0 || value.confidence > 1) {
     throw new CaptureProposalPersistenceError("Interpreter confidence must be between 0 and 1");
   }
@@ -162,13 +130,10 @@ function validateInterpretation(value: CaptureInterpretationResult) {
       throw new CaptureProposalPersistenceError("Interpreter observations must remain OBSERVATION-class data");
     }
   }
-
   const keys = new Set<string>();
   for (const proposal of value.proposals) {
     validateProposal(proposal);
-    if (keys.has(proposal.key)) {
-      throw new CaptureProposalPersistenceError(`Interpreter produced duplicate proposal key ${proposal.key}`);
-    }
+    if (keys.has(proposal.key)) throw new CaptureProposalPersistenceError(`Interpreter produced duplicate proposal key ${proposal.key}`);
     keys.add(proposal.key);
   }
 }
@@ -188,13 +153,8 @@ function validateRequest(command: CaptureAndProposeCommand, context: WriteReques
   requireText(command.rawText, "rawText");
   requireText(context.principal.userId, "requestContext.principal.userId");
   requireText(context.requestId, "requestContext.requestId");
-
-  if (context.principal.actorType !== "USER") {
-    throw new CaptureProposalPersistenceError("Capture creation requires an authenticated user principal");
-  }
-  if (!Number.isFinite(Date.parse(context.receivedAt))) {
-    throw new CaptureProposalPersistenceError("requestContext.receivedAt must be a valid timestamp");
-  }
+  if (context.principal.actorType !== "USER") throw new CaptureProposalPersistenceError("Capture creation requires an authenticated user principal");
+  if (!Number.isFinite(Date.parse(context.receivedAt))) throw new CaptureProposalPersistenceError("requestContext.receivedAt must be a valid timestamp");
 }
 
 export async function captureAndPropose(
@@ -217,22 +177,15 @@ export async function captureAndPropose(
   };
 
   const capture = await dependencies.unitOfWork.run((transaction) => transaction.getOrCreateCaptureRecord(candidate));
-
   if (capture.rawText !== command.rawText || capture.source !== context.source) {
     throw new CaptureProposalPersistenceError("This request ID is already bound to different Capture content");
   }
 
-  const existing = await dependencies.unitOfWork.run((transaction) =>
-    transaction.getRoutingBundleForCapture(capture.captureId, capture.userId),
-  );
+  const existing = await dependencies.unitOfWork.run((transaction) => transaction.getRoutingBundleForCapture(capture.captureId, capture.userId));
   if (existing) return receiptFromBundle(capture, existing, true);
 
-  // Interpretation intentionally happens after Capture commit and outside a DB transaction.
-  // If this call fails, the user's raw words remain durable and can be retried later.
-  const interpreted = await dependencies.interpreter.interpret({
-    rawText: capture.rawText,
-    receivedAt: capture.receivedAt,
-  });
+  // Interpretation happens after the raw Capture commit and outside a DB transaction.
+  const interpreted = await dependencies.interpreter.interpret({ rawText: capture.rawText, receivedAt: capture.receivedAt });
   validateInterpretation(interpreted);
 
   const interpretationId = dependencies.ids.next("interpretation");
@@ -269,12 +222,16 @@ export async function captureAndPropose(
   }));
 
   return dependencies.unitOfWork.run(async (transaction) => {
+    // Serialize all proposal-bundle creation for this Capture. A concurrent request that
+    // interpreted the same Capture waits here, then sees the winner's committed bundle.
+    const locked = await transaction.lockCaptureForRouting(capture.captureId, capture.userId);
+    if (!locked) throw new CaptureProposalPersistenceError("Capture became unavailable before proposal persistence");
+
     const raced = await transaction.getRoutingBundleForCapture(capture.captureId, capture.userId);
     if (raced) return receiptFromBundle(capture, raced, true);
 
     await transaction.createRoutingInterpretation(interpretation);
     for (const proposal of proposals) await transaction.createRoutingProposal(proposal);
-
     return receiptFromBundle(capture, { interpretation, proposals }, false);
   });
 }
