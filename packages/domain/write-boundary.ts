@@ -46,6 +46,7 @@ export interface CaptureRecord {
   source: WriteSource;
   correlationId: string;
   requestId: string;
+  receivedAt: string;
   recordedAt: string;
 }
 
