@@ -24,6 +24,7 @@ type CaptureRow = {
   source: CaptureRecord["source"];
   correlation_id: string;
   request_id: string;
+  received_at: Date;
   recorded_at: Date;
 };
 
@@ -69,6 +70,7 @@ function captureFromRow(row: CaptureRow): CaptureRecord {
     source: row.source,
     correlationId: row.correlation_id,
     requestId: row.request_id,
+    receivedAt: iso(row.received_at),
     recordedAt: iso(row.recorded_at),
   };
 }
@@ -117,14 +119,23 @@ function transactionFor(client: PoolClient): WriteTransaction {
     async getOrCreateCaptureRecord(record) {
       await client.query(
         `INSERT INTO capture_record
-          (capture_id, user_id, raw_text, source, correlation_id, request_id, recorded_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+          (capture_id, user_id, raw_text, source, correlation_id, request_id, received_at, recorded_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          ON CONFLICT (user_id, request_id) DO NOTHING`,
-        [record.captureId, record.userId, record.rawText, record.source, record.correlationId, record.requestId, record.recordedAt],
+        [
+          record.captureId,
+          record.userId,
+          record.rawText,
+          record.source,
+          record.correlationId,
+          record.requestId,
+          record.receivedAt,
+          record.recordedAt,
+        ],
       );
 
       const result = await client.query<CaptureRow>(
-        `SELECT capture_id, user_id, raw_text, source, correlation_id, request_id, recorded_at
+        `SELECT capture_id, user_id, raw_text, source, correlation_id, request_id, received_at, recorded_at
            FROM capture_record
           WHERE user_id = $1 AND request_id = $2`,
         [record.userId, record.requestId],
