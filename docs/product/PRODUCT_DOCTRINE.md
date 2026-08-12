@@ -1,8 +1,106 @@
-# Life OS — Product Doctrine
+# Life OS — Canonical Product Artifact
 
-This document consolidates the product decisions that must remain stable as implementation evolves. It exists so a long conversation, a new UI experiment, or a new AI idea cannot silently replace earlier agreements.
+**Artifact ID:** `LIFE-OS-CANON-001`  
+**Version:** `1.1.0`  
+**Status:** `ACTIVE`  
+**Last updated:** `2026-08-12`  
+**Authority:** Canonical product doctrine for product, UX, AI behavior, domain ownership and implementation decisions.
 
-If a future design conflicts with this doctrine, the design must change or the doctrine must be deliberately revised through an explicit product decision.
+This is the durable artifact against which every significant Life OS design, feature, workflow and architecture change must be compared.
+
+It consolidates product decisions that must remain stable as implementation evolves. A long conversation, a new UI experiment, a new AI idea, or a convenient implementation shortcut must not silently replace earlier agreements.
+
+If a future idea conflicts with this artifact, one of two things must happen before implementation:
+
+1. the idea changes to comply with the artifact; or
+2. the user explicitly decides to supersede the existing rule, this artifact is updated and versioned, and subsequent work compares against the new version.
+
+---
+
+## 0. Canonical Artifact Operating Rule
+
+This rule is mandatory for future Life OS development.
+
+### Before implementation
+
+For every meaningful feature, screen, workflow, AI behavior, data-model change or architectural change:
+
+1. Read the current `ACTIVE` version of this artifact.
+2. Identify which artifact sections the proposed work touches.
+3. Compare the proposal against those sections.
+4. Classify each material change as:
+   - **ALIGNED** — directly implements an existing rule.
+   - **REFINEMENT** — clarifies or improves implementation without changing ownership or meaning.
+   - **EXTENSION** — adds a new capability without contradicting existing rules.
+   - **CONFLICT** — contradicts a current rule.
+   - **SUPERSEDING DECISION** — intentionally replaces a current rule after explicit user agreement.
+5. Do not implement unresolved `CONFLICT` items.
+6. If the user makes a new finalized decision that changes the doctrine, update this artifact **before or in the same PR as** the implementation and bump the artifact version.
+
+### During implementation
+
+Implementation must preserve:
+
+- domain ownership defined here
+- trust / authority boundaries
+- provenance
+- progressive disclosure
+- adaptive data shape
+- Life OS AI vs ChatGPT responsibility split
+- mobile-first design rules
+- privacy and approval constraints
+
+Sample data must not accidentally become product doctrine.
+
+### Before merge
+
+Perform a second comparison between the actual implementation and the current artifact:
+
+1. Compare behavior, not only code names.
+2. Compare the rendered UI where relevant.
+3. Check whether the implementation introduced a hidden new product rule.
+4. Check whether sample content made the UI rigid.
+5. Check whether any AI behavior gained more authority than intended.
+6. Record the artifact version used for review.
+7. Resolve deviations before merge, or deliberately update the artifact through an explicit product decision.
+
+### Artifact update loop
+
+The permanent loop is:
+
+```text
+Current canonical artifact
+        ↓
+Proposed change
+        ↓
+Pre-build comparison
+        ↓
+Aligned? ── no ──> explicit product decision
+  │                       ↓
+ yes              update + version artifact
+  │                       ↓
+  └───────────────> implementation
+                          ↓
+                 rendered/code validation
+                          ↓
+                 post-build comparison
+                          ↓
+                       merge
+                          ↓
+                 new canonical baseline
+```
+
+### Versioning
+
+Use semantic-style product-artifact versions:
+
+- **PATCH** — wording/clarification with no product-behavior change.
+- **MINOR** — additive/refinement decision that preserves existing responsibilities.
+- **MAJOR** — intentional change to a core responsibility, trust boundary, AI role, navigation ownership or architecture invariant.
+
+Every version-changing update must add a short entry to the change log at the end of this artifact.
+
+---
 
 ## 1. Product purpose
 
@@ -435,3 +533,17 @@ New product ideas should be classified as one of:
 A conflict must not be implemented silently.
 
 Before major new screens or workflows, check them against this document, the PRD, architecture ADRs, security model and relevant domain-specific design docs.
+
+## 19. Artifact change log
+
+### 1.1.0 — 2026-08-12
+
+- Promoted the Product Doctrine into the versioned canonical artifact.
+- Added mandatory pre-implementation and post-implementation comparison rules.
+- Added artifact versioning and explicit conflict/supersession handling.
+- Added the rule that sample data must never become accidental product doctrine.
+
+### 1.0.0 — 2026-08-12
+
+- Consolidated the finalized Life OS product doctrine from the PRD, architecture decisions and product discussions.
+- Preserved navigation ownership, Life OS AI vs ChatGPT roles, two-way MCP loop, adaptive learning, progressive disclosure, trust semantics, memory authority and architecture invariants.
