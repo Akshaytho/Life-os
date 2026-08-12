@@ -50,6 +50,7 @@ export function JourneyOverview({ model }: { model: JourneyViewModel }) {
   const activePhase = model.journey.phases.find((phase) => phase.state === "ACTIVE") ?? model.journey.phases[0];
   const latestPractice = model.practices[0];
   const latestLearning = model.learnings[0];
+  const phaseCount = String(model.journey.phases.length).padStart(2, "0");
 
   return (
     <div className="life-app">
@@ -75,9 +76,12 @@ export function JourneyOverview({ model }: { model: JourneyViewModel }) {
         </section>
 
         <section className={styles.nowSection}>
-          <div className={styles.nowTopline}><span>NOW</span><strong>ONE ACTIVE CAPABILITY</strong></div>
+          <div className={styles.nowTopline}>
+            <span>NOW</span>
+            <Link href="/journey/travel-creator/sound-design" className={styles.detailLink}>OPEN DETAIL <Icon name="arrow" size={12} /></Link>
+          </div>
           <div className={styles.capabilityGrid}>
-            <div className={styles.phaseIndex}>{activePhase.index}</div>
+            <div className={styles.phaseIndex}><strong>{activePhase.index}</strong><span>/ {phaseCount}</span></div>
             <div className={styles.capabilityCopy}>
               <span>{activePhase.label.toUpperCase()}</span>
               <h2>{model.activeSkill.activeTechnique.label}</h2>
@@ -97,10 +101,6 @@ export function JourneyOverview({ model }: { model: JourneyViewModel }) {
             <strong>{model.nextExperiment.title}</strong>
             <p>{model.nextExperiment.instruction}</p>
           </div>
-
-          <Link href="/journey/travel-creator/sound-design" className={styles.openCapability}>
-            <span>Open Sound Design</span><Icon name="arrow" size={18} />
-          </Link>
         </section>
 
         <section className={styles.recentSection}>
