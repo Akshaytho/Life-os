@@ -32,7 +32,7 @@ jobs:
 
       - name: Start Life OS
         run: |
-          npm run dev:web -- --hostname 0.0.0.0 > /tmp/life-os-web.log 2>&1 &
+          (cd apps/web && npm run dev -- --hostname 0.0.0.0) > /tmp/life-os-web.log 2>&1 &
           for i in {1..60}; do
             if curl --fail --silent http://127.0.0.1:3000 > /dev/null; then
               exit 0
