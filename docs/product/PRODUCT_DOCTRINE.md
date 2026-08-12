@@ -1,9 +1,9 @@
 # Life OS — Canonical Product Artifact
 
 **Artifact ID:** `LIFE-OS-CANON-001`  
-**Version:** `1.1.0`  
+**Version:** `1.2.0`  
 **Status:** `ACTIVE`  
-**Last updated:** `2026-08-12`  
+**Last updated:** `2026-08-13`  
 **Authority:** Canonical product doctrine for product, UX, AI behavior, domain ownership and implementation decisions.
 
 This is the durable artifact against which every significant Life OS design, feature, workflow and architecture change must be compared.
@@ -463,6 +463,24 @@ Correlation and causation are preserved for explainability.
 
 Technical/security logs are separate from the user's life timeline.
 
+### Interaction & Change Ledger
+
+Life OS must maintain an inspectable, user-facing history of meaningful interactions and resulting changes. This ledger answers what the user said or did, what Life OS interpreted, what it proposed, what the user approved/rejected/edited, what actually changed, which domain owns the result, who/what caused it, and why.
+
+The ledger is broader than canonical domain events: it may include meaningful no-write outcomes such as a rejected suggestion, a clarification request, or a ChatGPT session that produced no durable update. Canonical domain events remain the authoritative history of committed state changes.
+
+The user-visible ledger and technical/developer telemetry are separate layers. Technical details such as request latency, endpoint traces, database retries, deployment health and exceptions must not appear as the user's Life Timeline. They may be correlated through request/correlation/capture/proposal/event identifiers for debugging.
+
+Derived screen changes must be explainable through their source state. For example, Today may change because a Calendar event was added; the history should distinguish the Calendar canonical change from the derived Today projection change.
+
+Use progressive disclosure: a glance shows the meaningful change, a summary shows the user/Life OS interaction and consequence, and a full trace can reveal Capture → interpretation → proposal → user action → domain event → affected projections.
+
+The ledger also serves as a product-development feedback instrument. With appropriate privacy controls, synthetic/test data during development, and later explicit user consent for real-use debugging, it can be used to compare user intent, Life OS behavior, canonical result, rendered UI, user correction/feedback, and deployment version. This enables continuous development based on observed behavior rather than sample assumptions.
+
+Meaningful system outcomes should be correlatable to software/routing/AI versions where useful for debugging, without changing the life-history meaning of the event. No production personal ledger content belongs in GitHub or ordinary CI fixtures.
+
+The detailed companion specification is `docs/product/INTERACTION_CHANGE_LEDGER_V1.md`.
+
 ## 15. AI independence and privacy
 
 Life OS core functionality must remain useful when AI is disabled or unavailable.
@@ -535,6 +553,14 @@ A conflict must not be implemented silently.
 Before major new screens or workflows, check them against this document, the PRD, architecture ADRs, security model and relevant domain-specific design docs.
 
 ## 19. Artifact change log
+
+### 1.2.0 — 2026-08-13
+
+- Added the user-visible Interaction & Change Ledger as a canonical cross-cutting trust requirement.
+- Separated human-readable Life OS change history from technical/developer telemetry while requiring correlation for debugging.
+- Added source-change versus derived-screen-change explainability.
+- Added the development/deployment feedback loop so real behavior and user corrections can guide iteration without turning private life content into unrestricted analytics.
+- Added `docs/product/INTERACTION_CHANGE_LEDGER_V1.md` as the detailed companion specification.
 
 ### 1.1.0 — 2026-08-12
 
