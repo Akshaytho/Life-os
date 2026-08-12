@@ -3,7 +3,11 @@ import type {
   AppliedProposalRecord,
   CalendarPlanInput,
   CalendarPlanRecord,
+  CaptureRecord,
   DomainEventRecord,
+  RoutingInterpretationRecord,
+  RoutingPersistenceBundle,
+  RoutingProposalRecord,
   StoredCalendarProposal,
   WriteTransaction,
   WriteUnitOfWork,
@@ -13,8 +17,201 @@ function iso(value: Date | string): string {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
 }
 
+type CaptureRow = {
+  capture_id: string;
+  user_id: string;
+  raw_text: string;
+  source: CaptureRecord["source"];
+  correlation_id: string;
+  request_id: string;
+  recorded_at: Date;
+};
+
+type InterpretationRow = {
+  interpretation_id: string;
+  capture_id: string;
+  user_id: string;
+  version: number;
+  interpreter: RoutingInterpretationRecord["interpreter"];
+  intent: RoutingInterpretationRecord["intent"];
+  certainty: RoutingInterpretationRecord["certainty"];
+  confidence: number;
+  observations_json: RoutingInterpretationRecord["observations"];
+  clarification: string | null;
+  created_at: Date;
+};
+
+type ProposalRow = {
+  proposal_id: string;
+  interpreter_proposal_key: string;
+  user_id: string;
+  capture_id: string;
+  interpretation_id: string | null;
+  destination: RoutingProposalRecord["destination"];
+  operation: RoutingProposalRecord["operation"];
+  summary: string;
+  target_trust_class: RoutingProposalRecord["targetTrustClass"];
+  approval_mode: RoutingProposalRecord["approvalMode"];
+  state: RoutingProposalRecord["state"];
+  reason: string;
+  payload_json: Record<string, unknown>;
+  created_at: Date;
+  applied_at: Date | null;
+  applied_entity_id: string | null;
+  applied_event_id: string | null;
+};
+
+function captureFromRow(row: CaptureRow): CaptureRecord {
+  return {
+    captureId: row.capture_id,
+    userId: row.user_id,
+    rawText: row.raw_text,
+    source: row.source,
+    correlationId: row.correlation_id,
+    requestId: row.request_id,
+    recordedAt: iso(row.recorded_at),
+  };
+}
+
+function interpretationFromRow(row: InterpretationRow): RoutingInterpretationRecord {
+  if (row.version !== 1) throw new Error(`Unsupported routing interpretation version ${row.version}`);
+  return {
+    interpretationId: row.interpretation_id,
+    captureId: row.capture_id,
+    userId: row.user_id,
+    version: 1,
+    interpreter: row.interpreter,
+    intent: row.intent,
+    certainty: row.certainty,
+    confidence: row.confidence,
+    observations: row.observations_json,
+    clarification: row.clarification ?? undefined,
+    createdAt: iso(row.created_at),
+  };
+}
+
+function proposalFromRow(row: ProposalRow): RoutingProposalRecord {
+  return {
+    proposalId: row.proposal_id,
+    interpreterProposalKey: row.interpreter_proposal_key,
+    userId: row.user_id,
+    captureId: row.capture_id,
+    interpretationId: row.interpretation_id ?? undefined,
+    destination: row.destination,
+    operation: row.operation,
+    summary: row.summary,
+    targetTrustClass: row.target_trust_class,
+    approvalMode: row.approval_mode,
+    state: row.state,
+    reason: row.reason,
+    payloadJson: row.payload_json,
+    createdAt: iso(row.created_at),
+    appliedAt: row.applied_at ? iso(row.applied_at) : undefined,
+    appliedEntityId: row.applied_entity_id ?? undefined,
+    appliedEventId: row.applied_event_id ?? undefined,
+  };
+}
+
 function transactionFor(client: PoolClient): WriteTransaction {
   return {
+    async getOrCreateCaptureRecord(record) {
+      await client.query(
+        `INSERT INTO capture_record
+          (capture_id, user_id, raw_text, source, correlation_id, request_id, recorded_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         ON CONFLICT (user_id, request_id) DO NOTHING`,
+        [record.captureId, record.userId, record.rawText, record.source, record.correlationId, record.requestId, record.recordedAt],
+      );
+
+      const result = await client.query<CaptureRow>(
+        `SELECT capture_id, user_id, raw_text, source, correlation_id, request_id, recorded_at
+           FROM capture_record
+          WHERE user_id = $1 AND request_id = $2`,
+        [record.userId, record.requestId],
+      );
+      const row = result.rows[0];
+      if (!row) throw new Error("Capture persistence did not return the requested record");
+      return captureFromRow(row);
+    },
+
+    async getRoutingBundleForCapture(captureId, userId): Promise<RoutingPersistenceBundle | undefined> {
+      const interpretationResult = await client.query<InterpretationRow>(
+        `SELECT interpretation_id, capture_id, user_id, version, interpreter, intent, certainty,
+                confidence, observations_json, clarification, created_at
+           FROM routing_interpretation
+          WHERE capture_id = $1 AND user_id = $2 AND version = 1`,
+        [captureId, userId],
+      );
+      const interpretationRow = interpretationResult.rows[0];
+      if (!interpretationRow) return undefined;
+
+      const proposalResult = await client.query<ProposalRow>(
+        `SELECT proposal_id, interpreter_proposal_key, user_id, capture_id, interpretation_id,
+                destination, operation, summary, target_trust_class, approval_mode, state,
+                reason, payload_json, created_at, applied_at, applied_entity_id, applied_event_id
+           FROM routing_proposal
+          WHERE interpretation_id = $1 AND user_id = $2
+          ORDER BY created_at, proposal_id`,
+        [interpretationRow.interpretation_id, userId],
+      );
+
+      return {
+        interpretation: interpretationFromRow(interpretationRow),
+        proposals: proposalResult.rows.map(proposalFromRow),
+      };
+    },
+
+    async createRoutingInterpretation(record) {
+      await client.query(
+        `INSERT INTO routing_interpretation
+          (interpretation_id, capture_id, user_id, version, interpreter, intent, certainty,
+           confidence, observations_json, clarification, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11)`,
+        [
+          record.interpretationId,
+          record.captureId,
+          record.userId,
+          record.version,
+          record.interpreter,
+          record.intent,
+          record.certainty,
+          record.confidence,
+          JSON.stringify(record.observations),
+          record.clarification ?? null,
+          record.createdAt,
+        ],
+      );
+    },
+
+    async createRoutingProposal(record) {
+      await client.query(
+        `INSERT INTO routing_proposal
+          (proposal_id, interpreter_proposal_key, user_id, capture_id, interpretation_id,
+           destination, operation, summary, target_trust_class, approval_mode, state,
+           reason, payload_json, created_at, applied_at, applied_entity_id, applied_event_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14, $15, $16, $17)`,
+        [
+          record.proposalId,
+          record.interpreterProposalKey,
+          record.userId,
+          record.captureId,
+          record.interpretationId ?? null,
+          record.destination,
+          record.operation,
+          record.summary,
+          record.targetTrustClass,
+          record.approvalMode,
+          record.state,
+          record.reason,
+          JSON.stringify(record.payloadJson),
+          record.createdAt,
+          record.appliedAt ?? null,
+          record.appliedEntityId ?? null,
+          record.appliedEventId ?? null,
+        ],
+      );
+    },
+
     async getStoredCalendarProposalForUpdate(proposalId, userId) {
       const result = await client.query<{
         proposal_id: string;
@@ -38,7 +235,10 @@ function transactionFor(client: PoolClient): WriteTransaction {
            FROM routing_proposal rp
            JOIN capture_record c
              ON c.capture_id = rp.capture_id AND c.user_id = rp.user_id
-          WHERE rp.proposal_id = $1 AND rp.user_id = $2
+          WHERE rp.proposal_id = $1
+            AND rp.user_id = $2
+            AND rp.destination = 'CALENDAR'
+            AND rp.operation = 'CREATE_CALENDAR_PLAN'
           FOR UPDATE OF rp`,
         [proposalId, userId],
       );
