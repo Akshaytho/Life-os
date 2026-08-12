@@ -223,10 +223,11 @@ function transactionFor(client: PoolClient): WriteTransaction {
         proposal_id: string;
         user_id: string;
         rejected_at: Date;
+        recorded_at: Date;
         rejected_by_actor_id: string;
         reason: string | null;
       }>(
-        `SELECT proposal_id, user_id, rejected_at, rejected_by_actor_id, reason
+        `SELECT proposal_id, user_id, rejected_at, recorded_at, rejected_by_actor_id, reason
            FROM proposal_rejection
           WHERE proposal_id = $1`,
         [proposalId],
@@ -237,6 +238,7 @@ function transactionFor(client: PoolClient): WriteTransaction {
         proposalId: row.proposal_id,
         userId: row.user_id,
         rejectedAt: iso(row.rejected_at),
+        recordedAt: iso(row.recorded_at),
         rejectedByActorId: row.rejected_by_actor_id,
         reason: row.reason ?? undefined,
       } satisfies ProposalRejectionRecord;
@@ -245,9 +247,10 @@ function transactionFor(client: PoolClient): WriteTransaction {
     async createProposalRejection(record) {
       await client.query(
         `INSERT INTO proposal_rejection
-          (proposal_id, user_id, rejected_at, rejected_by_actor_id, reason)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [record.proposalId, record.userId, record.rejectedAt, record.rejectedByActorId, record.reason ?? null],
+          (proposal_id, user_id, rejected_at, recorded_at, rejected_by_actor_id, reason)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [record.proposalId, record.userId, record.rejectedAt, record.recordedAt,
+          record.rejectedByActorId, record.reason ?? null],
       );
     },
 
