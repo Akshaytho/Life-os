@@ -11,7 +11,7 @@ const navItems: NavItem[] = [
   { label: "Today", icon: "today", href: "/", match: (path) => path === "/" },
   { label: "Journey", icon: "journey", href: "/journey", match: (path) => path.startsWith("/journey") },
   { label: "Calendar", icon: "calendar", href: "/calendar", match: (path) => path.startsWith("/calendar") },
-  { label: "Memory", icon: "memory" },
+  { label: "Memory", icon: "memory", href: "/memory", match: (path) => path.startsWith("/memory") },
   { label: "You", icon: "you" },
 ];
 
