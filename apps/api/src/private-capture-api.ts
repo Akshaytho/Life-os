@@ -243,7 +243,6 @@ export async function handlePrivateCaptureRequest(
       interpretationId: receipt.interpretationId,
       proposalIds: receipt.proposalIds,
       proposalStates: receipt.proposalStates,
-      clarification: receipt.clarification,
     });
   } catch (error) {
     mapFailure(error, response);
