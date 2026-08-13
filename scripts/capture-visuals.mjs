@@ -48,6 +48,34 @@ const pages = [
       'DERIVED / LOWER AUTHORITY',
     ],
   },
+  {
+    name: 'interaction-ledger-committed',
+    path: '/interactions/sample?state=committed',
+    expected: [
+      'COMMITTED',
+      'A canonical change was made.',
+      'YOU SAID',
+      'LIFE OS SAW',
+      'LIFE OS PROPOSED',
+      'YOU CHOSE',
+      'CALENDAR CHANGED',
+      'Not recorded yet.',
+    ],
+  },
+  {
+    name: 'interaction-ledger-rejected',
+    path: '/interactions/sample?state=rejected',
+    expected: [
+      'CLOSED · NO CHANGE',
+      'Nothing in your canonical life state changed.',
+      'YOU SAID',
+      'LIFE OS SAW',
+      'LIFE OS PROPOSED',
+      'YOU CHOSE',
+      'No canonical change',
+      'Not recorded yet.',
+    ],
+  },
 ];
 
 const targets = [
