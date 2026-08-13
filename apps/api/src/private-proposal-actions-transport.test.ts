@@ -96,4 +96,4 @@ test("provider outage and wrong media type are sanitized", async () => {
     assert.equal(media.status, 415);
     assert.deepEqual(await media.json(), { status: "unsupported_media_type" });
   });
-}
+});
