@@ -36,6 +36,18 @@ const pages = [
   { name: 'calendar-week', path: '/calendar?lens=week', expected: ['WEEK / RHYTHM'] },
   { name: 'calendar-month', path: '/calendar?lens=month', expected: ['MONTH / TEXTURE'] },
   { name: 'calendar-year', path: '/calendar?lens=year', expected: ['YEAR / SEASONS'] },
+  {
+    name: 'memory-overview',
+    path: '/memory',
+    expected: [
+      'MEMORY / RECALL',
+      'RECALL / ASK MEMORY',
+      'TRUSTED NOW',
+      'WORTH KEEPING',
+      'TIME MEMORY',
+      'DERIVED / LOWER AUTHORITY',
+    ],
+  },
 ];
 
 const targets = [
