@@ -27,35 +27,45 @@ function pathOf(request: IncomingMessage): string {
   }
 }
 
+/**
+ * Handles only the public health routes. Returning false means the request belongs
+ * to a different API surface and no response has been written yet.
+ */
+export async function handleLifeOsHealthRequest(
+  request: IncomingMessage,
+  response: ServerResponse,
+  dependencies: ApiHealthDependencies,
+): Promise<boolean> {
+  const path = pathOf(request);
+  if (path !== "/health/live" && path !== "/health/ready") return false;
+
+  const method = request.method ?? "GET";
+  const headOnly = method === "HEAD";
+  if (method !== "GET" && method !== "HEAD") {
+    response.setHeader("allow", "GET, HEAD");
+    json(response, 405, { status: "method_not_allowed" }, headOnly);
+    return true;
+  }
+
+  if (path === "/health/live") {
+    json(response, 200, { status: "ok" }, headOnly);
+    return true;
+  }
+
+  try {
+    const ready = await dependencies.readiness.check();
+    json(response, ready ? 200 : 503, { status: ready ? "ready" : "not_ready" }, headOnly);
+  } catch {
+    // Readiness is deliberately sanitized. Database/provider errors belong to
+    // technical telemetry, not to an unauthenticated public health response.
+    json(response, 503, { status: "not_ready" }, headOnly);
+  }
+  return true;
+}
+
 export function createLifeOsHealthServer(dependencies: ApiHealthDependencies): Server {
   return createServer(async (request, response) => {
-    const method = request.method ?? "GET";
-    const headOnly = method === "HEAD";
-    const path = pathOf(request);
-
-    if (method !== "GET" && method !== "HEAD") {
-      response.setHeader("allow", "GET, HEAD");
-      json(response, 405, { status: "method_not_allowed" }, headOnly);
-      return;
-    }
-
-    if (path === "/health/live") {
-      json(response, 200, { status: "ok" }, headOnly);
-      return;
-    }
-
-    if (path === "/health/ready") {
-      try {
-        const ready = await dependencies.readiness.check();
-        json(response, ready ? 200 : 503, { status: ready ? "ready" : "not_ready" }, headOnly);
-      } catch {
-        // Readiness is deliberately sanitized. Database/provider errors belong to
-        // technical telemetry, not to an unauthenticated public health response.
-        json(response, 503, { status: "not_ready" }, headOnly);
-      }
-      return;
-    }
-
-    json(response, 404, { status: "not_found" }, headOnly);
+    if (await handleLifeOsHealthRequest(request, response, dependencies)) return;
+    json(response, 404, { status: "not_found" }, request.method === "HEAD");
   });
 }

@@ -9,7 +9,10 @@ import { PostgresWriteUnitOfWork } from "../../../packages/database/postgres-wri
 import type { IdGenerator, RoutingIdGenerator } from "../../../packages/domain/write-boundary";
 import type { SessionVerifier } from "../../../packages/domain/trusted-transport-auth";
 import type { CaptureInterpreter, CaptureInterpreterInput } from "../../../packages/intelligence/capture-interpreter";
+import { createPrivateDatabaseReadinessProbe } from "./api-runtime";
+import { createLifeOsApiServer } from "./api-server";
 import { createLifeOsPrivateApiServer } from "./private-api";
+import { createPrivateApiRuntimeDependencies } from "./private-api-runtime";
 
 const schema = "private_api_composition_test";
 const appRole = "lifeos_private_api_composition_app";
@@ -151,6 +154,19 @@ export class PrivateApiPostgresFixture {
     await this.adminPool.end();
   }
 
+  private async listen(server: ReturnType<typeof createLifeOsPrivateApiServer>) {
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    const address = server.address() as AddressInfo;
+    return {
+      baseUrl: `http://127.0.0.1:${address.port}`,
+      close: async () => {
+        server.close();
+        await once(server, "close");
+      },
+    };
+  }
+
   async startServer(captureInterpreter: CaptureInterpreter = interpreter) {
     const unitOfWork = new PostgresWriteUnitOfWork(this.appPool);
     const server = createLifeOsPrivateApiServer({
@@ -175,16 +191,33 @@ export class PrivateApiPostgresFixture {
       },
     });
 
-    server.listen(0, "127.0.0.1");
-    await once(server, "listening");
-    const address = server.address() as AddressInfo;
-    return {
-      baseUrl: `http://127.0.0.1:${address.port}`,
-      close: async () => {
-        server.close();
-        await once(server, "close");
+    return this.listen(server);
+  }
+
+  async startComposedRuntimeServer() {
+    const runtime = { environment: "ci" as const, releaseSha: "private-runtime-composition", platform: "CI" as const };
+    const readiness = createPrivateDatabaseReadinessProbe(this.appPool);
+    if (!(await readiness.check())) throw new Error("Synthetic application role did not satisfy private runtime readiness");
+
+    let uuid = 0;
+    let monotonic = 2000;
+    const privateApi = createPrivateApiRuntimeDependencies(
+      this.appPool,
+      {},
+      runtime,
+      { emit: (event) => { this.telemetry.push(structuredClone(event)); } },
+      {
+        sessionVerifier: new TokenVerifier(),
+        randomUuid: () => `00000000-0000-4000-8000-${String(++uuid).padStart(12, "0")}`,
+        now: () => new Date("2026-08-14T02:10:00.000Z"),
+        monotonicNowMs: () => ++monotonic,
       },
-    };
+    );
+
+    return this.listen(createLifeOsApiServer({
+      health: { provenance: runtime, readiness },
+      privateApi,
+    }));
   }
 }
 
