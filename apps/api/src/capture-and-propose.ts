@@ -12,7 +12,7 @@ import type {
   CaptureInterpreter,
   InterpretedRoutingProposal,
 } from "../../../packages/intelligence/capture-interpreter";
-import type { ProposedOperation, RoutingDestination } from "../../../packages/contracts/input-routing";
+import type { ProposedOperation, RoutingDestination, RoutingInterpreter } from "../../../packages/contracts/input-routing";
 
 export class CaptureProposalPersistenceError extends Error {
   constructor(message: string) {
@@ -39,7 +39,7 @@ export interface CaptureAndProposeReceipt {
 
 const calendarCategories = new Set(["Work", "Creator", "Learning", "Health", "Family", "Friends", "Travel", "Personal", "Rest"]);
 const calendarCommitments = new Set(["Fixed", "Important", "Flexible", "Optional"]);
-const interpreterKinds = new Set(["LOCAL_SAMPLE", "LIFE_OS_AI"]);
+const interpreterKinds: ReadonlySet<RoutingInterpreter> = new Set(["LOCAL_SAMPLE", "SAFE_FALLBACK", "LIFE_OS_AI"]);
 const routingIntents = new Set(["DATED_PLAN", "LEARNING", "DIRECTION_RECONSIDERATION", "HEALTH_OBSERVATION", "DRIFT_SIGNAL", "RAW_THOUGHT", "UNKNOWN"]);
 const certaintySignals = new Set(["TENTATIVE", "LIKELY", "CONFIRMED", "UNSPECIFIED"]);
 const proposalStates = new Set(["PROPOSED", "NEEDS_CONFIRMATION", "READY_TO_APPLY"]);
@@ -116,7 +116,7 @@ function validateProposal(proposal: InterpretedRoutingProposal) {
 }
 
 function validateInterpretation(value: CaptureInterpretationResult) {
-  if (!interpreterKinds.has(value.interpreter as string)) throw new CaptureProposalPersistenceError(`Unknown interpreter kind ${String(value.interpreter)}`);
+  if (!interpreterKinds.has(value.interpreter)) throw new CaptureProposalPersistenceError(`Unknown interpreter kind ${String(value.interpreter)}`);
   if (!routingIntents.has(value.intent as string)) throw new CaptureProposalPersistenceError(`Unknown routing intent ${String(value.intent)}`);
   if (!certaintySignals.has(value.certainty as string)) throw new CaptureProposalPersistenceError(`Unknown certainty signal ${String(value.certainty)}`);
   if (!Number.isFinite(value.confidence) || value.confidence < 0 || value.confidence > 1) {
