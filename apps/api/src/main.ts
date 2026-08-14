@@ -1,7 +1,16 @@
 import { once } from "node:events";
 import { Pool } from "pg";
-import { createLifeOsHealthServer } from "./api-health";
-import { closePool, createDatabaseReadinessProbe, databaseUrlForRuntime, parsePort } from "./api-runtime";
+import { createLifeOsApiServer } from "./api-server";
+import {
+  ApiRuntimeConfigurationError,
+  closePool,
+  createDatabaseReadinessProbe,
+  createPrivateDatabaseReadinessProbe,
+  databaseUrlForRuntime,
+  parsePort,
+  privateApiEnabledForRuntime,
+} from "./api-runtime";
+import { createPrivateApiRuntimeDependencies } from "./private-api-runtime";
 import { resolveRuntimeProvenance } from "./runtime-provenance";
 import { createConsoleTechnicalTelemetrySink } from "./technical-telemetry";
 
@@ -11,9 +20,31 @@ async function main() {
   const now = () => new Date().toISOString();
   const port = parsePort(process.env.PORT);
   const databaseUrl = databaseUrlForRuntime(process.env);
+  const privateApiEnabled = privateApiEnabledForRuntime(process.env, provenance);
   const pool = databaseUrl ? new Pool({ connectionString: databaseUrl }) : undefined;
-  const readiness = createDatabaseReadinessProbe(pool);
-  const server = createLifeOsHealthServer({ provenance, readiness });
+
+  if (privateApiEnabled && !pool) {
+    throw new ApiRuntimeConfigurationError("DATABASE_URL is required when the private API is enabled");
+  }
+
+  const readiness = privateApiEnabled
+    ? createPrivateDatabaseReadinessProbe(pool!)
+    : createDatabaseReadinessProbe(pool);
+
+  const privateApi = privateApiEnabled
+    ? createPrivateApiRuntimeDependencies(pool!, process.env, provenance, telemetry)
+    : undefined;
+
+  // Do not listen with a private surface when the connected application role cannot
+  // prove the reviewed RLS/ownership boundary. Readiness continues checking after start.
+  if (privateApiEnabled && !(await readiness.check())) {
+    throw new ApiRuntimeConfigurationError("Private API database authorization readiness failed");
+  }
+
+  const server = createLifeOsApiServer({
+    health: { provenance, readiness },
+    privateApi,
+  });
 
   let shuttingDown = false;
   const shutdown = async (signal: "SIGTERM" | "SIGINT") => {
