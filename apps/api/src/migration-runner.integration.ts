@@ -93,6 +93,28 @@ test("plan is read-only, apply is ordered/idempotent, and migration history is c
   assert.deepEqual(finalPlan.pending, []);
 });
 
+test("existing Life OS tables without migration history are rejected instead of retroactively certified", async () => {
+  await migrationPool.query("CREATE TABLE capture_record (capture_id text PRIMARY KEY)");
+
+  for (const action of [
+    () => planDatabaseMigrations(migrationPool),
+    () => applyDatabaseMigrations(migrationPool),
+  ]) {
+    await assert.rejects(
+      action,
+      (error: unknown) =>
+        error instanceof MigrationRunnerError &&
+        error.code === "MIGRATION_HISTORY_DRIFT" &&
+        error.message === "Life OS schema objects exist without tracked migration history",
+    );
+  }
+
+  const ledger = await adminPool.query<{ relation: string | null }>(
+    `SELECT to_regclass('${schema}.lifeos_schema_migration')::text AS relation`,
+  );
+  assert.equal(ledger.rows[0].relation, null, "rejected untracked schema must not receive a trusted migration ledger");
+});
+
 test("checksum/history drift is rejected instead of silently accepting edited applied SQL", async () => {
   await applyDatabaseMigrations(migrationPool);
   await migrationPool.query(
