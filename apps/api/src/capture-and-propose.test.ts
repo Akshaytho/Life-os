@@ -64,6 +64,32 @@ function interpretation(): CaptureInterpretationResult {
   };
 }
 
+function safeFallbackInterpretation(): CaptureInterpretationResult {
+  return {
+    interpreter: "SAFE_FALLBACK",
+    intent: "RAW_THOUGHT",
+    certainty: "UNSPECIFIED",
+    confidence: 0,
+    observations: [{
+      id: "safe-fallback",
+      label: "Understanding",
+      value: "No trusted semantic interpretation was performed",
+      trustClass: "OBSERVATION",
+    }],
+    proposals: [{
+      key: "safe-fallback-raw-capture",
+      destination: "BRAIN_DUMP",
+      operation: "KEEP_RAW_CAPTURE",
+      summary: "Keep the original capture intact for later classification.",
+      targetTrustClass: "SUGGESTION",
+      approvalMode: "REVIEW_AND_APPLY",
+      state: "PROPOSED",
+      reason: "Life OS had no trusted semantic interpreter, so it preserved the source without inferring meaning.",
+      payloadJson: {},
+    }],
+  };
+}
+
 class FixtureInterpreter implements CaptureInterpreter {
   calls: CaptureInterpreterInput[] = [];
   failuresRemaining = 0;
@@ -123,6 +149,30 @@ test("persists raw Capture first and stores interpretation plus proposals withou
   assert.equal(state.domainEvents.length, 0);
   assert.equal(state.appliedProposals.length, 0);
   assert.equal("sourceText" in state.routingProposals[0].payloadJson, false);
+});
+
+test("safe fallback provenance persists as a proposed Brain Dump candidate with zero canonical writes", async () => {
+  const unitOfWork = new InMemoryWriteUnitOfWork();
+  const receipt = await captureAndPropose(
+    { rawText: "Private source stays in the Capture record." },
+    context(),
+    dependencies(unitOfWork, new FixtureInterpreter(safeFallbackInterpretation())),
+  );
+  const state = unitOfWork.snapshot();
+
+  assert.deepEqual(receipt.proposalStates, ["PROPOSED"]);
+  assert.equal(state.interpretations.length, 1);
+  assert.equal(state.interpretations[0].interpreter, "SAFE_FALLBACK");
+  assert.equal(state.interpretations[0].intent, "RAW_THOUGHT");
+  assert.equal(state.routingProposals.length, 1);
+  assert.equal(state.routingProposals[0].destination, "BRAIN_DUMP");
+  assert.equal(state.routingProposals[0].operation, "KEEP_RAW_CAPTURE");
+  assert.equal(state.routingProposals[0].state, "PROPOSED");
+  assert.equal(JSON.stringify(state.interpretations[0]).includes("Private source"), false);
+  assert.equal(JSON.stringify(state.routingProposals[0]).includes("Private source"), false);
+  assert.equal(state.calendarPlans.length, 0);
+  assert.equal(state.domainEvents.length, 0);
+  assert.equal(state.appliedProposals.length, 0);
 });
 
 test("client cannot redefine destination or structured proposal fields during Capture", async () => {

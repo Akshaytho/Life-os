@@ -4,6 +4,7 @@ import type {
   ProposedOperation,
   RoutingDestination,
   RoutingIntent,
+  RoutingInterpreter,
   RoutingObservation,
   RoutingTrustClass,
 } from "../contracts/input-routing";
@@ -24,7 +25,7 @@ export interface InterpretedRoutingProposal {
 }
 
 export interface CaptureInterpretationResult {
-  interpreter: "LOCAL_SAMPLE" | "LIFE_OS_AI";
+  interpreter: RoutingInterpreter;
   intent: RoutingIntent;
   certainty: CertaintySignal;
   confidence: number;

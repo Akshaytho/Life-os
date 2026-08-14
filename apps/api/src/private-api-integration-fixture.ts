@@ -121,6 +121,7 @@ export class PrivateApiPostgresFixture {
       "0003_proposal_creation_provenance.sql",
       "0004_row_level_authorization.sql",
       "0005_proposal_rejection_provenance.sql",
+      "0006_safe_fallback_interpreter.sql",
     ]) {
       const migration = await readFile(`packages/database/migrations/${file}`, "utf8");
       await this.ownerPool.query(migration);
@@ -150,7 +151,7 @@ export class PrivateApiPostgresFixture {
     await this.adminPool.end();
   }
 
-  async startServer() {
+  async startServer(captureInterpreter: CaptureInterpreter = interpreter) {
     const unitOfWork = new PostgresWriteUnitOfWork(this.appPool);
     const server = createLifeOsPrivateApiServer({
       sessionVerifier: new TokenVerifier(),
@@ -159,7 +160,7 @@ export class PrivateApiPostgresFixture {
       proposalReviewReader: new PostgresProposalReviewReader(this.appPool),
       interactionLedgerReader: new PostgresInteractionChangeLedgerReader(this.appPool),
       unitOfWork,
-      interpreter,
+      interpreter: captureInterpreter,
       captureClock: {
         now: () => new Date(Date.parse("2026-08-14T02:00:00.000Z") + ++this.captureRecorded * 1000).toISOString(),
       },

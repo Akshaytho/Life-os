@@ -5,6 +5,7 @@ import type {
   ProposedOperation,
   RoutingDestination,
   RoutingIntent,
+  RoutingInterpreter,
   RoutingObservation,
   RoutingTrustClass,
 } from "./input-routing";
@@ -25,7 +26,7 @@ export interface ProposalReviewSource {
 export interface ProposalReviewInterpretation {
   interpretationId: string;
   authorityClass: "OBSERVATION";
-  interpreter: "LOCAL_SAMPLE" | "LIFE_OS_AI";
+  interpreter: RoutingInterpreter;
   intent: RoutingIntent;
   certainty: CertaintySignal;
   confidence: number;

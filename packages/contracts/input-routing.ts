@@ -21,6 +21,8 @@ export type CertaintySignal = "TENTATIVE" | "LIKELY" | "CONFIRMED" | "UNSPECIFIE
 
 export type RoutingTrustClass = "FACT" | "REFLECTION" | "OBSERVATION" | "SUGGESTION" | "DECISION";
 
+export type RoutingInterpreter = "LOCAL_SAMPLE" | "SAFE_FALLBACK" | "LIFE_OS_AI";
+
 export type ProposalState =
   | "PROPOSED"
   | "NEEDS_CONFIRMATION"
@@ -76,6 +78,6 @@ export interface RoutingInterpretation {
   observations: RoutingObservation[];
   proposals: RoutingProposal[];
   clarification?: string;
-  interpreter: "LOCAL_SAMPLE" | "LIFE_OS_AI";
+  interpreter: RoutingInterpreter;
   sourceActor: "USER";
 }
