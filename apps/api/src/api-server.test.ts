@@ -67,7 +67,8 @@ test("non-Life-OS paths remain a minimal not-found surface even when private API
   await withServer({ health, privateApi: authenticationBoundaryOnly() }, async (baseUrl) => {
     const response = await fetch(`${baseUrl}/debug/env`);
     assert.equal(response.status, 404);
-    assert.deepEqual(await response.json(), { status: "not_found" });
-    assert.equal((await response.text()).includes("DATABASE_URL"), false);
+    const body = await response.text();
+    assert.deepEqual(JSON.parse(body), { status: "not_found" });
+    assert.equal(body.includes("DATABASE_URL"), false);
   });
 });
