@@ -15,6 +15,27 @@ const developmentRuntime = {
   platform: "OTHER" as const,
 };
 
+const safePrivateRoleRow = {
+  role_superuser: false,
+  role_bypass_rls: false,
+  role_create_db: false,
+  role_create_role: false,
+  role_replication: false,
+  role_inherit: false,
+  schema_usage: true,
+  schema_create: false,
+  role_memberships: 0,
+  table_count: 7,
+  safe_table_count: 7,
+  least_privilege_table_count: 7,
+};
+
+const safeUnscopedRow = {
+  user_id: null,
+  visible_capture_rows: 0,
+  migration_ledger_access: false,
+};
+
 test("PORT defaults locally and accepts Railway-style injected values", () => {
   assert.equal(parsePort(undefined), 4000);
   assert.equal(parsePort("8080"), 8080);
@@ -89,22 +110,12 @@ test("local no-database readiness is healthy for the health-only transport", asy
   assert.equal(await createDatabaseReadinessProbe(undefined).check(), true);
 });
 
-test("private readiness proves least-privileged role, FORCE RLS and empty unscoped user visibility", async () => {
+test("private readiness proves exact least-privilege role, FORCE RLS and empty unscoped visibility", async () => {
   const queries: string[] = [];
   const probe = createPrivateDatabaseReadinessProbe({
     async query(text) {
       queries.push(text);
-      if (queries.length === 1) {
-        return {
-          rows: [{
-            role_superuser: false,
-            role_bypass_rls: false,
-            table_count: 7,
-            safe_table_count: 7,
-          }],
-        };
-      }
-      return { rows: [{ user_id: null, visible_capture_rows: 0 }] };
+      return { rows: [queries.length === 1 ? safePrivateRoleRow : safeUnscopedRow] };
     },
   });
 
@@ -121,15 +132,29 @@ test("private readiness proves least-privileged role, FORCE RLS and empty unscop
   ]) {
     assert.equal(queries[0].includes(table), true);
   }
+  for (const privilege of ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"]) {
+    assert.equal(queries[0].includes(privilege), true);
+  }
+  assert.equal(queries[0].includes("has_schema_privilege"), true);
+  assert.equal(queries[0].includes("pg_auth_members"), true);
   assert.equal(queries[1].includes("lifeos_current_user_id()"), true);
+  assert.equal(queries[1].includes("lifeos_schema_migration"), true);
 });
 
-test("private readiness rejects elevated, incomplete, owner-like or user-scoped database connections", async () => {
+test("private readiness rejects elevated role attributes, memberships, schema authority or incomplete table grants", async () => {
   const unsafeRoleRows = [
-    { role_superuser: true, role_bypass_rls: false, table_count: 7, safe_table_count: 7 },
-    { role_superuser: false, role_bypass_rls: true, table_count: 7, safe_table_count: 7 },
-    { role_superuser: false, role_bypass_rls: false, table_count: 6, safe_table_count: 6 },
-    { role_superuser: false, role_bypass_rls: false, table_count: 7, safe_table_count: 6 },
+    { ...safePrivateRoleRow, role_superuser: true },
+    { ...safePrivateRoleRow, role_bypass_rls: true },
+    { ...safePrivateRoleRow, role_create_db: true },
+    { ...safePrivateRoleRow, role_create_role: true },
+    { ...safePrivateRoleRow, role_replication: true },
+    { ...safePrivateRoleRow, role_inherit: true },
+    { ...safePrivateRoleRow, role_memberships: 1 },
+    { ...safePrivateRoleRow, schema_usage: false },
+    { ...safePrivateRoleRow, schema_create: true },
+    { ...safePrivateRoleRow, table_count: 6, safe_table_count: 6, least_privilege_table_count: 6 },
+    { ...safePrivateRoleRow, safe_table_count: 6 },
+    { ...safePrivateRoleRow, least_privilege_table_count: 6 },
   ];
 
   for (const row of unsafeRoleRows) {
@@ -143,26 +168,19 @@ test("private readiness rejects elevated, incomplete, owner-like or user-scoped 
     assert.equal(await probe.check(), false);
     assert.equal(calls, 1);
   }
+});
 
+test("private readiness rejects leaked user scope, visible private rows or migration-ledger authority", async () => {
   for (const unscoped of [
-    { user_id: "unexpected-user", visible_capture_rows: 0 },
-    { user_id: null, visible_capture_rows: 1 },
+    { ...safeUnscopedRow, user_id: "unexpected-user" },
+    { ...safeUnscopedRow, visible_capture_rows: 1 },
+    { ...safeUnscopedRow, migration_ledger_access: true },
   ]) {
     let calls = 0;
     const probe = createPrivateDatabaseReadinessProbe({
       async query() {
         calls += 1;
-        if (calls === 1) {
-          return {
-            rows: [{
-              role_superuser: false,
-              role_bypass_rls: false,
-              table_count: 7,
-              safe_table_count: 7,
-            }],
-          };
-        }
-        return { rows: [unscoped] };
+        return { rows: [calls === 1 ? safePrivateRoleRow : unscoped] };
       },
     });
     assert.equal(await probe.check(), false);
