@@ -5,6 +5,7 @@ import type {
   ProposedOperation,
   RoutingDestination,
   RoutingIntent,
+  RoutingInterpreter,
   RoutingTrustClass,
 } from "./input-routing";
 
@@ -37,7 +38,7 @@ export interface InteractionSourceStep {
 export interface InteractionObservationStep {
   authorityClass: "OBSERVATION";
   actorType: "LIFE_OS_AI" | "LIFE_OS";
-  interpreter: "LOCAL_SAMPLE" | "LIFE_OS_AI";
+  interpreter: RoutingInterpreter;
   intent: RoutingIntent;
   certainty: CertaintySignal;
   confidence: number;
