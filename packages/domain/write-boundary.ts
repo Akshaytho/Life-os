@@ -5,6 +5,7 @@ import type {
   ProposedOperation,
   RoutingDestination,
   RoutingIntent,
+  RoutingInterpreter,
   RoutingObservation,
   RoutingTrustClass,
 } from "../contracts/input-routing";
@@ -27,7 +28,7 @@ export interface CaptureRecord {
 
 export interface RoutingInterpretationRecord {
   interpretationId: string; captureId: string; userId: string; version: 1;
-  interpreter: "LOCAL_SAMPLE" | "LIFE_OS_AI"; intent: RoutingIntent; certainty: CertaintySignal;
+  interpreter: RoutingInterpreter; intent: RoutingIntent; certainty: CertaintySignal;
   confidence: number; observations: RoutingObservation[]; clarification?: string; createdAt: string;
 }
 
