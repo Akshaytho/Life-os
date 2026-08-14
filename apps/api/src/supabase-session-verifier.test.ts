@@ -144,6 +144,7 @@ test("environment configuration prefers a publishable key and supports the legac
   assert.deepEqual(
     supabaseSessionVerifierConfigurationFromEnv({
       SUPABASE_URL: "https://project-ref.supabase.co",
+      SUPABASE_PUBLISHABLE_KEY: "   ",
       SUPABASE_ANON_KEY: "legacy-key",
     }),
     { supabaseUrl: "https://project-ref.supabase.co", apiKey: "legacy-key" },
@@ -170,6 +171,7 @@ test("missing or unsafe provider configuration fails closed without exposing key
     "not-a-url",
     "ftp://project-ref.supabase.co",
     "https://user:password@project-ref.supabase.co",
+    "https://project-ref.supabase.co/auth/v1",
     "https://project-ref.supabase.co?secret=1",
     "https://project-ref.supabase.co#private",
   ]) {
