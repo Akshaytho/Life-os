@@ -25,8 +25,13 @@ export interface SupabaseSessionVerifierOptions {
   fetchImpl?: typeof fetch;
 }
 
-function requiredValue(value: string | undefined, name: string): string {
+function normalizedValue(value: string | undefined): string | undefined {
   const normalized = value?.trim();
+  return normalized || undefined;
+}
+
+function requiredValue(value: string | undefined, name: string): string {
+  const normalized = normalizedValue(value);
   if (!normalized) throw new SupabaseSessionVerifierConfigurationError(`${name} is required`);
   return normalized;
 }
@@ -36,18 +41,19 @@ function normalizeSupabaseUrl(value: string): string {
   try {
     url = new URL(value);
   } catch {
-    throw new SupabaseSessionVerifierConfigurationError("SUPABASE_URL must be a valid http(s) URL");
+    throw new SupabaseSessionVerifierConfigurationError("SUPABASE_URL must be a valid project http(s) origin");
   }
 
   if (url.protocol !== "https:" && url.protocol !== "http:") {
-    throw new SupabaseSessionVerifierConfigurationError("SUPABASE_URL must be a valid http(s) URL");
+    throw new SupabaseSessionVerifierConfigurationError("SUPABASE_URL must be a valid project http(s) origin");
   }
-  if (url.username || url.password || url.search || url.hash) {
-    throw new SupabaseSessionVerifierConfigurationError("SUPABASE_URL must not contain credentials, query parameters or fragments");
+  if (url.username || url.password || url.search || url.hash || url.pathname !== "/") {
+    throw new SupabaseSessionVerifierConfigurationError(
+      "SUPABASE_URL must be a project origin without credentials, path, query parameters or fragments",
+    );
   }
 
-  url.pathname = url.pathname.replace(/\/+$/, "");
-  return url.toString().replace(/\/$/, "");
+  return url.origin;
 }
 
 export function supabaseSessionVerifierConfigurationFromEnv(
@@ -55,7 +61,7 @@ export function supabaseSessionVerifierConfigurationFromEnv(
 ): SupabaseSessionVerifierConfiguration {
   const supabaseUrl = normalizeSupabaseUrl(requiredValue(env.SUPABASE_URL, "SUPABASE_URL"));
   const apiKey = requiredValue(
-    env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY,
+    normalizedValue(env.SUPABASE_PUBLISHABLE_KEY) ?? normalizedValue(env.SUPABASE_ANON_KEY),
     "SUPABASE_PUBLISHABLE_KEY or SUPABASE_ANON_KEY",
   );
 
