@@ -16,28 +16,29 @@ function requestedMode(argv: string[]): "plan" | "apply" {
   );
 }
 
-async function main() {
-  const mode = requestedMode(process.argv.slice(2));
-  const configuration = mode === "plan"
-    ? applicationDbRolePlanConfigurationFromEnv(process.env)
-    : applicationDbRoleApplyConfigurationFromEnv(process.env);
+async function runPlan() {
+  const configuration = applicationDbRolePlanConfigurationFromEnv(process.env);
   const pool = new Pool({ connectionString: configuration.migrationDatabaseUrl, max: 1 });
-
   try {
-    if (mode === "plan") {
-      const plan = await planApplicationDatabaseRole(pool, configuration.roleName);
-      console.log(JSON.stringify({
-        status: "application_role_plan",
-        environment: configuration.environment,
-        roleName: plan.roleName,
-        schemaName: plan.schemaName,
-        migrationsPending: plan.migrationsPending,
-        roleExists: plan.roleExists,
-        ready: plan.ready,
-      }));
-      return;
-    }
+    const plan = await planApplicationDatabaseRole(pool, configuration.roleName);
+    console.log(JSON.stringify({
+      status: "application_role_plan",
+      environment: configuration.environment,
+      roleName: plan.roleName,
+      schemaName: plan.schemaName,
+      migrationsPending: plan.migrationsPending,
+      roleExists: plan.roleExists,
+      ready: plan.ready,
+    }));
+  } finally {
+    await pool.end();
+  }
+}
 
+async function runApply() {
+  const configuration = applicationDbRoleApplyConfigurationFromEnv(process.env);
+  const pool = new Pool({ connectionString: configuration.migrationDatabaseUrl, max: 1 });
+  try {
     const receipt = await applyApplicationDatabaseRole(
       pool,
       configuration.roleName,
@@ -53,6 +54,15 @@ async function main() {
   } finally {
     await pool.end();
   }
+}
+
+async function main() {
+  const mode = requestedMode(process.argv.slice(2));
+  if (mode === "plan") {
+    await runPlan();
+    return;
+  }
+  await runApply();
 }
 
 void main().catch((error: unknown) => {
