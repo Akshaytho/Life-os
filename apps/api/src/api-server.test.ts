@@ -2,15 +2,19 @@ import assert from "node:assert/strict";
 import { once } from "node:events";
 import type { AddressInfo } from "node:net";
 import test from "node:test";
+import { InMemoryWriteUnitOfWork } from "../../../packages/database/in-memory-write-unit-of-work";
+import { SafeFallbackCaptureInterpreter } from "../../../packages/intelligence/safe-fallback-capture-interpreter";
 import type { PrivateApiDependencies } from "./private-api";
 import { createLifeOsApiServer, type LifeOsApiServerDependencies } from "./api-server";
 
+const runtime = {
+  environment: "development" as const,
+  releaseSha: "runtime-composition-test",
+  platform: "OTHER" as const,
+};
+
 const health = {
-  provenance: {
-    environment: "development" as const,
-    releaseSha: "runtime-composition-test",
-    platform: "OTHER" as const,
-  },
+  provenance: runtime,
   readiness: { async check() { return true; } },
 };
 
@@ -35,7 +39,21 @@ function authenticationBoundaryOnly(): PrivateApiDependencies {
     sessionVerifier: { async verify() { return undefined; } },
     transportClock: { now: () => "2026-08-14T10:00:00.000Z" },
     requestIds: { next: () => "request-composition-test" },
-  } as PrivateApiDependencies;
+    proposalReviewReader: { async getCaptureReview() { return undefined; } },
+    interactionLedgerReader: { async getTrace() { return undefined; } },
+    unitOfWork: new InMemoryWriteUnitOfWork(),
+    interpreter: new SafeFallbackCaptureInterpreter(),
+    captureClock: { now: () => "2026-08-14T10:00:00.000Z" },
+    routingIds: { next: (prefix) => `${prefix}-composition-test` },
+    mutationClock: { now: () => "2026-08-14T10:00:01.000Z" },
+    applyIds: { next: (prefix) => `${prefix}-composition-test` },
+    runtime,
+    telemetry: { emit() {} },
+    operationTimer: {
+      nowMs: () => 1,
+      nowIso: () => "2026-08-14T10:00:02.000Z",
+    },
+  };
 }
 
 test("health-only composition does not accidentally expose reviewed private route shapes", async () => {
