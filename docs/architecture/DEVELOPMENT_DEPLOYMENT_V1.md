@@ -2,7 +2,7 @@
 
 **Canonical artifact:** `LIFE-OS-CANON-001` v1.2.0  
 **Classification:** ALIGNED + EXTENSION  
-**Status:** repository runtime prerequisites implemented — no external hosted resources or secrets created
+**Status:** repository deployment/runtime tooling implemented — no external hosted resources or real secrets created
 
 ## Goal
 
@@ -14,27 +14,29 @@ The intended topology remains:
 Life OS Web
      ↓ HTTPS
 Railway Life OS API
-     ↓ trusted backend DB connection
-Supabase PostgreSQL
+     ↓ server-only application database credential
+Supabase PostgreSQL + Supabase Auth
 ```
 
-Life OS private domain writes continue to go through application services, authenticated request context, proposal/approval rules, transactional domain events, and PostgreSQL RLS.
+Private domain writes still go through authenticated request context, per-user PostgreSQL RLS, proposal/approval policy, application services, and transactional domain events.
 
 ## Current repository checkpoint
 
-The repository now has the executable API prerequisites that were previously missing:
+The repository now provides the executable prerequisites for hosted development:
 
-- one long-running HTTP server that listens on platform `PORT`;
-- liveness and readiness routes;
+- one long-running Node HTTP server on platform `PORT`;
+- public liveness/readiness routes;
 - reviewed private Capture/read/proposal-action routes;
-- real Supabase session verification;
-- least-privileged PostgreSQL adapters with transaction-local user RLS scope;
+- real Supabase user-session verification;
 - Safe Fallback Capture when semantic AI is unavailable;
-- strict application-role/RLS readiness;
-- technical runtime provenance and sanitized telemetry;
-- synthetic PostgreSQL integration coverage for the composed runtime.
-
-Private routes are still **disabled by default**. V1 requires explicit `LIFE_OS_PRIVATE_API_ENABLED=true` and refuses production activation.
+- explicit private-runtime activation, disabled by default;
+- production private-runtime refusal in V1;
+- PostgreSQL repositories with transaction-local Life OS user scope;
+- strict runtime verification of the exact least-privilege application role;
+- plan-first, checksummed migrations with atomic history;
+- plan-first application-role provisioning after migrations;
+- synthetic PostgreSQL integration coverage for migrations, provisioning, RLS, and the composed runtime;
+- sanitized technical telemetry and release provenance.
 
 See:
 
@@ -42,292 +44,250 @@ See:
 - `SUPABASE_SESSION_VERIFIER_V1.md`
 - `SAFE_FALLBACK_CAPTURE_V1.md`
 - `PRIVATE_RUNTIME_COMPOSITION_V1.md`
+- `HOSTED_DEVELOPMENT_MIGRATIONS_V1.md`
+- `HOSTED_DEVELOPMENT_APPLICATION_ROLE_V1.md`
 
 ## Current external stop condition
 
 **Do not claim a live Railway/Supabase development deployment yet.**
 
-This repository work does not create external resources, buy a service, provision credentials, apply migrations to a hosted database, or wire a browser session.
+Repository tooling does not create accounts, projects, paid resources, real credentials, or a browser session.
 
-A real hosted-development activation still requires:
+A real hosted-development activation still requires an operator to:
 
-1. a dedicated Supabase development project;
-2. a dedicated Railway development service/environment;
-3. separate development-only credentials;
-4. migrations `0001` through current applied deliberately with the migration credential;
-5. a least-privileged non-owner `NOBYPASSRLS` application role;
-6. Supabase Auth configuration and a browser-safe publishable/anon key;
-7. Railway variables for release identity, application `DATABASE_URL`, Supabase URL/key, and the explicit private-runtime flag;
-8. successful strict `/health/ready` proof;
-9. a synthetic Capture → Review → Trace smoke flow before any personal test data;
-10. browser origin/session policy reviewed separately before browser mutations are enabled.
+1. create a dedicated Supabase development project;
+2. create a dedicated Railway development service/environment;
+3. obtain/store development-only migration credentials outside Git;
+4. run the migration plan and explicit apply command against the clean development database;
+5. generate a strong application-role password in a secret manager/local secure environment;
+6. run the application-role plan and explicit apply command;
+7. build the server-only `DATABASE_URL` for that role using the exact Supabase **Connect** details;
+8. configure Supabase Auth and obtain the browser-safe publishable/legacy anon project key;
+9. set Railway release/database/Supabase variables while leaving the private flag false;
+10. deploy health-only and verify liveness;
+11. set `LIFE_OS_PRIVATE_API_ENABLED=true` only when strict readiness can pass;
+12. run a synthetic Capture → Review → Trace smoke flow before personal data;
+13. review browser origin/session/CORS/CSRF policy separately before browser mutations are enabled.
 
 ## Environment ladder
 
 ### Local
 
 - fake/sample web state may remain available;
-- in-memory and local/disposable PostgreSQL tests;
+- local/disposable PostgreSQL tests;
 - health-only API works without a database;
-- private API may be explicitly enabled only with the reviewed auth/database prerequisites;
-- no production personal data required;
-- release may be `local-unversioned`.
+- private API requires the reviewed auth/database prerequisites;
+- no production personal data required.
 
 ### CI
 
 - disposable PostgreSQL service;
 - synthetic fixtures only;
 - migrations tested from zero;
-- security/RLS tests run with non-owner roles;
-- composed private runtime integration uses a distinct synthetic application role/schema;
+- application-role provisioning tested with a disposable global login;
+- RLS tests run with non-owner, non-bypass roles;
 - release identity comes from CI commit SHA.
 
 ### Hosted development — next external stage
 
 - dedicated Supabase development project;
-- dedicated Railway development environment/service;
+- dedicated Railway development service/environment;
 - synthetic/non-sensitive data first;
-- separate development credentials;
-- migrations `0001` → current applied in order;
-- Railway backend uses a least-privileged application database credential;
-- `LIFE_OS_PRIVATE_API_ENABLED=true` only after strict readiness can pass;
+- separate migration and application database credentials;
+- migrations applied in order through the reviewed runner;
+- application role provisioned through the reviewed least-privilege helper;
+- private runtime activated only after strict readiness;
 - deployment/release identity attached to technical telemetry.
 
 ### Production — later
 
-Production is a separate environment with separate project/service/credentials and is not created merely because development deployment works.
+Production remains a separate environment with separate project/service/credentials and separate approval.
 
-Private Runtime Composition V1 explicitly rejects production private-API activation.
+Current V1 private-runtime, migration, and application-role tools all refuse production where applicable.
 
 ## Supabase PostgreSQL connection model
 
-Supabase provides multiple Postgres connection modes. For a persistent backend service, prefer a direct Postgres connection when network reachability supports it. If the runtime network requires IPv4, Supavisor session mode is an appropriate persistent-client alternative.
+For a persistent backend service, prefer a direct Postgres connection when network reachability supports it. If the runtime requires IPv4, Supavisor **session mode** is the persistent-client alternative.
 
-Do not choose transaction-pooler mode casually for this backend. Life OS intentionally uses multi-statement SQL transactions and transaction-local `set_config('lifeos.user_id', ..., true)` RLS context. The selected connection mode must preserve one database session/transaction for the complete `PostgresUserScope.run(...)` callback.
+Do not select transaction-pooler mode casually for Life OS. The backend intentionally uses multi-statement transactions and transaction-local `set_config('lifeos.user_id', ..., true)` RLS context. One `PostgresUserScope.run(...)` callback must remain on one database transaction/session.
 
-The connection mode is therefore validated during development-environment setup rather than hard-coded in source control.
+For hosted setup, use the exact connection strings/hostnames/usernames shown by the Supabase **Connect** panel instead of constructing project-qualified pooler details in source code.
 
 ## Two database credentials, two jobs
 
-Hosted development separates schema administration from ordinary application traffic.
-
 ### Migration credential
 
-`MIGRATION_DATABASE_URL` — server/CI/operator only.
+`MIGRATION_DATABASE_URL` — admin/operator/CI only.
 
-Used only for:
+Used for:
 
-- applying ordered migrations;
-- creating/updating tables, functions, constraints, policies and app roles;
-- controlled maintenance requiring schema-owner authority.
+- ordered migration planning/apply;
+- migration checksum/history ownership;
+- dedicated application-role provisioning;
+- controlled schema administration.
 
-The running API does not accept this credential in its private-runtime dependency factory.
+The running private API does not consume this credential.
 
 ### Application credential
 
 `DATABASE_URL` — Railway API only.
 
-The application database role must remain:
+It must authenticate as the dedicated Life OS application role with this exact shape:
 
-- login-capable only when needed by the backend connection;
-- non-superuser;
-- non-table-owner;
-- `NOBYPASSRLS`;
-- granted only required schema/function/table privileges;
-- inaccessible to browser JavaScript.
+```text
+LOGIN
+NOSUPERUSER
+NOCREATEDB
+NOCREATEROLE
+NOINHERIT
+NOREPLICATION
+NOBYPASSRLS
+zero role memberships
+schema USAGE, no CREATE
+SELECT/INSERT/UPDATE/DELETE on seven private runtime tables
+no TRUNCATE/REFERENCES/TRIGGER
+no migration-ledger access
+non-owner of private tables
+```
 
-Every private transaction still binds the authenticated Life OS user into transaction-local `lifeos.user_id` before SQL is exposed to application repositories.
+Every private transaction still binds the authenticated Life OS user into transaction-local `lifeos.user_id` before repositories execute SQL.
 
-Private-runtime readiness verifies the important role/table properties before the server listens.
+## Plan-first deployment commands
 
-## Supabase keys
+Migration inspection:
+
+```bash
+npm run migrate --workspace @life-os/api
+```
+
+Explicit migration apply:
+
+```bash
+npm run migrate:apply --workspace @life-os/api
+```
+
+Application-role inspection:
+
+```bash
+npm run db-role --workspace @life-os/api
+```
+
+Explicit role create/rotation + direct-grant repair:
+
+```bash
+npm run db-role:apply --workspace @life-os/api
+```
+
+The default commands are inspection-only. Schema or role changes require the explicit apply variants.
+
+The application-role password is admin-tool input only and is never intentionally printed by the CLI.
+
+## Runtime readiness
+
+Health-only mode may use a minimal database probe.
+
+Private-runtime mode independently verifies the connected application credential rather than trusting the provisioning command's receipt.
+
+Readiness requires:
+
+- no superuser / bypass-RLS / create-database / create-role / replication authority;
+- `NOINHERIT` and zero role memberships;
+- schema `USAGE` but no `CREATE`;
+- all seven private tables present;
+- all seven with enabled + forced RLS;
+- application role owns none of those tables;
+- exact CRUD grants without `TRUNCATE/REFERENCES/TRIGGER`;
+- no user context pre-bound;
+- zero visible Capture rows without user context;
+- no migration-ledger table authority.
+
+Initial private readiness must pass before the long-running API listens.
+
+Readiness does not use a real user's identity, return row data, or mutate canonical life state.
+
+## Supabase Auth keys
 
 Supabase Auth verification uses a browser-safe publishable key, with legacy anon-key fallback where necessary.
 
-That project key does not grant the browser authority to bypass the Life OS application write model.
+That project key identifies the Supabase project to Auth; it does not grant Life OS database bypass authority.
 
-`SUPABASE_SERVICE_ROLE_KEY`, if ever required for a narrowly defined administrative integration, remains server-only and must not become the ordinary private-data access path. Private Runtime Composition V1 does not consume it.
+`SUPABASE_SERVICE_ROLE_KEY` is not consumed by ordinary private-runtime or application-role provisioning paths and must not become a shortcut around the Life OS write/RLS model.
 
-The current private application model is:
+## Hosted-development activation sequence
 
 ```text
-verified Supabase user session
-        ↓
-Railway Life OS API
-        ↓
-least-privileged PostgreSQL role
-        ↓
-transaction-local user scope + FORCE RLS
-        ↓
-application services / proposals / domain events
+create clean Supabase development project
+      ↓
+store migration/admin connection securely
+      ↓
+npm run migrate      # inspect
+      ↓
+npm run migrate:apply
+      ↓
+generate/store application-role password securely
+      ↓
+npm run db-role      # inspect
+      ↓
+npm run db-role:apply
+      ↓
+construct server-only application DATABASE_URL from Supabase Connect details
+      ↓
+configure Supabase Auth verifier values
+      ↓
+configure Railway development service with private flag false
+      ↓
+deploy + verify /health/live
+      ↓
+enable private flag
+      ↓
+strict /health/ready must pass
+      ↓
+run synthetic authenticated Capture → Review → Trace smoke
+      ↓
+only then consider consented personal development data
 ```
+
+Migrations and role provisioning never run automatically during API startup.
 
 ## Railway service requirements
 
-For hosted development the service must:
+The hosted development service must:
 
 1. build from the shared npm monorepo without copying secrets into the image;
 2. start one long-running API process;
 3. listen on Railway's injected `PORT`;
 4. expose lightweight `/health/live`;
-5. expose `/health/ready` with strict private-role/RLS checks when private runtime is enabled;
-6. fail startup for missing required hosted configuration;
-7. receive `DATABASE_URL` and other secrets only through Railway variables;
-8. never return environment-variable dumps through debug routes;
-9. carry release/deployment provenance into technical telemetry;
+5. expose strict `/health/ready` when private runtime is enabled;
+6. fail startup for missing/unsafe hosted configuration;
+7. receive server-only secrets through platform variables;
+8. never expose environment dumps through debug routes;
+9. attach allow-listed release/deployment provenance to technical telemetry;
 10. keep user-facing Interaction & Change Ledger data separate from technical logs;
-11. keep `LIFE_OS_PRIVATE_API_ENABLED=false` until the hosted application role and Supabase verifier are configured;
+11. keep private runtime disabled until the application credential and Supabase verifier are configured;
 12. keep production private activation disabled under V1.
 
-Railway provides Git/deployment metadata such as commit SHA and deployment ID to GitHub-triggered deployments. Life OS projects a small allow-listed subset through `RuntimeProvenance`; it never serializes `process.env` wholesale.
+## Repository/privacy gate
 
-## Runtime provenance
-
-The safe technical contract remains:
-
-```text
-RuntimeProvenance
-- environment
-- releaseSha
-- deploymentId?   // technical only
-- serviceName?    // technical only
-- platform
-```
-
-Resolution priority for release SHA:
-
-1. explicit `LIFE_OS_RELEASE_SHA`
-2. Railway Git commit SHA
-3. CI GitHub SHA
-4. `local-unversioned` only for local development
-
-A hosted development/production process without a release identity fails closed rather than producing untraceable behavior.
-
-Runtime provenance is technical telemetry context, not a Life Timeline event.
-
-## Health vs readiness
-
-### Liveness
-
-"Is this process alive and able to answer HTTP?"
-
-- process-only;
-- public;
-- does not depend on external AI availability;
-- does not expose deployment metadata.
-
-### Readiness
-
-"Is this deployment configured to serve Life OS requests safely?"
-
-Health-only mode may use a minimal database probe.
-
-Private-runtime mode verifies:
-
-- current role is not superuser;
-- current role cannot bypass RLS;
-- all required private tables exist;
-- all required private tables have enabled + forced RLS;
-- current role does not own those tables;
-- no user context is pre-bound;
-- an unscoped Capture read sees zero rows.
-
-Readiness never uses a real user's identity, returns row data, or mutates canonical life state.
-
-## Migration deployment sequence
-
-For a new hosted development database:
-
-```text
-create development project
-      ↓
-obtain migration/admin connection securely
-      ↓
-apply migrations 0001 → current
-      ↓
-provision least-privileged API role / grants
-      ↓
-prove ENABLE + FORCE RLS policies
-      ↓
-connect Railway API with application credential
-      ↓
-configure Supabase Auth verifier
-      ↓
-keep private flag false and check health
-      ↓
-set private flag true
-      ↓
-strict readiness must pass before API listens
-      ↓
-run synthetic Capture → Review → Trace smoke
-      ↓
-only then consider consented personal development data
-```
-
-Migrations do not run as part of ordinary API startup. Schema changes remain deliberate deployment operations using separate credentials.
-
-## Interaction & Change Ledger / DevOps loop
-
-Hosted development enables the requested loop:
-
-```text
-release SHA / deployment ID       technical telemetry
-              ↓
-synthetic or consented interaction trace
-              ↓
-Life OS interpretation / proposal
-              ↓
-approval or rejection
-              ↓
-canonical result (if any)
-              ↓
-rendered product behavior
-              ↓
-user/developer feedback
-              ↓
-new code + tests + deployment
-              ↓
-compare behavior by release
-```
-
-The link is correlation + release metadata, not copying private life content into deployment logs.
-
-## Repository privacy gate
-
-The repository has previously been public. Before introducing real service credentials or personal Life OS data, confirm the repository/privacy boundary deliberately.
-
-Regardless of repository visibility:
+The repository may be visible beyond the deployment operators. Regardless of repository visibility:
 
 - no credential goes into Git;
-- no real production data goes into fixtures;
-- no `.env` with secrets is committed;
+- no real `.env` with secrets is committed;
+- no real production/personal data goes into fixtures;
 - hosted variables live in the platform secret/variable system;
-- logs/telemetry minimize private text.
+- technical logs minimize private text.
 
-## What the repository now provides
+Before personal Life OS development data is introduced, repository visibility and collaborator access should be reviewed deliberately.
 
-- safe `RuntimeProvenance` contract and resolver;
-- long-running Node API transport;
-- liveness/readiness routes;
-- real Supabase session verifier;
-- explicit private-runtime activation gate;
-- combined private API router;
-- least-privileged PostgreSQL repositories/RLS scope;
-- strict application-role/RLS readiness;
-- Safe Fallback Capture without AI dependency;
-- sanitized technical telemetry;
-- synthetic unit, behavior, visual and PostgreSQL integration gates.
-
-## What remains deliberately external or later
+## What remains external or later
 
 - Supabase hosted development project;
 - Railway hosted development service;
-- real hosted credentials;
-- hosted migration/application-role provisioning;
-- real browser sign-in/session acquisition;
+- real hosted credentials/secrets;
+- actual hosted migration/app-role execution;
+- browser sign-in/session acquisition;
 - browser private API wiring;
-- CORS/origin policy for an actual split-origin topology;
-- CSRF policy if cookie-based authentication is introduced;
+- concrete CORS/origin policy for the chosen topology;
+- CSRF policy if cookie authentication is introduced;
 - production Life OS AI;
-- production private API activation;
+- production private API/migration provisioning;
 - real production data.
