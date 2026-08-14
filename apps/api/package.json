@@ -5,6 +5,8 @@
   "scripts": {
     "start": "tsx src/main.ts",
     "dev": "tsx watch src/main.ts",
+    "migrate": "tsx src/run-migrations.ts",
+    "migrate:apply": "tsx src/run-migrations.ts --apply",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "tsx --test src/*.test.ts"
   },
