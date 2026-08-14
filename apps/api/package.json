@@ -7,6 +7,8 @@
     "dev": "tsx watch src/main.ts",
     "migrate": "tsx src/run-migrations.ts",
     "migrate:apply": "tsx src/run-migrations.ts --apply",
+    "db-role": "tsx src/run-application-db-role.ts",
+    "db-role:apply": "tsx src/run-application-db-role.ts --apply",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "tsx --test src/*.test.ts"
   },
