@@ -180,7 +180,7 @@ async function assertTrackedBootstrapState(client: PoolClient, history: Migratio
       AND c.relname = ANY($1::text[])
   `, [knownLifeOsTables]);
 
-  if (result.rows[0]?.count > 0) {
+  if ((result.rows[0]?.count ?? 0) > 0) {
     throw new MigrationRunnerError(
       "Life OS schema objects exist without tracked migration history",
       "MIGRATION_HISTORY_DRIFT",
