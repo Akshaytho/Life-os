@@ -302,8 +302,9 @@ export async function planApplicationDatabaseRole(
   pool: Pool,
   roleName: string,
 ): Promise<ApplicationDbRolePlan> {
+  const validatedRoleName = validateRoleName(roleName);
   const migrationPlan = await planDatabaseMigrations(pool);
-  return withClient(pool, (client) => inspectApplicationRole(client, roleName, migrationPlan.pending));
+  return withClient(pool, (client) => inspectApplicationRole(client, validatedRoleName, migrationPlan.pending));
 }
 
 async function quotedRoleMaterial(client: PoolClient, roleName: string, password: string) {
@@ -327,6 +328,8 @@ export async function applyApplicationDatabaseRole(
   roleName: string,
   password: string,
 ): Promise<ApplicationDbRoleApplyReceipt> {
+  const validatedRoleName = validateRoleName(roleName);
+  const validatedPassword = validatePassword(password, validatedRoleName);
   const migrationPlan = await planDatabaseMigrations(pool);
   if (migrationPlan.pending.length > 0) {
     throw new ApplicationDbRoleError(
@@ -338,7 +341,7 @@ export async function applyApplicationDatabaseRole(
   return withClient(pool, async (client) => {
     await client.query("SELECT pg_advisory_lock(hashtext($1))", [applicationRoleLockName]);
     try {
-      const before = await inspectApplicationRole(client, roleName, []);
+      const before = await inspectApplicationRole(client, validatedRoleName, []);
       if (before.roleExists && before.roleMemberships > 0) {
         throw new ApplicationDbRoleError(
           "Existing application role has role memberships and must be reviewed manually",
@@ -346,7 +349,7 @@ export async function applyApplicationDatabaseRole(
         );
       }
 
-      const quoted = await quotedRoleMaterial(client, roleName, password);
+      const quoted = await quotedRoleMaterial(client, validatedRoleName, validatedPassword);
       await client.query("BEGIN");
       try {
         if (!before.roleExists) {
@@ -387,7 +390,7 @@ export async function applyApplicationDatabaseRole(
           `GRANT EXECUTE ON FUNCTION ${quoted.schema_ident}."${userScopeFunction}"() TO ${quoted.role_ident}`,
         );
 
-        const after = await inspectApplicationRole(client, roleName, []);
+        const after = await inspectApplicationRole(client, validatedRoleName, []);
         if (!after.ready) {
           throw new ApplicationDbRoleError(
             "Application role did not satisfy the Life OS least-privilege contract",
