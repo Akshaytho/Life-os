@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Pool, PoolClient } from "pg";
 import { resolveRuntimeProvenance } from "./runtime-provenance";
@@ -101,6 +102,12 @@ export function stripOuterMigrationTransaction(sql: string, filename: string): s
   if (!body) {
     throw new MigrationRunnerError(`${filename} cannot be empty`, "INVALID_MIGRATION_SET");
   }
+  if (/^\s*(BEGIN|COMMIT|ROLLBACK)\s*;/im.test(body)) {
+    throw new MigrationRunnerError(
+      `${filename} must not contain nested transaction-control statements`,
+      "INVALID_MIGRATION_SET",
+    );
+  }
   return body;
 }
 
@@ -126,7 +133,7 @@ export async function loadMigrationFiles(directory = defaultMigrationDirectory):
       );
     }
 
-    const sql = await readFile(new URL(`file://${directory.replace(/\/$/, "")}/${filename}`), "utf8");
+    const sql = await readFile(join(directory, filename), "utf8");
     migrations.push({
       sequence,
       filename,
