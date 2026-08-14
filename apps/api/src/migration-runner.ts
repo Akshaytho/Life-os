@@ -7,6 +7,15 @@ import { resolveRuntimeProvenance } from "./runtime-provenance";
 
 const migrationNamePattern = /^(\d{4})_[a-z0-9_]+\.sql$/;
 const migrationLockName = "life-os-schema-migrations-v1";
+const knownLifeOsTables = [
+  "calendar_event",
+  "domain_event",
+  "applied_proposal",
+  "capture_record",
+  "routing_interpretation",
+  "routing_proposal",
+  "proposal_rejection",
+] as const;
 
 export const defaultMigrationDirectory = fileURLToPath(
   new URL("../../../packages/database/migrations/", import.meta.url),
@@ -159,6 +168,26 @@ async function readMigrationHistory(client: PoolClient): Promise<MigrationHistor
   return result.rows;
 }
 
+async function assertTrackedBootstrapState(client: PoolClient, history: MigrationHistoryRow[]): Promise<void> {
+  if (history.length > 0) return;
+
+  const result = await client.query<{ count: number }>(`
+    SELECT count(*)::int AS count
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = current_schema()
+      AND c.relkind IN ('r', 'p')
+      AND c.relname = ANY($1::text[])
+  `, [knownLifeOsTables]);
+
+  if (result.rows[0]?.count > 0) {
+    throw new MigrationRunnerError(
+      "Life OS schema objects exist without tracked migration history",
+      "MIGRATION_HISTORY_DRIFT",
+    );
+  }
+}
+
 function validateHistory(migrations: MigrationFile[], history: MigrationHistoryRow[]): MigrationPlan {
   if (history.length > migrations.length) {
     throw new MigrationRunnerError(
@@ -218,6 +247,7 @@ export async function planDatabaseMigrations(
   const migrations = await loadMigrationFiles(directory);
   return withMigrationClient(pool, async (client) => {
     const history = await readMigrationHistory(client);
+    await assertTrackedBootstrapState(client, history);
     return validateHistory(migrations, history);
   });
 }
@@ -231,9 +261,10 @@ export async function applyDatabaseMigrations(
   return withMigrationClient(pool, async (client) => {
     await client.query("SELECT pg_advisory_lock(hashtext($1))", [migrationLockName]);
     try {
-      await ensureMigrationLedger(client);
       const initialHistory = await readMigrationHistory(client);
+      await assertTrackedBootstrapState(client, initialHistory);
       const initialPlan = validateHistory(migrations, initialHistory);
+      await ensureMigrationLedger(client);
       const appliedNow: string[] = [];
 
       for (const migration of migrations.slice(initialHistory.length)) {
