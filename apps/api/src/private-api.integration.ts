@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test, { after, before, beforeEach } from "node:test";
+import { SafeFallbackCaptureInterpreter } from "../../../packages/intelligence/safe-fallback-capture-interpreter";
 import {
   actionRequest,
   authHeaders,
@@ -223,4 +224,107 @@ test("combined API carries Capture → Review → Reject → closed no-change Tr
     "owner-user",
     "reject-flow-key-000001",
   ]);
+});
+
+test("AI-unavailable fallback persists raw Capture + Brain Dump proposal through RLS without canonical mutation", async () => {
+  const rawText = "Private fallback source must stay out of telemetry and structured interpretation";
+  const idempotencyKey = "fallback-flow-key-000001";
+  const runtime = await fixture.startServer(new SafeFallbackCaptureInterpreter());
+  let captureId = "";
+  let proposalId = "";
+
+  try {
+    const created = await fetch(
+      `${runtime.baseUrl}/api/v1/captures`,
+      captureRequest(rawText, idempotencyKey),
+    );
+    assert.equal(created.status, 201);
+    const createdBody = await created.json() as { captureId: string; proposalIds: string[] };
+    captureId = createdBody.captureId;
+    proposalId = createdBody.proposalIds[0];
+    assert.equal(createdBody.proposalIds.length, 1);
+
+    const review = await fetch(
+      `${runtime.baseUrl}/api/v1/captures/${captureId}/review`,
+      { headers: authHeaders() },
+    );
+    assert.equal(review.status, 200);
+    const reviewBody = await review.json() as {
+      reviewState: string;
+      source: { rawText: string };
+      interpretation: {
+        interpreter: string;
+        intent: string;
+        certainty: string;
+        confidence: number;
+        observations: unknown[];
+      };
+      proposals: Array<{
+        proposalId: string;
+        destination: string;
+        operation: string;
+        state: string;
+        proposedResultClass: string;
+        summary: string;
+        reason: string;
+      }>;
+    };
+
+    assert.equal(reviewBody.reviewState, "READY_FOR_REVIEW");
+    assert.equal(reviewBody.source.rawText, rawText);
+    assert.equal(reviewBody.interpretation.interpreter, "SAFE_FALLBACK");
+    assert.equal(reviewBody.interpretation.intent, "RAW_THOUGHT");
+    assert.equal(reviewBody.interpretation.certainty, "UNSPECIFIED");
+    assert.equal(reviewBody.interpretation.confidence, 0);
+    assert.equal(JSON.stringify(reviewBody.interpretation).includes(rawText), false);
+    assert.equal(reviewBody.proposals.length, 1);
+    assert.equal(reviewBody.proposals[0].proposalId, proposalId);
+    assert.equal(reviewBody.proposals[0].destination, "BRAIN_DUMP");
+    assert.equal(reviewBody.proposals[0].operation, "KEEP_RAW_CAPTURE");
+    assert.equal(reviewBody.proposals[0].state, "PROPOSED");
+    assert.equal(reviewBody.proposals[0].proposedResultClass, "SUGGESTION");
+    assert.equal(JSON.stringify(reviewBody.proposals[0]).includes(rawText), false);
+  } finally {
+    await runtime.close();
+  }
+
+  const owner = await fixture.appPool.connect();
+  try {
+    await owner.query("BEGIN");
+    await owner.query("SELECT set_config('lifeos.user_id', $1, true)", ["owner-user"]);
+    const interpretation = await owner.query(
+      "SELECT interpreter, intent, certainty, confidence FROM routing_interpretation WHERE capture_id = $1",
+      [captureId],
+    );
+    const proposal = await owner.query(
+      "SELECT destination, operation, state, target_trust_class, payload_json FROM routing_proposal WHERE proposal_id = $1",
+      [proposalId],
+    );
+    const calendar = await owner.query("SELECT id FROM calendar_event");
+    const events = await owner.query("SELECT event_id FROM domain_event");
+    const applied = await owner.query("SELECT proposal_id FROM applied_proposal");
+
+    assert.equal(interpretation.rowCount, 1);
+    assert.deepEqual(interpretation.rows[0], {
+      interpreter: "SAFE_FALLBACK",
+      intent: "RAW_THOUGHT",
+      certainty: "UNSPECIFIED",
+      confidence: 0,
+    });
+    assert.equal(proposal.rowCount, 1);
+    assert.equal(proposal.rows[0].destination, "BRAIN_DUMP");
+    assert.equal(proposal.rows[0].operation, "KEEP_RAW_CAPTURE");
+    assert.equal(proposal.rows[0].state, "PROPOSED");
+    assert.equal(proposal.rows[0].target_trust_class, "SUGGESTION");
+    assert.deepEqual(proposal.rows[0].payload_json, {});
+    assert.equal(calendar.rowCount, 0);
+    assert.equal(events.rowCount, 0);
+    assert.equal(applied.rowCount, 0);
+    await owner.query("ROLLBACK");
+  } finally {
+    owner.release();
+  }
+
+  await assertUnscopedPrivateRowsHidden();
+  assertTelemetryPrivate([rawText, idempotencyKey, "owner-session", "owner-user"]);
 });
