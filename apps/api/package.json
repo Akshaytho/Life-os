@@ -9,6 +9,7 @@
     "migrate:apply": "tsx src/run-migrations.ts --apply",
     "db-role": "tsx src/run-application-db-role.ts",
     "db-role:apply": "tsx src/run-application-db-role.ts --apply",
+    "hosted:preflight": "tsx src/run-hosted-preflight.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "tsx --test src/*.test.ts"
   },
