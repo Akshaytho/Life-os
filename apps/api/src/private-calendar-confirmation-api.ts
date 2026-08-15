@@ -139,10 +139,6 @@ export async function handlePrivateCalendarConfirmationRequest(
     json(response, 405, { status: "method_not_allowed" });
     return;
   }
-  if (!dependencies.calendarConfirmationStore) {
-    json(response, 503, { status: "confirmation_unavailable" });
-    return;
-  }
 
   try {
     const context = await createTrustedWebRequestContext(
@@ -153,6 +149,12 @@ export async function handlePrivateCalendarConfirmationRequest(
         requestIds: dependencies.requestIds,
       },
     );
+    const store = dependencies.calendarConfirmationStore;
+    if (!store) {
+      json(response, 503, { status: "confirmation_unavailable" });
+      return;
+    }
+
     requireJsonContentType(request);
     const command = commandFromBody(proposalId, await readBody(request));
 
@@ -164,7 +166,7 @@ export async function handlePrivateCalendarConfirmationRequest(
       initialTrace: { requestId: context.requestId, proposalId },
       async work() {
         const value = await confirmCalendarProposal(command, context, {
-          store: dependencies.calendarConfirmationStore!,
+          store,
           clock: dependencies.mutationClock,
         });
         return { value, trace: { proposalId: value.proposalId } };
