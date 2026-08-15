@@ -1,3 +1,4 @@
+import type { CanonicalCalendarWindow } from "../../../packages/contracts/canonical-calendar";
 import type { InteractionChangeTrace } from "../../../packages/contracts/interaction-change-ledger";
 import type { ProposalState } from "../../../packages/contracts/input-routing";
 import type { CaptureProposalReview } from "../../../packages/contracts/proposal-review";
@@ -156,6 +157,15 @@ export function getInteractionTrace(accessToken: string, captureId: string): Pro
     accessToken,
     `/api/v1/interactions/${encodeURIComponent(captureId)}/trace`,
   );
+}
+
+export function getCanonicalCalendar(
+  accessToken: string,
+  from: string,
+  to: string,
+): Promise<CanonicalCalendarWindow> {
+  const query = new URLSearchParams({ from, to });
+  return privateRequest<CanonicalCalendarWindow>(accessToken, `/api/v1/calendar?${query.toString()}`);
 }
 
 export function confirmCalendarProposal(
