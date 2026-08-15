@@ -20,25 +20,21 @@ export interface TechnicalTraceReferences {
   eventId?: string;
 }
 
-interface TechnicalTelemetryBase extends RuntimeProvenance {
-  kind?: never;
-}
-
-interface TechnicalTelemetryIdentity {
+interface TechnicalTelemetryBase {
   timestamp: string;
   level: TechnicalTelemetryLevel;
   component: TechnicalTelemetryComponent;
   runtime: RuntimeProvenance;
 }
 
-export interface RuntimeLifecycleTelemetry extends TechnicalTelemetryIdentity {
+export interface RuntimeLifecycleTelemetry extends TechnicalTelemetryBase {
   kind: "RUNTIME_LIFECYCLE";
   event: "STARTED" | "STOPPING" | "STARTUP_FAILED" | "SERVER_FAILED";
   signal?: "SIGTERM" | "SIGINT";
   errorCode?: string;
 }
 
-export interface OperationTelemetry extends TechnicalTelemetryIdentity {
+export interface OperationTelemetry extends TechnicalTelemetryBase {
   kind: "OPERATION";
   operation: TechnicalOperation;
   outcome: "SUCCESS" | "REJECTED" | "UNAVAILABLE" | "FAILED";
@@ -47,7 +43,7 @@ export interface OperationTelemetry extends TechnicalTelemetryIdentity {
   errorCode?: string;
 }
 
-export interface InterpreterTelemetry extends TechnicalTelemetryIdentity {
+export interface InterpreterTelemetry extends TechnicalTelemetryBase {
   kind: "INTERPRETER";
   interpreter: "LOCAL_SAMPLE" | "LIFE_OS_AI";
   outcome: "SUCCESS" | "FAILED";
