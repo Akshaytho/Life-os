@@ -21,6 +21,22 @@ export interface CreateCaptureReceipt {
   proposalStates: ProposalState[];
 }
 
+export interface ApplyProposalReceipt {
+  status: "applied" | "replayed";
+  proposalId: string;
+  entityType: string;
+  entityId: string;
+  eventId: string;
+  appliedAt: string;
+}
+
+export interface RejectProposalReceipt {
+  status: "rejected" | "replayed";
+  proposalId: string;
+  rejectedAt: string;
+  recordedAt: string;
+}
+
 function requiredPublicValue(value: string | undefined, name: string): string {
   const normalized = value?.trim();
   if (!normalized) throw new LifeOsApiError(0, `${name.toLowerCase()}_missing`);
@@ -123,5 +139,39 @@ export function getInteractionTrace(accessToken: string, captureId: string): Pro
   return privateRequest<InteractionChangeTrace>(
     accessToken,
     `/api/v1/interactions/${encodeURIComponent(captureId)}/trace`,
+  );
+}
+
+/**
+ * This helper is intentionally Calendar-specific. The backend only exposes a
+ * reviewed canonical-apply implementation for READY_TO_APPLY Calendar create
+ * proposals, and it independently revalidates the proposal before committing.
+ */
+export function applyCalendarProposal(accessToken: string, proposalId: string): Promise<ApplyProposalReceipt> {
+  return privateRequest<ApplyProposalReceipt>(
+    accessToken,
+    `/api/v1/proposals/${encodeURIComponent(proposalId)}/apply`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirmation: { explicit: true } }),
+    },
+  );
+}
+
+export function rejectProposal(
+  accessToken: string,
+  proposalId: string,
+  reason?: string,
+): Promise<RejectProposalReceipt> {
+  const body = reason?.trim() ? { reason: reason.trim() } : {};
+  return privateRequest<RejectProposalReceipt>(
+    accessToken,
+    `/api/v1/proposals/${encodeURIComponent(proposalId)}/reject`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
   );
 }
