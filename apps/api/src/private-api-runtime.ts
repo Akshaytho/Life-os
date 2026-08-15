@@ -7,7 +7,7 @@ import { PostgresProposalReviewReader } from "../../../packages/database/postgre
 import { PostgresWriteUnitOfWork } from "../../../packages/database/postgres-write-unit-of-work";
 import type { SessionVerifier } from "../../../packages/domain/trusted-transport-auth";
 import type { CaptureInterpreter } from "../../../packages/intelligence/capture-interpreter";
-import { SafeFallbackCaptureInterpreter } from "../../../packages/intelligence/safe-fallback-capture-interpreter";
+import { createCaptureInterpreterFromEnv } from "./capture-interpreter-runtime";
 import type { PrivateApiDependencies } from "./private-api";
 import { createSupabaseSessionVerifierFromEnv } from "./supabase-session-verifier";
 import type { TechnicalTelemetrySink } from "./technical-telemetry";
@@ -48,7 +48,7 @@ export function createPrivateApiRuntimeDependencies(
     proposalReviewReader: new PostgresProposalReviewReader(pool),
     interactionLedgerReader: new PostgresInteractionChangeLedgerReader(pool),
     unitOfWork: new PostgresWriteUnitOfWork(pool),
-    interpreter: options.interpreter ?? new SafeFallbackCaptureInterpreter(),
+    interpreter: options.interpreter ?? createCaptureInterpreterFromEnv(env),
     captureClock: clock,
     routingIds: { next: (prefix) => `${prefix}-${uuid()}` },
     mutationClock: clock,
