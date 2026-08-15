@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type {
   DirectionDecisionReceipt,
+  DirectionDecisionStatus,
   SetCurrentDirectionCommand,
 } from "../../../packages/contracts/direction";
 import type {
@@ -40,7 +41,7 @@ function requiredOpaqueId(value: string, code: DirectionDecisionErrorCode): stri
 }
 
 function normalizedDirection(value: string): string {
-  const normalized = value.trim().replace(/\s+/g, " ");
+  const normalized = value.trim();
   if (!normalized || normalized.length > maxDirectionLength) {
     throw new DirectionDecisionError("INVALID_DIRECTION");
   }
@@ -71,7 +72,7 @@ function fingerprint(statement: string, expectedCurrentDirectionId: string | nul
 function replayReceipt(
   existing: {
     directionId: string;
-    status: string;
+    status: DirectionDecisionStatus;
     decidedAt: string;
     supersedesDirectionId?: string;
     requestFingerprint: string;
@@ -81,12 +82,9 @@ function replayReceipt(
   if (existing.requestFingerprint !== expectedFingerprint) {
     throw new DirectionDecisionError("IDEMPOTENCY_CONFLICT");
   }
-  if (existing.status !== "ACTIVE" && existing.status !== "SUPERSEDED") {
-    throw new DirectionDecisionError("IDEMPOTENCY_CONFLICT");
-  }
   return {
     directionId: existing.directionId,
-    status: "ACTIVE",
+    status: existing.status,
     authorityClass: "DECISION",
     decidedAt: existing.decidedAt,
     ...(existing.supersedesDirectionId ? { supersededDirectionId: existing.supersedesDirectionId } : {}),
