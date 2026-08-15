@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { handlePrivateCalendarConfirmationRequest, type PrivateCalendarConfirmationApiDependencies } from "./private-calendar-confirmation-api";
 import { handlePrivateCaptureRequest, type PrivateCaptureApiDependencies } from "./private-capture-api";
 import { appendVaryHeader } from "./private-cors";
 import { handlePrivateProposalActionRequest, type PrivateProposalActionsApiDependencies } from "./private-proposal-actions-api";
@@ -7,7 +8,8 @@ import { handlePrivateReadRequest, type PrivateReadApiDependencies } from "./pri
 export type PrivateApiDependencies =
   & PrivateReadApiDependencies
   & PrivateCaptureApiDependencies
-  & PrivateProposalActionsApiDependencies;
+  & PrivateProposalActionsApiDependencies
+  & PrivateCalendarConfirmationApiDependencies;
 
 function jsonNotFound(response: ServerResponse) {
   response.statusCode = 404;
@@ -28,10 +30,11 @@ function pathOf(request: IncomingMessage): string {
   }
 }
 
-function routeFamily(path: string): "CAPTURE" | "READ" | "PROPOSAL_ACTION" | undefined {
+function routeFamily(path: string): "CAPTURE" | "READ" | "CALENDAR_CONFIRMATION" | "PROPOSAL_ACTION" | undefined {
   if (path === "/api/v1/captures") return "CAPTURE";
   if (/^\/api\/v1\/captures\/[^/]+\/review$/.test(path)) return "READ";
   if (/^\/api\/v1\/interactions\/[^/]+\/trace$/.test(path)) return "READ";
+  if (/^\/api\/v1\/proposals\/[^/]+\/confirm-calendar$/.test(path)) return "CALENDAR_CONFIRMATION";
   if (/^\/api\/v1\/proposals\/[^/]+\/(apply|reject)$/.test(path)) return "PROPOSAL_ACTION";
   return undefined;
 }
@@ -47,6 +50,9 @@ export async function handlePrivateApiRequest(
       return;
     case "READ":
       await handlePrivateReadRequest(request, response, dependencies);
+      return;
+    case "CALENDAR_CONFIRMATION":
+      await handlePrivateCalendarConfirmationRequest(request, response, dependencies);
       return;
     case "PROPOSAL_ACTION":
       await handlePrivateProposalActionRequest(request, response, dependencies);
