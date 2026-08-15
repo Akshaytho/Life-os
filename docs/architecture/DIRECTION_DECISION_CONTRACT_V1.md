@@ -35,9 +35,29 @@ The dormant service accepts a user-authored command containing:
 - `approval.explicit = true`;
 - `approval.acknowledgement = SET_AS_CURRENT_DIRECTION`.
 
-The authenticated request context supplies the user identity, request ID and decision timestamp.
+The authenticated request context supplies the user identity, a stable server-derived write identity, and the decision timestamp.
 
 The service does not take final Direction text from an AI proposal payload. A future UI may prefill/edit suggestions for convenience, but the activation boundary receives the final user-submitted statement and explicit acknowledgement.
+
+## Stable web write identity
+
+A future browser transport must require a strong opaque `Idempotency-Key` and pass the trusted request context through the existing helper:
+
+`withWebWriteIdempotency(context, "DIRECTION_SET_CURRENT", idempotencyKey)`
+
+That helper derives an opaque server-owned request ID from:
+
+- authenticated user ID;
+- operation scope `DIRECTION_SET_CURRENT`;
+- the raw browser retry key.
+
+The raw key and user ID are hashed into the trusted request identity rather than copied into persistence or responses. The same raw key is isolated both by authenticated user and by operation scope, so a Capture retry key cannot collide with a Direction retry key.
+
+As defense in depth, the Direction activation service accepts only trusted request IDs shaped as:
+
+`web-idem-v1:direction_set_current:<64 lowercase hex characters>`
+
+A fresh ordinary transport request ID is rejected with `IDEMPOTENCY_REQUIRED` before the database unit of work begins. This prevents a future endpoint from accidentally making a high-authority Direction write non-replay-safe.
 
 ## Optimistic authority check
 
@@ -90,17 +110,19 @@ This preserves the ADR-004 state-plus-domain-events model: ordinary screens read
 
 ## Idempotency semantics
 
-The request fingerprint covers:
+The persisted request fingerprint covers:
 
 - final Direction statement;
 - expected current Direction ID;
 - the fixed high-authority acknowledgement.
 
-Replaying the same request ID with the same fingerprint returns the previously created decision without another write or event.
+The stable server-derived request ID identifies the browser retry operation, while the fingerprint verifies that the retry is asking for the exact same authoritative change.
+
+Replaying the same derived request ID with the same fingerprint returns the previously created decision without another write or event.
 
 If that historical decision has since been superseded, replay reports its **actual current lifecycle status (`SUPERSEDED`)** rather than falsely calling it active.
 
-Reusing the same request ID with different authoritative content fails with `IDEMPOTENCY_CONFLICT`.
+Reusing the same derived request ID with different authoritative content fails with `IDEMPOTENCY_CONFLICT`.
 
 ## PostgreSQL authorization proof
 
@@ -120,7 +142,7 @@ The proof verifies:
 - stale expected-current rejection leaves canonical state unchanged;
 - concurrent replacements of the same expected Direction produce exactly one winner;
 - RLS/current-state lookup prevents cross-user supersession;
-- two users may safely use the same request ID because idempotency is user-scoped.
+- the same browser Idempotency-Key derives different trusted request IDs for different authenticated users.
 
 ## Dormant deployment boundary
 
@@ -147,7 +169,7 @@ A later reviewed slice should proceed in this order:
 1. apply migration `0007` to the hosted development database using the existing explicit migration tooling;
 2. extend the hosted application-role/readiness contract with the minimum Direction privileges;
 3. add an authenticated **read** model for current Direction/history;
-4. add the dedicated high-authority private activation endpoint;
+4. add the dedicated high-authority private activation endpoint, requiring `Idempotency-Key` and deriving the `DIRECTION_SET_CURRENT` trusted request identity before the service call;
 5. add a UI that makes the current Decision, proposed change, superseded Decision and explicit acknowledgement visually unmistakable;
 6. only then allow live Today to compose current Direction.
 
@@ -159,6 +181,7 @@ Before merge, verify again that:
 
 - AI still cannot activate Direction;
 - no ordinary proposal Apply path can activate Direction;
+- high-authority web writes cannot bypass stable Idempotency-Key derivation;
 - user wording is preserved;
 - stale/current-version protection is enforced;
 - exactly one current Direction can exist per user;
