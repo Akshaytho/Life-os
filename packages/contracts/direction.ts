@@ -19,7 +19,7 @@ export interface SetCurrentDirectionCommand {
 
 export interface DirectionDecisionReceipt {
   directionId: string;
-  status: "ACTIVE";
+  status: DirectionDecisionStatus;
   authorityClass: "DECISION";
   decidedAt: string;
   supersededDirectionId?: string;
