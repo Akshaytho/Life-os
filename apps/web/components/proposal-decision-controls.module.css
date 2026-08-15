@@ -77,16 +77,56 @@
   line-height: 1.5;
 }
 
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.fieldGrid label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  font: 700 10px/1.2 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.wideField {
+  grid-column: 1 / -1;
+}
+
+.fieldGrid input,
+.fieldGrid select,
 .confirmation textarea {
   width: 100%;
+  border: 1px solid rgba(24, 42, 44, 0.24);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.8);
+  color: inherit;
+  font: inherit;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.fieldGrid input,
+.fieldGrid select {
+  min-height: 42px;
+  padding: 0 10px;
+}
+
+.confirmation textarea {
   min-height: 84px;
   margin: 12px 0 6px;
   padding: 10px 12px;
   resize: vertical;
-  border: 1px solid rgba(24, 42, 44, 0.24);
-  background: rgba(255, 255, 255, 0.8);
-  color: inherit;
-  font: inherit;
+}
+
+.formError {
+  margin: 0 0 10px !important;
+  color: #71342e;
+  font-weight: 700;
 }
 
 .reasonCount {
@@ -118,6 +158,14 @@
   .primaryRow,
   .confirmRow {
     flex-direction: column;
+  }
+
+  .fieldGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .wideField {
+    grid-column: auto;
   }
 
   .button,
