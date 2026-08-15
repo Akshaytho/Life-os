@@ -42,6 +42,7 @@ test("plan is read-only, apply is ordered/idempotent, and migration history is c
     "0004_row_level_authorization.sql",
     "0005_proposal_rejection_provenance.sql",
     "0006_safe_fallback_interpreter.sql",
+    "0007_direction_decision.sql",
   ]);
 
   const beforeApply = await adminPool.query<{ ledger: string | null }>(
@@ -63,8 +64,8 @@ test("plan is read-only, apply is ordered/idempotent, and migration history is c
     FROM lifeos_schema_migration
     ORDER BY sequence
   `);
-  assert.equal(history.rowCount, 6);
-  assert.deepEqual(history.rows.map((row) => row.sequence), [1, 2, 3, 4, 5, 6]);
+  assert.equal(history.rowCount, 7);
+  assert.deepEqual(history.rows.map((row) => row.sequence), [1, 2, 3, 4, 5, 6, 7]);
   assert.deepEqual(history.rows.map((row) => row.filename), initialPlan.pending);
   for (const row of history.rows) assert.match(row.checksum_sha256, /^[0-9a-f]{64}$/);
 
@@ -76,6 +77,7 @@ test("plan is read-only, apply is ordered/idempotent, and migration history is c
     "routing_interpretation",
     "routing_proposal",
     "proposal_rejection",
+    "direction_decision",
   ]) {
     const result = await adminPool.query<{ relation: string | null }>(
       `SELECT to_regclass('${schema}.${table}')::text AS relation`,
