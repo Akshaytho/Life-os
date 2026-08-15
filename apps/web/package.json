@@ -10,6 +10,7 @@
     "lint": "echo \"Lint rules will be introduced with the first mutation flow.\""
   },
   "dependencies": {
+    "@supabase/supabase-js": "2.109.0",
     "next": "16.2.11",
     "react": "19.2.7",
     "react-dom": "19.2.7"
