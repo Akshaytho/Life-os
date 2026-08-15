@@ -14,6 +14,7 @@ import type {
 export type DirectionDecisionErrorCode =
   | "APPROVAL_REQUIRED"
   | "INVALID_DIRECTION"
+  | "IDEMPOTENCY_REQUIRED"
   | "CURRENT_DIRECTION_CHANGED"
   | "DIRECTION_UNCHANGED"
   | "IDEMPOTENCY_CONFLICT";
@@ -32,11 +33,24 @@ export interface ActivateDirectionDecisionDependencies {
 }
 
 const opaqueIdPattern = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/;
+const directionIdempotencyPrefix = "web-idem-v1:direction_set_current:";
 const maxDirectionLength = 1200;
 
 function requiredOpaqueId(value: string, code: DirectionDecisionErrorCode): string {
   const normalized = value.trim();
   if (!opaqueIdPattern.test(normalized)) throw new DirectionDecisionError(code);
+  return normalized;
+}
+
+function requiredDirectionRequestId(value: string): string {
+  const normalized = requiredOpaqueId(value, "IDEMPOTENCY_REQUIRED");
+  if (!normalized.startsWith(directionIdempotencyPrefix)) {
+    throw new DirectionDecisionError("IDEMPOTENCY_REQUIRED");
+  }
+  const digest = normalized.slice(directionIdempotencyPrefix.length);
+  if (!/^[0-9a-f]{64}$/.test(digest)) {
+    throw new DirectionDecisionError("IDEMPOTENCY_REQUIRED");
+  }
   return normalized;
 }
 
@@ -94,8 +108,9 @@ function replayReceipt(
 
 /**
  * High-authority Direction boundary. This service is intentionally not composed into
- * the hosted private runtime yet. The final statement is user-authored and the caller
- * must explicitly acknowledge that it will become the user's current Direction.
+ * the hosted private runtime yet. The final statement is user-authored, the caller must
+ * explicitly acknowledge that it will become current Direction, and the trusted request
+ * ID must come from the server-derived DIRECTION_SET_CURRENT Idempotency-Key scope.
  */
 export async function activateDirectionDecision(
   command: SetCurrentDirectionCommand,
@@ -103,7 +118,7 @@ export async function activateDirectionDecision(
   dependencies: ActivateDirectionDecisionDependencies,
 ): Promise<DirectionDecisionReceipt> {
   const userId = requiredOpaqueId(context.principal.userId, "INVALID_DIRECTION");
-  const requestId = requiredOpaqueId(context.requestId, "INVALID_DIRECTION");
+  const requestId = requiredDirectionRequestId(context.requestId);
   const statement = normalizedDirection(command.statement);
   const expectedCurrentDirectionId = expectedDirectionId(command.expectedCurrentDirectionId);
 
