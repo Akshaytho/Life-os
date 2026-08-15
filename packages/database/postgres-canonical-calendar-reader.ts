@@ -41,7 +41,7 @@ export class PostgresCanonicalCalendarReader implements CanonicalCalendarReader 
             AND starts_at < $3
             AND ends_at > $2
           ORDER BY starts_at, id
-          LIMIT 200`,
+          LIMIT 201`,
         [authenticatedUserId, fromInclusive, toExclusive],
       );
 
