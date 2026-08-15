@@ -6,6 +6,7 @@ export type TechnicalTelemetryComponent = "API" | "APPLICATION" | "DATABASE" | "
 export type TechnicalOperation =
   | "CAPTURE_AND_PROPOSE"
   | "GET_PROPOSAL_REVIEW"
+  | "CONFIRM_CALENDAR_PROPOSAL"
   | "APPLY_CALENDAR_PROPOSAL"
   | "REJECT_ROUTING_PROPOSAL"
   | "GET_INTERACTION_TRACE"
@@ -19,21 +20,25 @@ export interface TechnicalTraceReferences {
   eventId?: string;
 }
 
-interface TechnicalTelemetryBase {
+interface TechnicalTelemetryBase extends RuntimeProvenance {
+  kind?: never;
+}
+
+interface TechnicalTelemetryIdentity {
   timestamp: string;
   level: TechnicalTelemetryLevel;
   component: TechnicalTelemetryComponent;
   runtime: RuntimeProvenance;
 }
 
-export interface RuntimeLifecycleTelemetry extends TechnicalTelemetryBase {
+export interface RuntimeLifecycleTelemetry extends TechnicalTelemetryIdentity {
   kind: "RUNTIME_LIFECYCLE";
   event: "STARTED" | "STOPPING" | "STARTUP_FAILED" | "SERVER_FAILED";
   signal?: "SIGTERM" | "SIGINT";
   errorCode?: string;
 }
 
-export interface OperationTelemetry extends TechnicalTelemetryBase {
+export interface OperationTelemetry extends TechnicalTelemetryIdentity {
   kind: "OPERATION";
   operation: TechnicalOperation;
   outcome: "SUCCESS" | "REJECTED" | "UNAVAILABLE" | "FAILED";
@@ -42,7 +47,7 @@ export interface OperationTelemetry extends TechnicalTelemetryBase {
   errorCode?: string;
 }
 
-export interface InterpreterTelemetry extends TechnicalTelemetryBase {
+export interface InterpreterTelemetry extends TechnicalTelemetryIdentity {
   kind: "INTERPRETER";
   interpreter: "LOCAL_SAMPLE" | "LIFE_OS_AI";
   outcome: "SUCCESS" | "FAILED";
