@@ -21,6 +21,22 @@ export interface CreateCaptureReceipt {
   proposalStates: ProposalState[];
 }
 
+export interface ConfirmCalendarProposalInput {
+  title: string;
+  startsAt: string;
+  endsAt: string;
+  category: "Work" | "Creator" | "Learning" | "Health" | "Family" | "Friends" | "Travel" | "Personal" | "Rest";
+  commitment: "Fixed" | "Important" | "Flexible" | "Optional";
+  timeZone: string;
+}
+
+export interface ConfirmCalendarProposalReceipt {
+  status: "ready_to_apply" | "replayed";
+  proposalId: string;
+  state: "READY_TO_APPLY";
+  confirmedAt: string;
+}
+
 export interface ApplyProposalReceipt {
   status: "applied" | "replayed";
   proposalId: string;
@@ -139,6 +155,22 @@ export function getInteractionTrace(accessToken: string, captureId: string): Pro
   return privateRequest<InteractionChangeTrace>(
     accessToken,
     `/api/v1/interactions/${encodeURIComponent(captureId)}/trace`,
+  );
+}
+
+export function confirmCalendarProposal(
+  accessToken: string,
+  proposalId: string,
+  plan: ConfirmCalendarProposalInput,
+): Promise<ConfirmCalendarProposalReceipt> {
+  return privateRequest<ConfirmCalendarProposalReceipt>(
+    accessToken,
+    `/api/v1/proposals/${encodeURIComponent(proposalId)}/confirm-calendar`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan }),
+    },
   );
 }
 
