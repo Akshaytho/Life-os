@@ -6,10 +6,12 @@ import { useEffect, useRef, useState } from "react";
 import type { InteractionChangeTrace } from "../../../packages/contracts/interaction-change-ledger";
 import type { CaptureProposalReview, ProposalReviewItem } from "../../../packages/contracts/proposal-review";
 import {
+  applyCalendarProposal,
   createCapture,
   getCaptureReview,
   getInteractionTrace,
   LifeOsApiError,
+  rejectProposal,
 } from "../lib/life-os-api";
 import {
   BrowserAuthConfigurationError,
@@ -17,6 +19,7 @@ import {
 } from "../lib/supabase-browser";
 import captureStyles from "./capture-routing.module.css";
 import liveStyles from "./live-capture-routing.module.css";
+import { ProposalDecisionControls } from "./proposal-decision-controls";
 
 function humanEnum(value: string) {
   return value.replaceAll("_", " ").toLowerCase().replace(/(^|\s)\S/g, (letter) => letter.toUpperCase());
@@ -32,9 +35,12 @@ function safeFlowMessage(error: unknown): string {
   if (error instanceof LifeOsApiError) {
     if (error.code === "authentication_required") return "Your session is no longer valid. Sign in again before retrying.";
     if (error.code === "origin_not_allowed") return "This browser origin is not approved for the private Life OS API.";
-    if (error.code === "network_unavailable") return "Life OS lost contact with the private API. Delivery may be uncertain; retrying the same draft reuses its idempotency key.";
+    if (error.code === "network_unavailable") return "Life OS lost contact with the private API. Delivery may be uncertain; the server-side decision boundary is idempotent on retry.";
+    if (error.code === "proposal_not_applicable") return "Life OS refused the Apply request because this proposal is no longer eligible. Reload the review before deciding again.";
+    if (error.code === "rejection_conflict") return "Life OS refused this rejection because the proposal already has a different final decision or rejection record.";
+    if (error.code === "not_found") return "This proposal is no longer available to the authenticated user. Reload the review.";
   }
-  return "Life OS could not complete this request. The error was kept private; you can safely retry.";
+  return "Life OS could not complete this request. The error was kept private; you can safely reload before deciding again.";
 }
 
 function LiveReview({ review }: { review: CaptureProposalReview }) {
@@ -93,7 +99,15 @@ function LiveReview({ review }: { review: CaptureProposalReview }) {
   );
 }
 
-function LiveProposal({ proposal, index }: { proposal: ProposalReviewItem; index: number }) {
+interface LiveProposalProps {
+  proposal: ProposalReviewItem;
+  index: number;
+  busy: boolean;
+  onApply(proposalId: string): Promise<boolean>;
+  onReject(proposalId: string, reason?: string): Promise<boolean>;
+}
+
+function LiveProposal({ proposal, index, busy, onApply, onReject }: LiveProposalProps) {
   return (
     <article className={captureStyles.proposal} data-destination={proposal.destination}>
       <div className={captureStyles.proposalIndex}>{String(index + 1).padStart(2, "0")}</div>
@@ -128,25 +142,41 @@ function LiveProposal({ proposal, index }: { proposal: ProposalReviewItem; index
           <strong>{humanEnum(proposal.proposedResultClass)}</strong>
           <small>proposed result class</small>
         </div>
-        <button className={captureStyles.apply} disabled>Apply not connected</button>
+        <ProposalDecisionControls proposal={proposal} busy={busy} onApply={onApply} onReject={onReject} />
       </div>
     </article>
   );
 }
 
-function LiveProposals({ review }: { review: CaptureProposalReview }) {
+interface LiveProposalsProps {
+  review: CaptureProposalReview;
+  busy: boolean;
+  onApply(proposalId: string): Promise<boolean>;
+  onReject(proposalId: string, reason?: string): Promise<boolean>;
+}
+
+function LiveProposals({ review, busy, onApply, onReject }: LiveProposalsProps) {
   return (
     <section className={captureStyles.proposalSection} aria-label="Persisted proposed consequences">
       <div className={captureStyles.sectionHeading}>
         <div>
           <span>PROPOSED CONSEQUENCES</span>
-          <h2>Saved as suggestions. Nothing is approved from this screen.</h2>
+          <h2>Suggestions stay suggestions until you make a reviewed decision.</h2>
         </div>
-        <p>This live slice persists the Capture and proposals, then stops before user approval or canonical life-state mutation.</p>
+        <p>Only a ready, non-high-authority Calendar create proposal can enter the explicit Apply flow. Other proposal types remain uncommitted; live suggestions can be rejected.</p>
       </div>
       <div className={captureStyles.proposalStack}>
         {review.proposals.length > 0
-          ? review.proposals.map((proposal, index) => <LiveProposal key={proposal.proposalId} proposal={proposal} index={index} />)
+          ? review.proposals.map((proposal, index) => (
+            <LiveProposal
+              key={proposal.proposalId}
+              proposal={proposal}
+              index={index}
+              busy={busy}
+              onApply={onApply}
+              onReject={onReject}
+            />
+          ))
           : <div className={captureStyles.noProposal}>No consequence was proposed. Your persisted source remains available.</div>}
       </div>
     </section>
@@ -271,18 +301,22 @@ export function LiveCaptureRouting() {
     return token;
   }
 
+  async function readCurrentState(accessToken: string, captureId: string) {
+    const [nextReview, nextTrace] = await Promise.all([
+      getCaptureReview(accessToken, captureId),
+      getInteractionTrace(accessToken, captureId),
+    ]);
+    setReview(nextReview);
+    setTrace(nextTrace);
+  }
+
   async function loadReview(captureId: string) {
     setFlowBusy(true);
     setFlowMessage("Loading the persisted review and trace…");
     try {
       const token = await currentAccessToken();
-      const [nextReview, nextTrace] = await Promise.all([
-        getCaptureReview(token, captureId),
-        getInteractionTrace(token, captureId),
-      ]);
-      setReview(nextReview);
-      setTrace(nextTrace);
-      setFlowMessage("Persisted Capture, Review and Trace loaded. Approval remains disconnected.");
+      await readCurrentState(token, captureId);
+      setFlowMessage("Persisted Capture, Review and Trace loaded with the current decision state.");
     } catch (error) {
       setFlowMessage(safeFlowMessage(error));
     } finally {
@@ -309,17 +343,56 @@ export function LiveCaptureRouting() {
       setReview(undefined);
       setTrace(undefined);
 
-      const [nextReview, nextTrace] = await Promise.all([
-        getCaptureReview(token, receipt.captureId),
-        getInteractionTrace(token, receipt.captureId),
-      ]);
-      setReview(nextReview);
-      setTrace(nextTrace);
+      await readCurrentState(token, receipt.captureId);
       setFlowMessage(receipt.status === "replayed"
         ? "The prior safe submission was replayed; no duplicate Capture was created."
-        : "Capture saved and reviewed. No proposal has been approved or applied.");
+        : "Capture saved and reviewed. Suggestions still require your decision.");
     } catch (error) {
       setFlowMessage(safeFlowMessage(error));
+    } finally {
+      setFlowBusy(false);
+    }
+  }
+
+  async function applyProposalDecision(proposalId: string): Promise<boolean> {
+    const captureId = review?.source.captureId;
+    if (!captureId) return false;
+
+    setFlowBusy(true);
+    setFlowMessage("Sending your explicit Calendar Apply decision for server-side revalidation…");
+    try {
+      const token = await currentAccessToken();
+      const receipt = await applyCalendarProposal(token, proposalId);
+      await readCurrentState(token, captureId);
+      setFlowMessage(receipt.status === "replayed"
+        ? "This Apply decision had already committed safely; Life OS returned the existing result."
+        : "Your explicit decision was applied. The refreshed trace now shows the canonical Calendar change.");
+      return true;
+    } catch (error) {
+      setFlowMessage(safeFlowMessage(error));
+      return false;
+    } finally {
+      setFlowBusy(false);
+    }
+  }
+
+  async function rejectProposalDecision(proposalId: string, reason?: string): Promise<boolean> {
+    const captureId = review?.source.captureId;
+    if (!captureId) return false;
+
+    setFlowBusy(true);
+    setFlowMessage("Recording your proposal rejection…");
+    try {
+      const token = await currentAccessToken();
+      const receipt = await rejectProposal(token, proposalId, reason);
+      await readCurrentState(token, captureId);
+      setFlowMessage(receipt.status === "replayed"
+        ? "This exact rejection was already recorded; Life OS returned the existing decision provenance."
+        : "Suggestion rejected. The refreshed review records your decision without creating canonical life state.");
+      return true;
+    } catch (error) {
+      setFlowMessage(safeFlowMessage(error));
+      return false;
     } finally {
       setFlowBusy(false);
     }
@@ -342,7 +415,7 @@ export function LiveCaptureRouting() {
         </div>
         <div className={captureStyles.heroGrid}>
           <div><span className="section-kicker">REAL PRIVATE TRANSPORT</span><h1>You say it.<br />Life OS saves the source, then shows its work.</h1></div>
-          <p>This development surface uses your Supabase session and the private Railway API. Capture can be persisted; approval and canonical mutation remain deliberately disconnected.</p>
+          <p>This development surface uses your Supabase session and the private Railway API. Capture persists source and suggestions; only an explicit reviewed decision can cross a supported commit boundary.</p>
         </div>
       </section>
 
@@ -373,7 +446,7 @@ export function LiveCaptureRouting() {
             <form onSubmit={submitCapture}>
               <div className={captureStyles.instrumentTopline}>
                 <span>YOUR CAPTURE</span>
-                <span>PERSISTED SOURCE · APPROVAL STILL REQUIRED</span>
+                <span>PERSISTED SOURCE · USER DECISION REQUIRED</span>
               </div>
               <textarea
                 aria-label="Natural language Capture"
@@ -407,10 +480,10 @@ export function LiveCaptureRouting() {
             <div className={captureStyles.zeroMark}>{canonicalChanges}</div>
             <div>
               <span>CANONICAL LIFE-STATE WRITES</span>
-              <strong>{canonicalChanges === 0 ? "Capture can be saved. Your life state has not been changed." : "A canonical change is recorded in this trace."}</strong>
-              <p>Saving source/interpretation/proposals is not approval. Calendar, Journey, Memory and other canonical domains require a separate reviewed user action.</p>
+              <strong>{canonicalChanges === 0 ? "Your saved Capture has not changed canonical life state." : "Your explicit decision produced a canonical change recorded in this trace."}</strong>
+              <p>Source, observations and suggestions are review material. Only the dedicated Apply boundary can create the currently supported Calendar canonical change.</p>
             </div>
-            <div className={captureStyles.lockState}><i /> {canonicalChanges === 0 ? "AWAITING USER AUTHORITY" : "TRACE RECORDED"}</div>
+            <div className={captureStyles.lockState}><i /> {canonicalChanges === 0 ? "AWAITING USER AUTHORITY" : "USER DECISION RECORDED"}</div>
           </section>
 
           {review ? (
@@ -423,7 +496,12 @@ export function LiveCaptureRouting() {
                   <small>Missing detail or authority remains unresolved until you clarify it.</small>
                 </aside>
               )}
-              <LiveProposals review={review} />
+              <LiveProposals
+                review={review}
+                busy={flowBusy}
+                onApply={applyProposalDecision}
+                onReject={rejectProposalDecision}
+              />
               {trace && <TraceSummary trace={trace} />}
             </>
           ) : (
@@ -434,14 +512,14 @@ export function LiveCaptureRouting() {
             <div className={captureStyles.boundaryMark}>{canonicalChanges}</div>
             <div>
               <span>APPROVAL / COMMIT BOUNDARY</span>
-              <h2>Live Capture stops here.</h2>
-              <p>Apply and Reject are intentionally not wired in this slice. The next mutation surface must preserve explicit user authority and backend revalidation.</p>
+              <h2>Your decision is the boundary.</h2>
+              <p>Apply requires a second explicit confirmation and is exposed only for a ready, non-high-authority Calendar-create proposal. The API revalidates everything before commit. Reject records your decision without creating canonical life state.</p>
             </div>
             <div className={captureStyles.boundaryStates}>
               <span>Source <b>{review ? "persisted" : "draft"}</b></span>
               <span>Observation <b>{review?.interpretation ? "visible" : "none"}</b></span>
               <span>Suggestions <b>{review ? review.proposals.length : 0}</b></span>
-              <span>Approval UI <b>disconnected</b></span>
+              <span>Decision UI <b>explicit</b></span>
             </div>
           </section>
         </>
