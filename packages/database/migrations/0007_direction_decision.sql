@@ -10,9 +10,14 @@ CREATE TABLE IF NOT EXISTS direction_decision (
   decided_at timestamptz NOT NULL,
   recorded_at timestamptz NOT NULL,
   ended_at timestamptz,
-  supersedes_direction_id text REFERENCES direction_decision(direction_id) ON DELETE RESTRICT,
-  request_id text NOT NULL UNIQUE CHECK (length(btrim(request_id)) > 0),
+  supersedes_direction_id text,
+  request_id text NOT NULL CHECK (length(btrim(request_id)) > 0),
   request_fingerprint varchar(64) NOT NULL CHECK (request_fingerprint ~ '^[0-9a-f]{64}$'),
+  UNIQUE (direction_id, user_id),
+  UNIQUE (user_id, request_id),
+  FOREIGN KEY (supersedes_direction_id, user_id)
+    REFERENCES direction_decision(direction_id, user_id)
+    ON DELETE RESTRICT,
   CHECK (recorded_at >= decided_at),
   CHECK (
     (status = 'ACTIVE' AND ended_at IS NULL)
