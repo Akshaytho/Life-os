@@ -17,19 +17,24 @@ function principal(userId = "owner-user") {
   return { actorType: "USER" as const, userId };
 }
 
-test("projects canonical Calendar facts without leaking owner or proposal provenance", async () => {
-  const reader = new FixtureReader();
-  reader.records = [{
-    id: "calendar-1",
+function record(index: number): CanonicalCalendarRecord {
+  return {
+    id: `calendar-${index}`,
     userId: "owner-user",
-    title: "Gym",
+    title: `Event ${index}`,
     startsAt: "2026-08-16T11:30:00.000Z",
     endsAt: "2026-08-16T12:30:00.000Z",
     category: "Health",
     commitment: "Important",
     createdAt: "2026-08-15T18:32:01.000Z",
-    sourceProposalId: "proposal-private-1",
-  }];
+    sourceProposalId: `proposal-private-${index}`,
+  };
+}
+
+test("projects canonical Calendar facts without leaking owner or proposal provenance", async () => {
+  const reader = new FixtureReader();
+  reader.records = [record(1)];
+  reader.records[0].title = "Gym";
 
   const result = await getCanonicalCalendar(
     { from: "2026-08-16T00:00:00+05:30", to: "2026-08-17T00:00:00+05:30" },
@@ -50,13 +55,13 @@ test("projects canonical Calendar facts without leaking owner or proposal proven
   assert.equal(serialized.includes("proposal-private-1"), false);
 });
 
-test("requires an authenticated USER principal before reading persistence", async () => {
+test("rejects an empty authenticated user identity before reading persistence", async () => {
   const reader = new FixtureReader();
 
   await assert.rejects(
     () => getCanonicalCalendar(
       { from: "2026-08-16T00:00:00Z", to: "2026-08-17T00:00:00Z" },
-      { principal: { actorType: "LIFE_OS", userId: "owner-user" } },
+      { principal: principal("   ") },
       { reader },
     ),
     (error: unknown) => error instanceof CanonicalCalendarReadError,
@@ -79,4 +84,19 @@ test("rejects ambiguous, reversed and oversized Calendar windows before reading 
     );
   }
   assert.equal(reader.calls.length, 0);
+});
+
+test("rejects dense windows instead of silently returning an incomplete canonical Calendar", async () => {
+  const reader = new FixtureReader();
+  reader.records = Array.from({ length: 201 }, (_, index) => record(index + 1));
+
+  await assert.rejects(
+    () => getCanonicalCalendar(
+      { from: "2026-08-16T00:00:00Z", to: "2026-08-17T00:00:00Z" },
+      { principal: principal() },
+      { reader },
+    ),
+    (error: unknown) => error instanceof CanonicalCalendarReadError && /too dense/.test(error.message),
+  );
+  assert.equal(reader.calls.length, 1);
 });
