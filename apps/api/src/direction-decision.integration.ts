@@ -8,6 +8,7 @@ import {
   activateDirectionDecision,
   DirectionDecisionError,
 } from "./activate-direction-decision";
+import { withWebWriteIdempotency } from "./web-write-idempotency";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error("DATABASE_URL is required for PostgreSQL integration tests");
@@ -23,13 +24,17 @@ appUrl.username = appRole;
 appUrl.password = appPassword;
 const appPool = new Pool({ connectionString: appUrl.toString(), max: 6, options: `-c search_path=${schema}` });
 
-function context(userId: string, requestId: string, receivedAt: string): WriteRequestContext {
-  return {
-    principal: { actorType: "USER", userId },
-    source: "WEB_APP",
-    receivedAt,
-    requestId,
-  };
+function context(userId: string, idempotencyKey: string, receivedAt: string): WriteRequestContext {
+  return withWebWriteIdempotency(
+    {
+      principal: { actorType: "USER", userId },
+      source: "WEB_APP",
+      receivedAt,
+      requestId: "transport-request",
+    },
+    "DIRECTION_SET_CURRENT",
+    idempotencyKey,
+  );
 }
 
 function command(statement: string, expectedCurrentDirectionId: string | null) {
@@ -96,12 +101,12 @@ test("least-privileged RLS transaction creates and supersedes Direction while pr
 
   const first = await activateDirectionDecision(
     command("Build a self-reliant travel creator path while keeping my full-time job.", null),
-    context("user-a", "direction-request-a", "2026-08-16T20:00:00.000Z"),
+    context("user-a", "direction-history-a-0001", "2026-08-16T20:00:00.000Z"),
     { unitOfWork, clock: { now: () => "2026-08-16T20:00:01.000Z" }, ids: generator },
   );
   const second = await activateDirectionDecision(
     command("Build the craft steadily and make travel films without abandoning real-life responsibilities.", first.directionId),
-    context("user-a", "direction-request-b", "2026-08-16T21:00:00.000Z"),
+    context("user-a", "direction-history-b-0001", "2026-08-16T21:00:00.000Z"),
     { unitOfWork, clock: { now: () => "2026-08-16T21:00:01.000Z" }, ids: generator },
   );
 
@@ -125,6 +130,7 @@ test("least-privileged RLS transaction creates and supersedes Direction while pr
   assert.equal(rows.rows[0]?.ended_at?.toISOString(), "2026-08-16T21:00:01.000Z");
   assert.equal(rows.rows[1]?.status, "ACTIVE");
   assert.equal(rows.rows[1]?.supersedes_direction_id, first.directionId);
+  assert.equal(rows.rows.every((row) => row.user_id === "user-a"), true);
 
   const events = await ownerPool.query<{
     actor_type: string;
@@ -147,19 +153,19 @@ test("stale expected-current version is rejected transactionally without superse
   const generator = ids("stale");
   const first = await activateDirectionDecision(
     command("Direction A", null),
-    context("user-a", "direction-stale-a", "2026-08-16T20:00:00.000Z"),
+    context("user-a", "direction-stale-a-0001", "2026-08-16T20:00:00.000Z"),
     { unitOfWork, clock: { now: () => "2026-08-16T20:00:01.000Z" }, ids: generator },
   );
   await activateDirectionDecision(
     command("Direction B", first.directionId),
-    context("user-a", "direction-stale-b", "2026-08-16T21:00:00.000Z"),
+    context("user-a", "direction-stale-b-0001", "2026-08-16T21:00:00.000Z"),
     { unitOfWork, clock: { now: () => "2026-08-16T21:00:01.000Z" }, ids: generator },
   );
 
   await assert.rejects(
     () => activateDirectionDecision(
       command("Direction C from stale tab", first.directionId),
-      context("user-a", "direction-stale-c", "2026-08-16T22:00:00.000Z"),
+      context("user-a", "direction-stale-c-0001", "2026-08-16T22:00:00.000Z"),
       { unitOfWork, clock: { now: () => "2026-08-16T22:00:01.000Z" }, ids: generator },
     ),
     (error: unknown) => error instanceof DirectionDecisionError && error.code === "CURRENT_DIRECTION_CHANGED",
@@ -177,19 +183,19 @@ test("advisory serialization allows only one concurrent replacement of the same 
   const unitOfWork = new PostgresDirectionDecisionUnitOfWork(appPool);
   const initial = await activateDirectionDecision(
     command("Direction A", null),
-    context("user-a", "direction-race-initial", "2026-08-16T20:00:00.000Z"),
+    context("user-a", "direction-race-initial-0001", "2026-08-16T20:00:00.000Z"),
     { unitOfWork, clock: { now: () => "2026-08-16T20:00:01.000Z" }, ids: ids("race-initial") },
   );
 
   const attempts = await Promise.allSettled([
     activateDirectionDecision(
       command("Direction B", initial.directionId),
-      context("user-a", "direction-race-b", "2026-08-16T21:00:00.000Z"),
+      context("user-a", "direction-race-b-0001", "2026-08-16T21:00:00.000Z"),
       { unitOfWork, clock: { now: () => "2026-08-16T21:00:01.000Z" }, ids: ids("race-b") },
     ),
     activateDirectionDecision(
       command("Direction C", initial.directionId),
-      context("user-a", "direction-race-c", "2026-08-16T21:00:00.000Z"),
+      context("user-a", "direction-race-c-0001", "2026-08-16T21:00:00.000Z"),
       { unitOfWork, clock: { now: () => "2026-08-16T21:00:01.000Z" }, ids: ids("race-c") },
     ),
   ]);
@@ -206,18 +212,21 @@ test("advisory serialization allows only one concurrent replacement of the same 
   assert.equal(active.rows[0]?.count, "1");
 });
 
-test("RLS and composite ownership allow same request ID for another user but prevent cross-user supersession", async () => {
+test("same browser Idempotency-Key is user-isolated and RLS prevents cross-user supersession", async () => {
   const unitOfWork = new PostgresDirectionDecisionUnitOfWork(appPool);
-  const requestId = "direction-shared-request";
+  const sharedKey = "direction-shared-key-0001";
+  const contextA = context("user-a", sharedKey, "2026-08-16T20:00:00.000Z");
+  const contextB = context("user-b", sharedKey, "2026-08-16T20:00:00.000Z");
+  assert.notEqual(contextA.requestId, contextB.requestId);
 
   const userA = await activateDirectionDecision(
     command("User A direction", null),
-    context("user-a", requestId, "2026-08-16T20:00:00.000Z"),
+    contextA,
     { unitOfWork, clock: { now: () => "2026-08-16T20:00:01.000Z" }, ids: ids("user-a") },
   );
   const userB = await activateDirectionDecision(
     command("User B direction", null),
-    context("user-b", requestId, "2026-08-16T20:00:00.000Z"),
+    contextB,
     { unitOfWork, clock: { now: () => "2026-08-16T20:00:01.000Z" }, ids: ids("user-b") },
   );
 
@@ -226,7 +235,7 @@ test("RLS and composite ownership allow same request ID for another user but pre
   await assert.rejects(
     () => activateDirectionDecision(
       command("User B must not supersede User A", userA.directionId),
-      context("user-b", "direction-cross-user", "2026-08-16T21:00:00.000Z"),
+      context("user-b", "direction-cross-user-0001", "2026-08-16T21:00:00.000Z"),
       { unitOfWork, clock: { now: () => "2026-08-16T21:00:01.000Z" }, ids: ids("cross-user") },
     ),
     (error: unknown) => error instanceof DirectionDecisionError && error.code === "CURRENT_DIRECTION_CHANGED",
