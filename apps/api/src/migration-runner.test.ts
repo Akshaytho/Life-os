@@ -23,9 +23,10 @@ test("current Life OS migration set is contiguous, checksummed and runner-transa
       "0004_row_level_authorization.sql",
       "0005_proposal_rejection_provenance.sql",
       "0006_safe_fallback_interpreter.sql",
+      "0007_direction_decision.sql",
     ],
   );
-  assert.deepEqual(migrations.map((migration) => migration.sequence), [1, 2, 3, 4, 5, 6]);
+  assert.deepEqual(migrations.map((migration) => migration.sequence), [1, 2, 3, 4, 5, 6, 7]);
   for (const migration of migrations) {
     assert.match(migration.checksumSha256, /^[0-9a-f]{64}$/);
     assert.equal(/^\s*BEGIN\s*;/i.test(migration.body), false);
