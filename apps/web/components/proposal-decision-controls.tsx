@@ -14,6 +14,8 @@ export interface ProposalDecisionControlsProps {
 }
 
 type DecisionMode = "NONE" | "CALENDAR_DETAILS" | "APPLY" | "REJECT";
+type CalendarCategoryChoice = ConfirmCalendarProposalInput["category"] | "";
+type CalendarCommitmentChoice = ConfirmCalendarProposalInput["commitment"] | "";
 
 const categories: ConfirmCalendarProposalInput["category"][] = [
   "Work", "Creator", "Learning", "Health", "Family", "Friends", "Travel", "Personal", "Rest",
@@ -85,10 +87,16 @@ export function ProposalDecisionControls({
   const [endsAt, setEndsAt] = useState(() => localInputValue(detail(proposal, "endsAt")));
   const initialCategory = detail(proposal, "category");
   const initialCommitment = detail(proposal, "commitment");
-  const [category, setCategory] = useState(categories.includes(initialCategory as ConfirmCalendarProposalInput["category"])
-    ? initialCategory as ConfirmCalendarProposalInput["category"] : "");
-  const [commitment, setCommitment] = useState(commitments.includes(initialCommitment as ConfirmCalendarProposalInput["commitment"])
-    ? initialCommitment as ConfirmCalendarProposalInput["commitment"] : "");
+  const [category, setCategory] = useState<CalendarCategoryChoice>(
+    categories.includes(initialCategory as ConfirmCalendarProposalInput["category"])
+      ? initialCategory as ConfirmCalendarProposalInput["category"]
+      : "",
+  );
+  const [commitment, setCommitment] = useState<CalendarCommitmentChoice>(
+    commitments.includes(initialCommitment as ConfirmCalendarProposalInput["commitment"])
+      ? initialCommitment as ConfirmCalendarProposalInput["commitment"]
+      : "",
+  );
   const [calendarError, setCalendarError] = useState("");
   const applyBlocked = applyBlockReason(proposal);
   const calendarConfirmationAvailable = canConfirmCalendar(proposal);
@@ -172,11 +180,11 @@ export function ProposalDecisionControls({
             <label className={styles.wideField}>Title<input maxLength={160} onChange={(event) => setTitle(event.target.value)} value={title} /></label>
             <label>Start<input onChange={(event) => setStartsAt(event.target.value)} type="datetime-local" value={startsAt} /></label>
             <label>End<input onChange={(event) => setEndsAt(event.target.value)} type="datetime-local" value={endsAt} /></label>
-            <label>Category<select onChange={(event) => setCategory(event.target.value as typeof category)} value={category}>
+            <label>Category<select onChange={(event) => setCategory(event.target.value as CalendarCategoryChoice)} value={category}>
               <option value="">Choose category</option>
               {categories.map((item) => <option key={item} value={item}>{item}</option>)}
             </select></label>
-            <label>Commitment<select onChange={(event) => setCommitment(event.target.value as typeof commitment)} value={commitment}>
+            <label>Commitment<select onChange={(event) => setCommitment(event.target.value as CalendarCommitmentChoice)} value={commitment}>
               <option value="">Choose commitment</option>
               {commitments.map((item) => <option key={item} value={item}>{item}</option>)}
             </select></label>
