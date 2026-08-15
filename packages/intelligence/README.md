@@ -9,3 +9,6 @@ Current Capture interpretation boundary:
 - Interpreter output remains OBSERVATION/SUGGESTION data and cannot create `REJECTED` or `APPLIED` user states.
 - High-authority interpretation never bypasses the dedicated approval boundary.
 - The port receives only the raw Capture text and its trusted request time in V1; it has no direct database authority.
+- `OpenAiCaptureInterpreter` is an explicit opt-in semantic interpreter. It requests strict structured output but deliberately does not let the model choose durable trust class, approval mode, proposal state, destination ownership, or canonical mutation authority.
+- `FailClosedCaptureInterpreter` returns `SafeFallbackCaptureInterpreter` output when the primary provider/model cannot produce a trusted result.
+- V1 code policy never promotes an AI-produced proposal to `READY_TO_APPLY`; semantic understanding and commit readiness remain separate reviewed boundaries.
