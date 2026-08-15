@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { performance } from "node:perf_hooks";
 import type { Pool } from "pg";
 import type { RuntimeProvenance } from "../../../packages/contracts/runtime-provenance";
+import { PostgresCanonicalCalendarReader } from "../../../packages/database/postgres-canonical-calendar-reader";
 import { PostgresInteractionChangeLedgerReader } from "../../../packages/database/postgres-interaction-change-ledger-reader";
 import { PostgresProposalReviewReader } from "../../../packages/database/postgres-proposal-review-reader";
 import { PostgresWriteUnitOfWork } from "../../../packages/database/postgres-write-unit-of-work";
@@ -48,6 +49,7 @@ export function createPrivateApiRuntimeDependencies(
     requestIds: { next: () => `request-${uuid()}` },
     proposalReviewReader: new PostgresProposalReviewReader(pool),
     interactionLedgerReader: new PostgresInteractionChangeLedgerReader(pool),
+    canonicalCalendarReader: new PostgresCanonicalCalendarReader(pool),
     unitOfWork: new PostgresWriteUnitOfWork(pool),
     calendarConfirmationStore: new PostgresCalendarProposalConfirmationStore(pool),
     interpreter: options.interpreter ?? createCaptureInterpreterFromEnv(env),

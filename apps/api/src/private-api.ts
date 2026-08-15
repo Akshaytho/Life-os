@@ -32,6 +32,7 @@ function pathOf(request: IncomingMessage): string {
 
 function routeFamily(path: string): "CAPTURE" | "READ" | "CALENDAR_CONFIRMATION" | "PROPOSAL_ACTION" | undefined {
   if (path === "/api/v1/captures") return "CAPTURE";
+  if (path === "/api/v1/calendar") return "READ";
   if (/^\/api\/v1\/captures\/[^/]+\/review$/.test(path)) return "READ";
   if (/^\/api\/v1\/interactions\/[^/]+\/trace$/.test(path)) return "READ";
   if (/^\/api\/v1\/proposals\/[^/]+\/confirm-calendar$/.test(path)) return "CALENDAR_CONFIRMATION";

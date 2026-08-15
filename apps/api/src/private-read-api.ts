@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import type { CanonicalCalendarReader } from "../../../packages/domain/canonical-calendar-read";
 import type { InteractionChangeLedgerReader } from "../../../packages/domain/interaction-change-ledger";
 import type { ProposalReviewReader } from "../../../packages/domain/proposal-review";
 import type {
@@ -12,6 +13,7 @@ import {
   AuthenticationUnavailableError,
   createTrustedWebRequestContext,
 } from "./create-trusted-web-request-context";
+import { CanonicalCalendarReadError, getCanonicalCalendar } from "./get-canonical-calendar";
 import { getCaptureProposalReview, ProposalReviewValidationError } from "./get-capture-proposal-review";
 import { getInteractionChangeTrace, InteractionChangeTraceError } from "./get-interaction-change-trace";
 import { appendVaryHeader } from "./private-cors";
@@ -25,6 +27,7 @@ export interface PrivateReadApiDependencies {
   requestIds: TransportRequestIdGenerator;
   proposalReviewReader: ProposalReviewReader;
   interactionLedgerReader: InteractionChangeLedgerReader;
+  canonicalCalendarReader?: CanonicalCalendarReader;
   runtime: RuntimeProvenance;
   telemetry: TechnicalTelemetrySink;
   operationTimer: OperationTimer;
@@ -32,7 +35,8 @@ export interface PrivateReadApiDependencies {
 
 type PrivateReadRoute =
   | { kind: "PROPOSAL_REVIEW"; captureId: string }
-  | { kind: "INTERACTION_TRACE"; captureId: string };
+  | { kind: "INTERACTION_TRACE"; captureId: string }
+  | { kind: "CANONICAL_CALENDAR" };
 
 const opaqueIdPattern = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/;
 
@@ -47,12 +51,16 @@ function json(response: ServerResponse, statusCode: number, payload: unknown) {
   response.end(JSON.stringify(payload));
 }
 
-function pathOf(request: IncomingMessage): string {
+function urlOf(request: IncomingMessage): URL {
   try {
-    return new URL(request.url ?? "/", "http://life-os.invalid").pathname;
+    return new URL(request.url ?? "/", "http://life-os.invalid");
   } catch {
-    return "/invalid-request-target";
+    return new URL("/invalid-request-target", "http://life-os.invalid");
   }
+}
+
+function pathOf(request: IncomingMessage): string {
+  return urlOf(request).pathname;
 }
 
 function decodedOpaqueId(value: string): string | undefined {
@@ -66,6 +74,8 @@ function decodedOpaqueId(value: string): string | undefined {
 
 function routeOf(request: IncomingMessage): PrivateReadRoute | undefined {
   const path = pathOf(request);
+
+  if (path === "/api/v1/calendar" && request.method === "GET") return { kind: "CANONICAL_CALENDAR" };
 
   const review = /^\/api\/v1\/captures\/([^/]+)\/review$/.exec(path);
   if (review) {
@@ -82,6 +92,18 @@ function routeOf(request: IncomingMessage): PrivateReadRoute | undefined {
   return undefined;
 }
 
+function calendarRange(request: IncomingMessage): { from: string; to: string } {
+  const searchParams = urlOf(request).searchParams;
+  const keys = Array.from(searchParams.keys()).sort();
+  if (keys.length !== 2 || keys[0] !== "from" || keys[1] !== "to") {
+    throw new CanonicalCalendarReadError("Calendar read requires exactly one from and one to query parameter");
+  }
+  return {
+    from: searchParams.get("from") ?? "",
+    to: searchParams.get("to") ?? "",
+  };
+}
+
 function bearerCredential(request: IncomingMessage): string | undefined {
   const header = request.headers.authorization;
   if (typeof header !== "string" || header.length > 4096) return undefined;
@@ -96,6 +118,10 @@ function mapFailure(error: unknown, response: ServerResponse) {
   }
   if (error instanceof AuthenticationUnavailableError) {
     json(response, 503, { status: "authentication_unavailable" });
+    return;
+  }
+  if (error instanceof CanonicalCalendarReadError) {
+    json(response, 400, { status: "invalid_calendar_window" });
     return;
   }
   if (error instanceof ProposalReviewValidationError || error instanceof InteractionChangeTraceError) {
@@ -157,6 +183,39 @@ export async function handlePrivateReadRequest(
         return;
       }
       json(response, 200, review);
+      return;
+    }
+
+    if (route.kind === "CANONICAL_CALENDAR") {
+      const reader = dependencies.canonicalCalendarReader;
+      if (!reader) {
+        json(response, 503, { status: "calendar_unavailable" });
+        return;
+      }
+
+      const calendar = await runInstrumentedOperation({
+        operation: "GET_CANONICAL_CALENDAR",
+        runtime: dependencies.runtime,
+        telemetry: dependencies.telemetry,
+        timer: dependencies.operationTimer,
+        initialTrace: { requestId: context.requestId },
+        async work() {
+          const value = await getCanonicalCalendar(
+            calendarRange(request),
+            { principal: context.principal },
+            { reader },
+          );
+          return { value };
+        },
+        classifyFailure(error) {
+          if (error instanceof CanonicalCalendarReadError) {
+            return { outcome: "REJECTED", errorCode: "CANONICAL_CALENDAR_WINDOW_INVALID" };
+          }
+          return { outcome: "FAILED", errorCode: "CANONICAL_CALENDAR_READ_FAILED" };
+        },
+      });
+
+      json(response, 200, calendar);
       return;
     }
 
