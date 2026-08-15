@@ -21,6 +21,10 @@ function todayRange() {
   return { from: from.toISOString(), to: to.toISOString() };
 }
 
+function localDayKey(value: Date) {
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+}
+
 function timeLabel(value: string) {
   return new Intl.DateTimeFormat(undefined, {
     hour: "numeric",
@@ -97,6 +101,7 @@ export function LiveToday() {
   const [readMessage, setReadMessage] = useState("");
   const [now, setNow] = useState(() => new Date());
   const timeZone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "Local time", []);
+  const dayKey = localDayKey(now);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 60_000);
@@ -146,7 +151,7 @@ export function LiveToday() {
   useEffect(() => {
     if (!session?.access_token) return;
     void loadToday(session.access_token);
-  }, [session?.access_token]);
+  }, [session?.access_token, dayKey]);
 
   async function loadToday(accessToken?: string) {
     const token = accessToken ?? session?.access_token;
