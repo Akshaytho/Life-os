@@ -66,30 +66,29 @@ beforeEach(async () => {
 
   await ownerPool.query(
     `INSERT INTO capture_record
-      (id, user_id, raw_text, source, actor_type, actor_id, received_at, request_id, correlation_id, capture_created_at)
+      (capture_id, user_id, raw_text, source, correlation_id, request_id, received_at, recorded_at)
      VALUES
-      ('capture-confirm', 'user-a', 'Gym tomorrow at five', 'WEB_APP', 'USER', 'user-a',
-       '2026-08-15T18:30:00.000Z', 'capture-request', 'correlation-confirm', '2026-08-15T18:30:01.000Z')`,
+      ('capture-confirm', 'user-a', 'Gym tomorrow at five', 'WEB_APP', 'correlation-confirm',
+       'capture-request', '2026-08-15T18:30:00.000Z', '2026-08-15T18:30:01.000Z')`,
   );
   await ownerPool.query(
     `INSERT INTO routing_interpretation
-      (interpretation_id, capture_id, user_id, interpreter, intent, certainty, confidence, observations_json, clarification, created_at)
+      (interpretation_id, capture_id, user_id, version, interpreter, intent, certainty, confidence,
+       observations_json, clarification, created_at)
      VALUES
-      ('interpretation-confirm', 'capture-confirm', 'user-a', 'LIFE_OS_AI', 'DATED_PLAN', 'CONFIRMED', 0.9,
+      ('interpretation-confirm', 'capture-confirm', 'user-a', 1, 'LIFE_OS_AI', 'DATED_PLAN', 'CONFIRMED', 0.9,
        '[{"id":"obs-1","label":"Plan","value":"Calendar plan","trustClass":"OBSERVATION"}]'::jsonb,
        'Confirm exact Calendar details.', '2026-08-15T18:30:02.000Z')`,
   );
   await ownerPool.query(
     `INSERT INTO routing_proposal
-      (proposal_id, interpretation_id, capture_id, user_id, destination, operation, summary, target_trust_class,
-       approval_mode, state, reason, payload_json, proposal_created_by_actor_type, proposal_created_by_actor_id,
-       proposal_created_at, created_at)
+      (proposal_id, interpreter_proposal_key, interpretation_id, capture_id, user_id, destination, operation,
+       summary, target_trust_class, approval_mode, state, reason, payload_json, created_at)
      VALUES
-      ('proposal-confirm', 'interpretation-confirm', 'capture-confirm', 'user-a', 'CALENDAR', 'CREATE_CALENDAR_PLAN',
-       'Review gym Calendar plan', 'FACT', 'EXPLICIT_CONFIRMATION', 'NEEDS_CONFIRMATION',
-       'AI interpretation requires user-confirmed Calendar details.',
-       '{"title":"Gym","category":"Health"}'::jsonb,
-       'USER', 'user-a', '2026-08-15T18:30:03.000Z', '2026-08-15T18:30:03.000Z')`,
+      ('proposal-confirm', 'calendar-confirm', 'interpretation-confirm', 'capture-confirm', 'user-a',
+       'CALENDAR', 'CREATE_CALENDAR_PLAN', 'Review gym Calendar plan', 'FACT', 'EXPLICIT_CONFIRMATION',
+       'NEEDS_CONFIRMATION', 'AI interpretation requires user-confirmed Calendar details.',
+       '{"title":"Gym","category":"Health"}'::jsonb, '2026-08-15T18:30:03.000Z')`,
   );
 });
 
