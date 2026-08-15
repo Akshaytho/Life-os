@@ -63,6 +63,18 @@ test("same user + same retry key derives the same opaque request ID regardless o
   assert.equal(second.receivedAt, "2026-08-13T07:01:00.000Z");
 });
 
+test("Direction set-current gets its own stable operation scope without exposing the raw key or user", () => {
+  const rawKey = "direction-retry-key-0001";
+  const rawContext = context("user-1", "server-request-direction", "2026-08-13T07:00:00.000Z");
+  const direction = withWebWriteIdempotency(rawContext, "DIRECTION_SET_CURRENT", rawKey);
+  const capture = withWebWriteIdempotency(rawContext, "CAPTURE_CREATE", rawKey);
+
+  assert.equal(direction.requestId.startsWith("web-idem-v1:direction_set_current:"), true);
+  assert.equal(direction.requestId.includes(rawKey), false);
+  assert.equal(direction.requestId.includes("user-1"), false);
+  assert.notEqual(direction.requestId, capture.requestId);
+});
+
 test("same retry key is isolated by authenticated user", () => {
   const a = withWebWriteIdempotency(context("user-a", "request-a", "2026-08-13T07:00:00.000Z"), "CAPTURE_CREATE", "capture-retry-key-shared");
   const b = withWebWriteIdempotency(context("user-b", "request-b", "2026-08-13T07:00:00.000Z"), "CAPTURE_CREATE", "capture-retry-key-shared");
