@@ -1,0 +1,129 @@
+.controls {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.primaryRow,
+.confirmRow {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.button,
+.dangerButton,
+.confirmButton,
+.cancelButton {
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 2px;
+  font: 700 10px/1 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.button,
+.cancelButton {
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+}
+
+.confirmButton {
+  border: 1px solid #163b2e;
+  background: #163b2e;
+  color: #fffaf0;
+}
+
+.dangerButton {
+  border: 1px solid #71342e;
+  background: transparent;
+  color: #71342e;
+}
+
+.button:disabled,
+.dangerButton:disabled,
+.confirmButton:disabled,
+.cancelButton:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.blocked {
+  margin: 0;
+  font: 600 10px/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+  opacity: 0.68;
+}
+
+.confirmation {
+  padding: 14px;
+  border: 1px solid rgba(24, 42, 44, 0.2);
+  background: rgba(255, 252, 246, 0.72);
+}
+
+.confirmation strong {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 14px;
+}
+
+.confirmation p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.confirmation textarea {
+  width: 100%;
+  min-height: 84px;
+  margin: 12px 0 6px;
+  padding: 10px 12px;
+  resize: vertical;
+  border: 1px solid rgba(24, 42, 44, 0.24);
+  background: rgba(255, 255, 255, 0.8);
+  color: inherit;
+  font: inherit;
+}
+
+.reasonCount {
+  display: block;
+  margin-bottom: 10px;
+  text-align: right;
+  font: 600 10px/1 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  opacity: 0.65;
+}
+
+.finalState {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 42px;
+  font: 700 10px/1.2 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.finalState i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+@media (max-width: 600px) {
+  .primaryRow,
+  .confirmRow {
+    flex-direction: column;
+  }
+
+  .button,
+  .dangerButton,
+  .confirmButton,
+  .cancelButton {
+    width: 100%;
+  }
+}
