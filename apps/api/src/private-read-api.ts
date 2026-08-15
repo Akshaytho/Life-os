@@ -75,7 +75,7 @@ function decodedOpaqueId(value: string): string | undefined {
 function routeOf(request: IncomingMessage): PrivateReadRoute | undefined {
   const path = pathOf(request);
 
-  if (path === "/api/v1/calendar") return { kind: "CANONICAL_CALENDAR" };
+  if (path === "/api/v1/calendar" && request.method === "GET") return { kind: "CANONICAL_CALENDAR" };
 
   const review = /^\/api\/v1\/captures\/([^/]+)\/review$/.exec(path);
   if (review) {
