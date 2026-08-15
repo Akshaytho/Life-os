@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { handlePrivateCaptureRequest, type PrivateCaptureApiDependencies } from "./private-capture-api";
+import { appendVaryHeader } from "./private-cors";
 import { handlePrivateProposalActionRequest, type PrivateProposalActionsApiDependencies } from "./private-proposal-actions-api";
 import { handlePrivateReadRequest, type PrivateReadApiDependencies } from "./private-read-api";
 
@@ -13,7 +14,7 @@ function jsonNotFound(response: ServerResponse) {
   response.setHeader("content-type", "application/json; charset=utf-8");
   response.setHeader("cache-control", "private, no-store");
   response.setHeader("pragma", "no-cache");
-  response.setHeader("vary", "Authorization");
+  appendVaryHeader(response, "Authorization");
   response.setHeader("x-content-type-options", "nosniff");
   response.setHeader("referrer-policy", "no-referrer");
   response.end(JSON.stringify({ status: "not_found" }));

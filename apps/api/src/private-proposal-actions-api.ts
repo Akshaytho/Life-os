@@ -15,6 +15,7 @@ import {
   AuthenticationUnavailableError,
   createTrustedWebRequestContext,
 } from "./create-trusted-web-request-context";
+import { appendVaryHeader } from "./private-cors";
 import {
   ProposalRejectionError,
   rejectRoutingProposal,
@@ -56,7 +57,7 @@ function json(response: ServerResponse, statusCode: number, payload: unknown) {
   response.setHeader("content-type", "application/json; charset=utf-8");
   response.setHeader("cache-control", "private, no-store");
   response.setHeader("pragma", "no-cache");
-  response.setHeader("vary", "Authorization");
+  appendVaryHeader(response, "Authorization");
   response.setHeader("x-content-type-options", "nosniff");
   response.setHeader("referrer-policy", "no-referrer");
   response.end(JSON.stringify(payload));

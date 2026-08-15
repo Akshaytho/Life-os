@@ -10,6 +10,7 @@ import {
   parsePort,
   privateApiEnabledForRuntime,
 } from "./api-runtime";
+import { privateCorsPolicyFromEnv } from "./private-cors";
 import { createPrivateApiRuntimeDependencies } from "./private-api-runtime";
 import { resolveRuntimeProvenance } from "./runtime-provenance";
 import { createConsoleTechnicalTelemetrySink } from "./technical-telemetry";
@@ -34,6 +35,7 @@ async function main() {
   const privateApi = privateApiEnabled
     ? createPrivateApiRuntimeDependencies(pool!, process.env, provenance, telemetry)
     : undefined;
+  const privateCors = privateApiEnabled ? privateCorsPolicyFromEnv(process.env) : undefined;
 
   // Do not listen with a private surface when the connected application role cannot
   // prove the reviewed RLS/ownership boundary. Readiness continues checking after start.
@@ -44,6 +46,7 @@ async function main() {
   const server = createLifeOsApiServer({
     health: { provenance, readiness },
     privateApi,
+    privateCors,
   });
 
   let shuttingDown = false;
