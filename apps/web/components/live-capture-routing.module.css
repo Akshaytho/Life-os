@@ -1,0 +1,199 @@
+.authPanel {
+  margin: 0 auto 28px;
+  width: min(100%, 980px);
+  padding: clamp(20px, 4vw, 34px);
+  border: 1px solid rgba(24, 42, 44, 0.16);
+  background: rgba(255, 252, 246, 0.82);
+}
+
+.authTopline,
+.sessionRow,
+.flowStatus,
+.traceMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.authTopline span,
+.sessionRow span,
+.flowStatus span,
+.traceMeta dt {
+  font: 600 11px/1.2 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.authPanel h2 {
+  margin: 16px 0 8px;
+  max-width: 660px;
+  font-size: clamp(28px, 5vw, 48px);
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+}
+
+.authPanel p {
+  max-width: 680px;
+  margin: 0;
+  line-height: 1.55;
+}
+
+.authForm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.authForm label {
+  display: grid;
+  gap: 7px;
+  font: 600 11px/1.2 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.authForm input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid rgba(24, 42, 44, 0.24);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.76);
+  color: inherit;
+  font: inherit;
+}
+
+.authForm button,
+.sessionRow button,
+.retryButton {
+  min-height: 48px;
+  padding: 0 18px;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.authForm button {
+  align-self: end;
+}
+
+.authForm button:disabled,
+.sessionRow button:disabled,
+.retryButton:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.authMessage {
+  margin-top: 14px !important;
+  font-size: 13px;
+}
+
+.sessionRow {
+  margin: 0 auto 18px;
+  width: min(100%, 980px);
+  padding: 12px 0;
+  border-top: 1px solid rgba(24, 42, 44, 0.15);
+  border-bottom: 1px solid rgba(24, 42, 44, 0.15);
+}
+
+.sessionState {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sessionState i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.flowStatus {
+  margin: 18px auto 0;
+  width: min(100%, 980px);
+  padding: 13px 16px;
+  border: 1px solid rgba(24, 42, 44, 0.16);
+}
+
+.flowStatus p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.traceBox {
+  margin: 24px auto 0;
+  width: min(100%, 980px);
+  border-top: 1px solid rgba(24, 42, 44, 0.18);
+  border-bottom: 1px solid rgba(24, 42, 44, 0.18);
+}
+
+.traceBox summary {
+  padding: 16px 0;
+  cursor: pointer;
+  font: 700 11px/1.3 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.traceBody {
+  padding: 0 0 18px;
+}
+
+.traceMeta {
+  align-items: flex-start;
+}
+
+.traceMeta div {
+  min-width: 0;
+  flex: 1;
+}
+
+.traceMeta dd {
+  margin: 6px 0 0;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+
+.pendingReview {
+  margin: 22px auto;
+  width: min(100%, 980px);
+  padding: 20px;
+  border: 1px dashed rgba(24, 42, 44, 0.28);
+  line-height: 1.5;
+}
+
+.retryRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+@media (max-width: 760px) {
+  .authForm {
+    grid-template-columns: 1fr;
+  }
+
+  .authForm button {
+    width: 100%;
+  }
+
+  .authTopline,
+  .sessionRow,
+  .flowStatus,
+  .traceMeta {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .sessionRow button {
+    width: 100%;
+  }
+}
