@@ -3,6 +3,7 @@ import type { CanonicalCalendarReader } from "../../../packages/domain/canonical
 import type { AuthenticatedUserPrincipal } from "../../../packages/domain/write-boundary";
 
 const MAX_WINDOW_MS = 31 * 24 * 60 * 60 * 1000;
+const MAX_WINDOW_ITEMS = 200;
 const zonedTimestampPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})$/;
 
 export class CanonicalCalendarReadError extends Error {
@@ -42,9 +43,6 @@ export async function getCanonicalCalendar(
   dependencies: CanonicalCalendarReadDependencies,
 ): Promise<CanonicalCalendarWindow> {
   const userId = requiredText(context.principal.userId, "principal.userId");
-  if (context.principal.actorType !== "USER") {
-    throw new CanonicalCalendarReadError("Canonical Calendar read requires an authenticated user principal");
-  }
 
   const from = normalizeTimestamp(input.from, "from");
   const to = normalizeTimestamp(input.to, "to");
@@ -54,6 +52,10 @@ export async function getCanonicalCalendar(
   }
 
   const records = await dependencies.reader.listOverlapping(userId, from, to);
+  if (records.length > MAX_WINDOW_ITEMS) {
+    throw new CanonicalCalendarReadError("Calendar read window is too dense; narrow the requested window");
+  }
+
   return {
     from,
     to,
