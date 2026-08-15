@@ -6,6 +6,7 @@ export type TechnicalTelemetryComponent = "API" | "APPLICATION" | "DATABASE" | "
 export type TechnicalOperation =
   | "CAPTURE_AND_PROPOSE"
   | "GET_PROPOSAL_REVIEW"
+  | "CONFIRM_CALENDAR_PROPOSAL"
   | "APPLY_CALENDAR_PROPOSAL"
   | "REJECT_ROUTING_PROPOSAL"
   | "GET_INTERACTION_TRACE"

@@ -7,11 +7,13 @@ import type { InteractionChangeTrace } from "../../../packages/contracts/interac
 import type { CaptureProposalReview, ProposalReviewItem } from "../../../packages/contracts/proposal-review";
 import {
   applyCalendarProposal,
+  confirmCalendarProposal,
   createCapture,
   getCaptureReview,
   getInteractionTrace,
   LifeOsApiError,
   rejectProposal,
+  type ConfirmCalendarProposalInput,
 } from "../lib/life-os-api";
 import {
   BrowserAuthConfigurationError,
@@ -36,6 +38,9 @@ function safeFlowMessage(error: unknown): string {
     if (error.code === "authentication_required") return "Your session is no longer valid. Sign in again before retrying.";
     if (error.code === "origin_not_allowed") return "This browser origin is not approved for the private Life OS API.";
     if (error.code === "network_unavailable") return "Life OS lost contact with the private API. Delivery may be uncertain; the server-side decision boundary is idempotent on retry.";
+    if (error.code === "confirmation_conflict") return "These Calendar details conflict with an earlier confirmation. Reload the review before taking another action.";
+    if (error.code === "proposal_not_confirmable") return "Life OS refused to promote this proposal. Reload the current review before trying again.";
+    if (error.code === "confirmation_unavailable") return "Calendar confirmation is not available in this API runtime.";
     if (error.code === "proposal_not_applicable") return "Life OS refused the Apply request because this proposal is no longer eligible. Reload the review before deciding again.";
     if (error.code === "rejection_conflict") return "Life OS refused this rejection because the proposal already has a different final decision or rejection record.";
     if (error.code === "not_found") return "This proposal is no longer available to the authenticated user. Reload the review.";
@@ -103,11 +108,12 @@ interface LiveProposalProps {
   proposal: ProposalReviewItem;
   index: number;
   busy: boolean;
+  onConfirmCalendar(proposalId: string, plan: ConfirmCalendarProposalInput): Promise<boolean>;
   onApply(proposalId: string): Promise<boolean>;
   onReject(proposalId: string, reason?: string): Promise<boolean>;
 }
 
-function LiveProposal({ proposal, index, busy, onApply, onReject }: LiveProposalProps) {
+function LiveProposal({ proposal, index, busy, onConfirmCalendar, onApply, onReject }: LiveProposalProps) {
   return (
     <article className={captureStyles.proposal} data-destination={proposal.destination}>
       <div className={captureStyles.proposalIndex}>{String(index + 1).padStart(2, "0")}</div>
@@ -142,7 +148,13 @@ function LiveProposal({ proposal, index, busy, onApply, onReject }: LiveProposal
           <strong>{humanEnum(proposal.proposedResultClass)}</strong>
           <small>proposed result class</small>
         </div>
-        <ProposalDecisionControls proposal={proposal} busy={busy} onApply={onApply} onReject={onReject} />
+        <ProposalDecisionControls
+          proposal={proposal}
+          busy={busy}
+          onConfirmCalendar={onConfirmCalendar}
+          onApply={onApply}
+          onReject={onReject}
+        />
       </div>
     </article>
   );
@@ -151,11 +163,12 @@ function LiveProposal({ proposal, index, busy, onApply, onReject }: LiveProposal
 interface LiveProposalsProps {
   review: CaptureProposalReview;
   busy: boolean;
+  onConfirmCalendar(proposalId: string, plan: ConfirmCalendarProposalInput): Promise<boolean>;
   onApply(proposalId: string): Promise<boolean>;
   onReject(proposalId: string, reason?: string): Promise<boolean>;
 }
 
-function LiveProposals({ review, busy, onApply, onReject }: LiveProposalsProps) {
+function LiveProposals({ review, busy, onConfirmCalendar, onApply, onReject }: LiveProposalsProps) {
   return (
     <section className={captureStyles.proposalSection} aria-label="Persisted proposed consequences">
       <div className={captureStyles.sectionHeading}>
@@ -163,7 +176,7 @@ function LiveProposals({ review, busy, onApply, onReject }: LiveProposalsProps) 
           <span>PROPOSED CONSEQUENCES</span>
           <h2>Suggestions stay suggestions until you make a reviewed decision.</h2>
         </div>
-        <p>Only a ready, non-high-authority Calendar create proposal can enter the explicit Apply flow. Other proposal types remain uncommitted; live suggestions can be rejected.</p>
+        <p>Calendar suggestions that need details must first be confirmed by you. Only then can a ready, non-high-authority Calendar proposal enter the separate Apply flow.</p>
       </div>
       <div className={captureStyles.proposalStack}>
         {review.proposals.length > 0
@@ -173,6 +186,7 @@ function LiveProposals({ review, busy, onApply, onReject }: LiveProposalsProps) 
               proposal={proposal}
               index={index}
               busy={busy}
+              onConfirmCalendar={onConfirmCalendar}
               onApply={onApply}
               onReject={onReject}
             />
@@ -354,6 +368,31 @@ export function LiveCaptureRouting() {
     }
   }
 
+  async function confirmCalendarDetails(
+    proposalId: string,
+    plan: ConfirmCalendarProposalInput,
+  ): Promise<boolean> {
+    const captureId = review?.source.captureId;
+    if (!captureId) return false;
+
+    setFlowBusy(true);
+    setFlowMessage("Confirming your Calendar details without applying them yet…");
+    try {
+      const token = await currentAccessToken();
+      const receipt = await confirmCalendarProposal(token, proposalId, plan);
+      await readCurrentState(token, captureId);
+      setFlowMessage(receipt.status === "replayed"
+        ? "These exact Calendar details were already confirmed. The proposal is ready for your separate Apply decision."
+        : "Calendar details confirmed. No Calendar event exists yet; the proposal is now ready for your separate Apply decision.");
+      return true;
+    } catch (error) {
+      setFlowMessage(safeFlowMessage(error));
+      return false;
+    } finally {
+      setFlowBusy(false);
+    }
+  }
+
   async function applyProposalDecision(proposalId: string): Promise<boolean> {
     const captureId = review?.source.captureId;
     if (!captureId) return false;
@@ -415,7 +454,7 @@ export function LiveCaptureRouting() {
         </div>
         <div className={captureStyles.heroGrid}>
           <div><span className="section-kicker">REAL PRIVATE TRANSPORT</span><h1>You say it.<br />Life OS saves the source, then shows its work.</h1></div>
-          <p>This development surface uses your Supabase session and the private Railway API. Capture persists source and suggestions; only an explicit reviewed decision can cross a supported commit boundary.</p>
+          <p>This development surface uses your Supabase session and the private Railway API. AI or fallback interpretation can propose; you resolve missing Calendar details, then make a separate Apply decision.</p>
         </div>
       </section>
 
@@ -481,7 +520,7 @@ export function LiveCaptureRouting() {
             <div>
               <span>CANONICAL LIFE-STATE WRITES</span>
               <strong>{canonicalChanges === 0 ? "Your saved Capture has not changed canonical life state." : "Your explicit decision produced a canonical change recorded in this trace."}</strong>
-              <p>Source, observations and suggestions are review material. Only the dedicated Apply boundary can create the currently supported Calendar canonical change.</p>
+              <p>Confirming proposal details only prepares a suggestion. Only the later Apply boundary can create the currently supported Calendar canonical change.</p>
             </div>
             <div className={captureStyles.lockState}><i /> {canonicalChanges === 0 ? "AWAITING USER AUTHORITY" : "USER DECISION RECORDED"}</div>
           </section>
@@ -499,6 +538,7 @@ export function LiveCaptureRouting() {
               <LiveProposals
                 review={review}
                 busy={flowBusy}
+                onConfirmCalendar={confirmCalendarDetails}
                 onApply={applyProposalDecision}
                 onReject={rejectProposalDecision}
               />
@@ -513,13 +553,13 @@ export function LiveCaptureRouting() {
             <div>
               <span>APPROVAL / COMMIT BOUNDARY</span>
               <h2>Your decision is the boundary.</h2>
-              <p>Apply requires a second explicit confirmation and is exposed only for a ready, non-high-authority Calendar-create proposal. The API revalidates everything before commit. Reject records your decision without creating canonical life state.</p>
+              <p>Calendar confirmation resolves the plan but does not commit it. Apply remains a separate explicit action and the API revalidates everything before canonical write. Reject records your decision without creating canonical life state.</p>
             </div>
             <div className={captureStyles.boundaryStates}>
               <span>Source <b>{review ? "persisted" : "draft"}</b></span>
               <span>Observation <b>{review?.interpretation ? "visible" : "none"}</b></span>
               <span>Suggestions <b>{review ? review.proposals.length : 0}</b></span>
-              <span>Decision UI <b>explicit</b></span>
+              <span>Decision UI <b>confirm → apply</b></span>
             </div>
           </section>
         </>
