@@ -9,6 +9,7 @@ import type { SessionVerifier } from "../../../packages/domain/trusted-transport
 import type { CaptureInterpreter } from "../../../packages/intelligence/capture-interpreter";
 import { createCaptureInterpreterFromEnv } from "./capture-interpreter-runtime";
 import type { PrivateApiDependencies } from "./private-api";
+import { PostgresCalendarProposalConfirmationStore } from "./postgres-calendar-proposal-confirmation-store";
 import { createSupabaseSessionVerifierFromEnv } from "./supabase-session-verifier";
 import type { TechnicalTelemetrySink } from "./technical-telemetry";
 
@@ -48,6 +49,7 @@ export function createPrivateApiRuntimeDependencies(
     proposalReviewReader: new PostgresProposalReviewReader(pool),
     interactionLedgerReader: new PostgresInteractionChangeLedgerReader(pool),
     unitOfWork: new PostgresWriteUnitOfWork(pool),
+    calendarConfirmationStore: new PostgresCalendarProposalConfirmationStore(pool),
     interpreter: options.interpreter ?? createCaptureInterpreterFromEnv(env),
     captureClock: clock,
     routingIds: { next: (prefix) => `${prefix}-${uuid()}` },
