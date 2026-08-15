@@ -20,6 +20,7 @@ import {
   CaptureProposalPersistenceError,
   captureAndPropose,
 } from "./capture-and-propose";
+import { appendVaryHeader } from "./private-cors";
 import type { OperationTimer } from "./run-instrumented-operation";
 import { runInstrumentedOperation } from "./run-instrumented-operation";
 import type { TechnicalTelemetrySink } from "./technical-telemetry";
@@ -61,7 +62,7 @@ function json(response: ServerResponse, statusCode: number, payload: unknown) {
   response.setHeader("content-type", "application/json; charset=utf-8");
   response.setHeader("cache-control", "private, no-store");
   response.setHeader("pragma", "no-cache");
-  response.setHeader("vary", "Authorization, Idempotency-Key");
+  appendVaryHeader(response, "Authorization", "Idempotency-Key");
   response.setHeader("x-content-type-options", "nosniff");
   response.setHeader("referrer-policy", "no-referrer");
   response.end(JSON.stringify(payload));
