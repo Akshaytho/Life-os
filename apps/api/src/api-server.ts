@@ -1,11 +1,15 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { handleLifeOsHealthRequest, type ApiHealthDependencies } from "./api-health";
 import { handlePrivateApiRequest, type PrivateApiDependencies } from "./private-api";
+import { handlePrivateCors, type PrivateCorsPolicy } from "./private-cors";
 
 export interface LifeOsApiServerDependencies {
   health: ApiHealthDependencies;
   privateApi?: PrivateApiDependencies;
+  privateCors?: PrivateCorsPolicy;
 }
+
+const noBrowserOrigins: PrivateCorsPolicy = { allowedOrigins: new Set() };
 
 function pathOf(request: IncomingMessage): string {
   try {
@@ -36,6 +40,7 @@ export async function handleLifeOsApiRequest(
   if (await handleLifeOsHealthRequest(request, response, dependencies.health)) return;
 
   if (dependencies.privateApi && pathOf(request).startsWith("/api/v1/")) {
+    if (handlePrivateCors(request, response, dependencies.privateCors ?? noBrowserOrigins)) return;
     await handlePrivateApiRequest(request, response, dependencies.privateApi);
     return;
   }
