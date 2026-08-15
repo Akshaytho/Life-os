@@ -32,7 +32,7 @@ function safeFlowMessage(error: unknown): string {
   if (error instanceof LifeOsApiError) {
     if (error.code === "authentication_required") return "Your session is no longer valid. Sign in again before retrying.";
     if (error.code === "origin_not_allowed") return "This browser origin is not approved for the private Life OS API.";
-    if (error.code === "network_unavailable") return "Life OS could not reach the private API. Nothing new was submitted from this attempt.";
+    if (error.code === "network_unavailable") return "Life OS lost contact with the private API. Delivery may be uncertain; retrying the same draft reuses its idempotency key.";
   }
   return "Life OS could not complete this request. The error was kept private; you can safely retry.";
 }
@@ -184,7 +184,7 @@ export function LiveCaptureRouting() {
   const [lastCaptureId, setLastCaptureId] = useState<string>();
   const [flowBusy, setFlowBusy] = useState(false);
   const [flowMessage, setFlowMessage] = useState("");
-  const idempotencyAttempt = useRef<{ rawText: string; key: string }>();
+  const idempotencyAttempt = useRef<{ rawText: string; key: string } | undefined>(undefined);
 
   useEffect(() => {
     let active = true;
@@ -306,6 +306,8 @@ export function LiveCaptureRouting() {
       const receipt = await createCapture(token, draft, attempt.key);
       setLastCaptureId(receipt.captureId);
       idempotencyAttempt.current = undefined;
+      setReview(undefined);
+      setTrace(undefined);
 
       const [nextReview, nextTrace] = await Promise.all([
         getCaptureReview(token, receipt.captureId),
