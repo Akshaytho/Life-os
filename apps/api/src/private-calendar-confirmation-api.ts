@@ -29,7 +29,7 @@ export interface PrivateCalendarConfirmationApiDependencies {
   sessionVerifier: SessionVerifier;
   transportClock: TransportClock;
   requestIds: TransportRequestIdGenerator;
-  calendarConfirmationStore: CalendarProposalConfirmationStore;
+  calendarConfirmationStore?: CalendarProposalConfirmationStore;
   mutationClock: Clock;
   runtime: RuntimeProvenance;
   telemetry: TechnicalTelemetrySink;
@@ -139,6 +139,10 @@ export async function handlePrivateCalendarConfirmationRequest(
     json(response, 405, { status: "method_not_allowed" });
     return;
   }
+  if (!dependencies.calendarConfirmationStore) {
+    json(response, 503, { status: "confirmation_unavailable" });
+    return;
+  }
 
   try {
     const context = await createTrustedWebRequestContext(
@@ -160,7 +164,7 @@ export async function handlePrivateCalendarConfirmationRequest(
       initialTrace: { requestId: context.requestId, proposalId },
       async work() {
         const value = await confirmCalendarProposal(command, context, {
-          store: dependencies.calendarConfirmationStore,
+          store: dependencies.calendarConfirmationStore!,
           clock: dependencies.mutationClock,
         });
         return { value, trace: { proposalId: value.proposalId } };
