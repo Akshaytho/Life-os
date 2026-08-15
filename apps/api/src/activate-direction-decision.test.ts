@@ -11,12 +11,15 @@ import {
   activateDirectionDecision,
   DirectionDecisionError,
 } from "./activate-direction-decision";
+import { withWebWriteIdempotency } from "./web-write-idempotency";
 
 class MemoryDirectionUnitOfWork implements DirectionDecisionUnitOfWork {
   readonly directions: DirectionDecisionRecord[] = [];
   readonly events: DirectionDecisionDomainEventRecord[] = [];
+  runs = 0;
 
   async run<T>(authenticatedUserId: string, work: (transaction: DirectionDecisionTransaction) => Promise<T>): Promise<T> {
+    this.runs += 1;
     const transaction: DirectionDecisionTransaction = {
       findByRequestId: async (requestId, userId) => this.directions.find(
         (direction) => direction.requestId === requestId && direction.userId === userId,
@@ -46,13 +49,21 @@ class MemoryDirectionUnitOfWork implements DirectionDecisionUnitOfWork {
   }
 }
 
-function context(requestId: string, receivedAt = "2026-08-16T20:00:00.000Z"): WriteRequestContext {
+function rawContext(requestId: string, receivedAt = "2026-08-16T20:00:00.000Z"): WriteRequestContext {
   return {
     principal: { actorType: "USER", userId: "user-a" },
     source: "WEB_APP",
     receivedAt,
     requestId,
   };
+}
+
+function context(idempotencyKey: string, receivedAt = "2026-08-16T20:00:00.000Z"): WriteRequestContext {
+  return withWebWriteIdempotency(
+    rawContext("transport-request", receivedAt),
+    "DIRECTION_SET_CURRENT",
+    idempotencyKey,
+  );
 }
 
 function ids() {
@@ -78,7 +89,7 @@ test("creates a user-authored Direction DECISION only after explicit high-author
   const unitOfWork = new MemoryDirectionUnitOfWork();
   const receipt = await activateDirectionDecision(
     command("Build a self-reliant travel creator path while keeping my full-time job."),
-    context("direction-request-1"),
+    context("direction-request-0001"),
     {
       unitOfWork,
       clock: { now: () => "2026-08-16T20:00:01.000Z" },
@@ -95,10 +106,27 @@ test("creates a user-authored Direction DECISION only after explicit high-author
   });
   assert.equal(unitOfWork.directions.length, 1);
   assert.equal(unitOfWork.directions[0]?.statement, "Build a self-reliant travel creator path while keeping my full-time job.");
+  assert.equal(unitOfWork.directions[0]?.requestId.startsWith("web-idem-v1:direction_set_current:"), true);
   assert.equal(unitOfWork.events.length, 1);
   assert.equal(unitOfWork.events[0]?.actorType, "USER");
   assert.equal(unitOfWork.events[0]?.eventType, "DIRECTION_DECISION_ACTIVATED");
   assert.equal(unitOfWork.events[0]?.payloadJson.authorityClass, "DECISION");
+});
+
+test("rejects a fresh transport request ID that skipped stable Direction Idempotency-Key derivation", async () => {
+  const unitOfWork = new MemoryDirectionUnitOfWork();
+
+  await assert.rejects(
+    () => activateDirectionDecision(
+      command("Travel creator direction"),
+      rawContext("fresh-server-request"),
+      { unitOfWork, clock: { now: () => "2026-08-16T20:00:01.000Z" }, ids: ids() },
+    ),
+    (error: unknown) => error instanceof DirectionDecisionError && error.code === "IDEMPOTENCY_REQUIRED",
+  );
+
+  assert.equal(unitOfWork.runs, 0);
+  assert.equal(unitOfWork.directions.length, 0);
 });
 
 test("rejects missing explicit acknowledgement before any state mutation", async () => {
@@ -110,7 +138,7 @@ test("rejects missing explicit acknowledgement before any state mutation", async
         ...command("Travel creator direction"),
         approval: { explicit: false, acknowledgement: "SET_AS_CURRENT_DIRECTION" },
       },
-      context("direction-request-no-approval"),
+      context("direction-no-approval-0001"),
       { unitOfWork, clock: { now: () => "2026-08-16T20:00:01.000Z" }, ids: ids() },
     ),
     (error: unknown) => error instanceof DirectionDecisionError && error.code === "APPROVAL_REQUIRED",
@@ -126,14 +154,14 @@ test("requires the caller to name the current Direction version before supersedi
 
   const first = await activateDirectionDecision(
     command("Direction A"),
-    context("direction-request-a"),
+    context("direction-request-a-0001"),
     { unitOfWork, clock: { now: () => "2026-08-16T20:00:01.000Z" }, ids: generator },
   );
 
   await assert.rejects(
     () => activateDirectionDecision(
       command("Direction B", null),
-      context("direction-request-stale", "2026-08-16T20:10:00.000Z"),
+      context("direction-request-stale-0001", "2026-08-16T20:10:00.000Z"),
       { unitOfWork, clock: { now: () => "2026-08-16T20:10:01.000Z" }, ids: generator },
     ),
     (error: unknown) => error instanceof DirectionDecisionError && error.code === "CURRENT_DIRECTION_CHANGED",
@@ -150,13 +178,13 @@ test("supersedes history instead of overwriting the previous Direction", async (
 
   const first = await activateDirectionDecision(
     command("Direction A"),
-    context("direction-request-a"),
+    context("direction-request-a-0001"),
     { unitOfWork, clock: { now: () => "2026-08-16T20:00:01.000Z" }, ids: generator },
   );
 
   const second = await activateDirectionDecision(
     command("Direction B", first.directionId),
-    context("direction-request-b", "2026-08-16T21:00:00.000Z"),
+    context("direction-request-b-0001", "2026-08-16T21:00:00.000Z"),
     { unitOfWork, clock: { now: () => "2026-08-16T21:00:01.000Z" }, ids: generator },
   );
 
@@ -169,7 +197,7 @@ test("supersedes history instead of overwriting the previous Direction", async (
   assert.equal(unitOfWork.events.length, 2);
 });
 
-test("same request is idempotent but changed content under the same request ID conflicts", async () => {
+test("same Idempotency-Key is replay-safe but changed content under that key conflicts", async () => {
   const unitOfWork = new MemoryDirectionUnitOfWork();
   const generator = ids();
   const dependencies = {
@@ -180,12 +208,12 @@ test("same request is idempotent but changed content under the same request ID c
 
   const first = await activateDirectionDecision(
     command("Direction A"),
-    context("direction-request-idempotent"),
+    context("direction-idempotent-0001"),
     dependencies,
   );
   const replay = await activateDirectionDecision(
     command("Direction A"),
-    context("direction-request-idempotent"),
+    context("direction-idempotent-0001", "2026-08-16T20:05:00.000Z"),
     dependencies,
   );
 
@@ -197,7 +225,7 @@ test("same request is idempotent but changed content under the same request ID c
   await assert.rejects(
     () => activateDirectionDecision(
       command("Direction B"),
-      context("direction-request-idempotent"),
+      context("direction-idempotent-0001", "2026-08-16T20:10:00.000Z"),
       dependencies,
     ),
     (error: unknown) => error instanceof DirectionDecisionError && error.code === "IDEMPOTENCY_CONFLICT",
@@ -215,18 +243,18 @@ test("replaying an older request after supersession reports that historical deci
 
   const first = await activateDirectionDecision(
     command("Direction A"),
-    context("direction-request-old", "2026-08-16T20:00:00.000Z"),
+    context("direction-request-old-0001", "2026-08-16T20:00:00.000Z"),
     dependencies,
   );
   await activateDirectionDecision(
     command("Direction B", first.directionId),
-    context("direction-request-new", "2026-08-16T21:00:00.000Z"),
+    context("direction-request-new-0001", "2026-08-16T21:00:00.000Z"),
     dependencies,
   );
 
   const replay = await activateDirectionDecision(
     command("Direction A"),
-    context("direction-request-old", "2026-08-16T20:00:00.000Z"),
+    context("direction-request-old-0001", "2026-08-16T22:00:00.000Z"),
     dependencies,
   );
 
@@ -240,7 +268,7 @@ test("preserves the user's internal wording instead of AI-style normalization", 
 
   await activateDirectionDecision(
     command(`  ${statement}  `),
-    context("direction-request-wording"),
+    context("direction-wording-0001"),
     { unitOfWork, clock: { now: () => "2026-08-16T20:00:01.000Z" }, ids: ids() },
   );
 
