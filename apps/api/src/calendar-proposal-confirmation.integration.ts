@@ -44,6 +44,8 @@ before(async () => {
     "0002_capture_routing_proposal.sql",
     "0003_proposal_creation_provenance.sql",
     "0004_row_level_authorization.sql",
+    "0005_proposal_rejection_provenance.sql",
+    "0006_safe_fallback_interpreter.sql",
   ]) {
     await ownerPool.query(await readFile(`packages/database/migrations/${file}`, "utf8"));
   }
