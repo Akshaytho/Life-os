@@ -7,22 +7,25 @@ await mkdir(outputDir, { recursive: true });
 const browser = await chromium.launch({ headless: true });
 
 const realDataOnly = 'No sample life data will be shown here.';
+const browserAuthUnavailable = 'Live browser authentication is not configured for this deployment.';
 
 const pages = [
   {
     name: 'today-real-boundary',
     path: '/',
     expected: [
-      'TODAY / CANONICAL READ',
+      'PRIVATE SESSION · TODAY',
       'Sign in before Life OS can read your Today state.',
+      browserAuthUnavailable,
     ],
   },
   {
     name: 'capture-real-boundary',
     path: '/capture',
     expected: [
-      'CAPTURE / REVIEW',
+      'PRIVATE SESSION · CAPTURE',
       'Sign in before Life OS can read or save private Capture.',
+      browserAuthUnavailable,
     ],
   },
   {
@@ -45,8 +48,9 @@ const pages = [
     name: 'calendar-real-boundary',
     path: '/calendar',
     expected: [
-      'CANONICAL CALENDAR',
+      'PRIVATE SESSION · CALENDAR',
       'Sign in before Life OS can read your canonical Calendar.',
+      browserAuthUnavailable,
     ],
   },
   {
