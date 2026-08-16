@@ -8,6 +8,20 @@ export interface CurrentDirectionDecision {
   decidedAt: string;
 }
 
+export interface HistoricalDirectionDecision {
+  id: string;
+  statement: string;
+  status: "SUPERSEDED" | "REVOKED";
+  authorityClass: "DECISION";
+  decidedAt: string;
+  endedAt: string;
+}
+
+export interface DirectionDecisionOverview {
+  current: CurrentDirectionDecision | null;
+  history: HistoricalDirectionDecision[];
+}
+
 export interface SetCurrentDirectionCommand {
   statement: string;
   expectedCurrentDirectionId: string | null;
