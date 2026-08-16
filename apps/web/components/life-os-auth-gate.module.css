@@ -1,0 +1,17 @@
+.shell {
+  min-height: 100vh;
+  padding: 24px 18px 120px;
+}
+
+.canvas {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+}
+
+.panelWrap {
+  padding-top: clamp(48px, 10vw, 96px);
+}
+
+@media (min-width: 700px) {
+  .shell { padding-left: 28px; padding-right: 28px; }
+}
