@@ -18,6 +18,7 @@ export interface TechnicalTelemetrySink {
 export type TechnicalTelemetryLineWriter = (line: string) => void;
 
 const identifierPattern = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/;
+const serviceNamePattern = /^[@A-Za-z0-9][@A-Za-z0-9._:/-]{0,199}$/;
 const errorCodePattern = /^[A-Z0-9][A-Z0-9_.:-]{0,99}$/;
 
 function requireTimestamp(value: string) {
@@ -27,6 +28,14 @@ function requireTimestamp(value: string) {
 function safeIdentifier(value: string | undefined, label: string): string | undefined {
   if (value === undefined) return undefined;
   if (!identifierPattern.test(value)) throw new TechnicalTelemetryError(`${label} must be an opaque technical identifier`);
+  return value;
+}
+
+function safeServiceName(value: string | undefined): string | undefined {
+  if (value === undefined) return undefined;
+  if (!serviceNamePattern.test(value)) {
+    throw new TechnicalTelemetryError("runtime.serviceName must be a provider-safe technical service name");
+  }
   return value;
 }
 
@@ -50,7 +59,7 @@ function safeRuntime(runtime: RuntimeProvenance) {
     environment: runtime.environment,
     releaseSha: safeIdentifier(runtime.releaseSha, "runtime.releaseSha")!,
     deploymentId: safeIdentifier(runtime.deploymentId, "runtime.deploymentId"),
-    serviceName: safeIdentifier(runtime.serviceName, "runtime.serviceName"),
+    serviceName: safeServiceName(runtime.serviceName),
     platform: runtime.platform,
   };
 }
