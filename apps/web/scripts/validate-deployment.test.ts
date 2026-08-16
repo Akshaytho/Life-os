@@ -3,9 +3,10 @@ import test from "node:test";
 import {
   WebDeploymentConfigurationError,
   webDeploymentConfigurationFromEnv,
+  type WebDeploymentEnvironment,
 } from "../lib/web-deployment";
 
-function live(overrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
+function live(overrides: WebDeploymentEnvironment = {}): WebDeploymentEnvironment {
   return {
     LIFE_OS_WEB_DEPLOYMENT: "live",
     NEXT_PUBLIC_LIFE_OS_API_BASE_URL: "https://life-os-api.example",
