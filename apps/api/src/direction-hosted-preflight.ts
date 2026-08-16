@@ -2,14 +2,20 @@ import {
   runHostedPreflight,
   type HostedPreflightConfiguration,
   type HostedPreflightOptions,
-  type PreflightCheckResult,
+  type PreflightOutcome,
   type PreflightReport,
 } from "./hosted-preflight";
+
+export interface DirectionHostedPreflightCheck {
+  name: "DIRECTION_READ_SCOPED";
+  outcome: PreflightOutcome;
+  detail: string;
+}
 
 export interface DirectionHostedPreflightReport {
   status: "READY" | "FAILED";
   baseline: PreflightReport;
-  direction: PreflightCheckResult & { name: "DIRECTION_READ_SCOPED" };
+  direction: DirectionHostedPreflightCheck;
   requestsIssued: number;
   privateWriteAttempts: number;
 }
@@ -83,7 +89,7 @@ export async function runDirectionHostedPreflight(
   }
 
   const fetchImpl = options.fetchImpl ?? fetch;
-  let direction: DirectionHostedPreflightReport["direction"];
+  let direction: DirectionHostedPreflightCheck;
   try {
     const response = await fetchImpl(new URL("/api/v1/direction", configuration.baseUrl), {
       method: "GET",
