@@ -9,7 +9,7 @@ import {
   parsePort,
   privateApiEnabledForRuntime,
 } from "./api-runtime";
-import { safeBootstrapErrorClass } from "./bootstrap-error";
+import { safeBootstrapDiagnosticCode, safeBootstrapErrorClass } from "./bootstrap-error";
 import { databasePoolConfigurationFromEnv } from "./database-runtime";
 import {
   combineReadinessProbes,
@@ -113,8 +113,9 @@ async function main() {
 }
 
 void main().catch((error: unknown) => {
-  // Bootstrap can fail before RuntimeProvenance is valid. Emit only a validated error class;
-  // messages and stacks can contain provider URLs, credentials or certificate details.
+  // Bootstrap can fail before RuntimeProvenance is valid. Emit only validated class/code
+  // tokens; messages and stacks can contain provider URLs, credentials or certificate details.
+  const diagnosticCode = safeBootstrapDiagnosticCode(error);
   console.error(JSON.stringify({
     timestamp: new Date().toISOString(),
     level: "ERROR",
@@ -122,6 +123,7 @@ void main().catch((error: unknown) => {
     event: "API_BOOTSTRAP_FAILED",
     errorCode: "BOOTSTRAP_FAILED",
     errorClass: safeBootstrapErrorClass(error),
+    ...(diagnosticCode ? { diagnosticCode } : {}),
   }));
   process.exitCode = 1;
 });
