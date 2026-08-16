@@ -1,6 +1,8 @@
 import type { SessionVerifier, VerifiedUserSession } from "../../../packages/domain/trusted-transport-auth";
 
 const INVALID_SESSION_STATUSES = new Set([400, 401, 403]);
+const MAX_ACCESS_TOKEN_LENGTH = 4096;
+const canonicalUuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 export class SupabaseSessionVerifierConfigurationError extends Error {
   constructor(message: string) {
@@ -79,7 +81,7 @@ export function createSupabaseSessionVerifier(
   return {
     async verify(credential: string): Promise<VerifiedUserSession | undefined> {
       const token = credential.trim();
-      if (!token) return undefined;
+      if (!token || token.length > MAX_ACCESS_TOKEN_LENGTH) return undefined;
 
       let response: Response;
       try {
@@ -111,11 +113,11 @@ export function createSupabaseSessionVerifier(
       }
 
       const userId = (body as { id?: unknown }).id;
-      if (typeof userId !== "string" || !userId.trim()) {
+      if (typeof userId !== "string" || !canonicalUuidPattern.test(userId)) {
         throw new SupabaseSessionVerificationUnavailableError();
       }
 
-      return { userId: userId.trim() };
+      return { userId };
     },
   };
 }
