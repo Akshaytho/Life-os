@@ -13,7 +13,7 @@ const pages = [
     name: 'today-real-boundary',
     path: '/',
     expected: [
-      'TODAY / CANONICAL READ',
+      'PRIVATE SESSION · TODAY',
       'Sign in before Life OS can read your Today state.',
     ],
   },
@@ -21,7 +21,7 @@ const pages = [
     name: 'capture-real-boundary',
     path: '/capture',
     expected: [
-      'CAPTURE / REVIEW',
+      'PRIVATE SESSION · CAPTURE',
       'Sign in before Life OS can read or save private Capture.',
     ],
   },
@@ -45,7 +45,7 @@ const pages = [
     name: 'calendar-real-boundary',
     path: '/calendar',
     expected: [
-      'CANONICAL CALENDAR',
+      'PRIVATE SESSION · CALENDAR',
       'Sign in before Life OS can read your canonical Calendar.',
     ],
   },
