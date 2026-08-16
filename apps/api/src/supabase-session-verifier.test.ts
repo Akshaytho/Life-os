@@ -14,7 +14,10 @@ function fakeFetch(
   return handler as typeof fetch;
 }
 
-test("verifies a Supabase access token through the Auth user endpoint and trusts only the returned user id", async () => {
+const trustedUserId = "93aa1c21-7c84-426b-8671-11cd3d9c644f";
+const envUserId = "c4bc61e8-8502-40d2-a046-a2856e46bc4e";
+
+test("verifies a Supabase access token through the Auth user endpoint and trusts only the returned canonical user id", async () => {
   const token = "private-user-access-token";
   let requestedUrl = "";
   let requestInit: RequestInit | undefined;
@@ -25,7 +28,7 @@ test("verifies a Supabase access token through the Auth user endpoint and trusts
       fetchImpl: fakeFetch(async (input, init) => {
         requestedUrl = String(input);
         requestInit = init;
-        return new Response(JSON.stringify({ id: "  trusted-user-id  ", email: "private@example.test" }), {
+        return new Response(JSON.stringify({ id: trustedUserId, email: "private@example.test" }), {
           status: 200,
           headers: { "content-type": "application/json" },
         });
@@ -33,7 +36,7 @@ test("verifies a Supabase access token through the Auth user endpoint and trusts
     },
   );
 
-  assert.deepEqual(await verifier.verify(token), { userId: "trusted-user-id" });
+  assert.deepEqual(await verifier.verify(token), { userId: trustedUserId });
   assert.equal(requestedUrl, "https://project-ref.supabase.co/auth/v1/user");
   assert.equal(requestedUrl.includes(token), false);
   assert.equal(requestInit?.method, "GET");
@@ -192,12 +195,12 @@ test("environment factory uses the same verified-session behavior", async () => 
       SUPABASE_PUBLISHABLE_KEY: "publishable-key",
     },
     {
-      fetchImpl: fakeFetch(async () => new Response(JSON.stringify({ id: "env-user" }), {
+      fetchImpl: fakeFetch(async () => new Response(JSON.stringify({ id: envUserId }), {
         status: 200,
         headers: { "content-type": "application/json" },
       })),
     },
   );
 
-  assert.deepEqual(await verifier.verify("env-token"), { userId: "env-user" });
+  assert.deepEqual(await verifier.verify("env-token"), { userId: envUserId });
 });
