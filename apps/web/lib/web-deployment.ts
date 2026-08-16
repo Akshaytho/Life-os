@@ -24,14 +24,20 @@ export class WebDeploymentConfigurationError extends Error {
   }
 }
 
-type WebDeploymentEnvironment = Partial<Pick<
-  NodeJS.ProcessEnv,
-  | "LIFE_OS_WEB_DEPLOYMENT"
-  | "NEXT_PUBLIC_LIFE_OS_API_BASE_URL"
-  | "NEXT_PUBLIC_SUPABASE_URL"
-  | "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
-  | "NEXT_PUBLIC_LIFE_OS_DIRECTION_ENABLED"
->>;
+/**
+ * Small environment-shaped contract rather than NodeJS.ProcessEnv itself.
+ * Next augments ProcessEnv with required framework fields such as NODE_ENV;
+ * deployment validation only needs the public Life OS variables below, and
+ * tests must be able to model their absence without inventing framework state.
+ */
+export interface WebDeploymentEnvironment {
+  [key: string]: string | undefined;
+  LIFE_OS_WEB_DEPLOYMENT?: string;
+  NEXT_PUBLIC_LIFE_OS_API_BASE_URL?: string;
+  NEXT_PUBLIC_SUPABASE_URL?: string;
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?: string;
+  NEXT_PUBLIC_LIFE_OS_DIRECTION_ENABLED?: string;
+}
 
 function normalized(value: string | undefined): string | undefined {
   const result = value?.trim();
