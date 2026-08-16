@@ -53,7 +53,9 @@ export async function rejectRoutingProposal(
 
   return dependencies.unitOfWork.run(authenticatedUserId, async (transaction) => {
     const proposal = await transaction.getRoutingProposalForUpdate(command.proposalId, authenticatedUserId);
-    if (!proposal) throw new ProposalRejectionError("Proposal is unavailable for this authenticated user");
+    if (!proposal || proposal.proposalId !== command.proposalId || proposal.userId !== authenticatedUserId) {
+      throw new ProposalRejectionError("Proposal is unavailable for this authenticated user");
+    }
 
     const existing = await transaction.findProposalRejection(command.proposalId);
 
