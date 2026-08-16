@@ -28,7 +28,11 @@ export interface WebHostedPreflightOptions {
 
 export class WebHostedPreflightConfigurationError extends Error {
   constructor(
-    readonly code: "BASE_URL_REQUIRED" | "BASE_URL_INVALID" | "DIRECTION_EXPECTATION_INVALID",
+    readonly code:
+      | "BASE_URL_REQUIRED"
+      | "BASE_URL_INVALID"
+      | "DIRECTION_EXPECTATION_INVALID"
+      | "CLI_ARGUMENTS_INVALID",
   ) {
     super(code);
     this.name = "WebHostedPreflightConfigurationError";
