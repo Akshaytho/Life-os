@@ -6,10 +6,10 @@ import {
   closePool,
   createDatabaseReadinessProbe,
   createPrivateDatabaseReadinessProbe,
-  databaseUrlForRuntime,
   parsePort,
   privateApiEnabledForRuntime,
 } from "./api-runtime";
+import { databasePoolConfigurationFromEnv } from "./database-runtime";
 import {
   combineReadinessProbes,
   createDirectionDatabaseReadinessProbe,
@@ -25,10 +25,12 @@ async function main() {
   const telemetry = createConsoleTechnicalTelemetrySink();
   const now = () => new Date().toISOString();
   const port = parsePort(process.env.PORT);
-  const databaseUrl = databaseUrlForRuntime(process.env);
   const privateApiEnabled = privateApiEnabledForRuntime(process.env, provenance);
   const directionEnabled = directionEnabledForRuntime(process.env, provenance);
-  const pool = databaseUrl ? new Pool({ connectionString: databaseUrl }) : undefined;
+  // The database transport contract, including which certificate authority is trusted, is
+  // owned by the reviewed runtime configuration rather than assembled here.
+  const databaseConfiguration = databasePoolConfigurationFromEnv(process.env);
+  const pool = databaseConfiguration ? new Pool(databaseConfiguration) : undefined;
 
   if (privateApiEnabled && !pool) {
     throw new ApiRuntimeConfigurationError("DATABASE_URL is required when the private API is enabled");

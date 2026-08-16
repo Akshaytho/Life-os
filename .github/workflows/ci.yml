@@ -55,7 +55,7 @@ jobs:
 
       - name: Smoke API liveness and database readiness
         run: |
-          LIFE_OS_ENVIRONMENT=ci PORT=4010 npm run start:api > /tmp/life-os-api.log 2>&1 &
+          LIFE_OS_ENVIRONMENT=ci LIFE_OS_DATABASE_TLS_MODE=disable PORT=4010 npm run start:api > /tmp/life-os-api.log 2>&1 &
           API_PID=$!
           trap 'kill "$API_PID" 2>/dev/null || true' EXIT
 
