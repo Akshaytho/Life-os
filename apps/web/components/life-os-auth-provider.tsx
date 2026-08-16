@@ -2,6 +2,7 @@
 
 import type { Session } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { prepareSignInCredentials } from "../lib/auth-input";
 import {
   BrowserAuthConfigurationError,
   getBrowserSupabaseClient,
@@ -66,19 +67,32 @@ export function LifeOsAuthProvider({ children }: Readonly<{ children: React.Reac
   }, []);
 
   async function signIn(email: string, password: string) {
+    const prepared = prepareSignInCredentials(email, password);
+    if (!prepared.ok) {
+      setAuthMessage(prepared.message);
+      return false;
+    }
+
     setAuthBusy(true);
     setAuthMessage("");
     try {
-      const result = await getBrowserSupabaseClient().auth.signInWithPassword({ email, password });
+      const result = await getBrowserSupabaseClient().auth.signInWithPassword({
+        email: prepared.email,
+        password: prepared.password,
+      });
       if (result.error || !result.data.session) {
-        setAuthMessage("Sign-in failed. Check the development account credentials and try again.");
+        setSession(null);
+        setAuthState("signed_out");
+        setAuthMessage("Sign-in failed. Check your email and password and try again.");
         return false;
       }
       setSession(result.data.session);
       setAuthState("signed_in");
       return true;
     } catch {
-      setAuthMessage("Sign-in could not be completed.");
+      setSession(null);
+      setAuthState("signed_out");
+      setAuthMessage("Sign-in could not be completed. Check your connection and try again.");
       return false;
     } finally {
       setAuthBusy(false);
