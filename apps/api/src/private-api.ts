@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { handlePrivateCalendarConfirmationRequest, type PrivateCalendarConfirmationApiDependencies } from "./private-calendar-confirmation-api";
 import { handlePrivateCaptureRequest, type PrivateCaptureApiDependencies } from "./private-capture-api";
 import { appendVaryHeader } from "./private-cors";
+import { handlePrivateDirectionRequest, type PrivateDirectionApiDependencies } from "./private-direction-api";
 import { handlePrivateProposalActionRequest, type PrivateProposalActionsApiDependencies } from "./private-proposal-actions-api";
 import { handlePrivateReadRequest, type PrivateReadApiDependencies } from "./private-read-api";
 
@@ -9,7 +10,9 @@ export type PrivateApiDependencies =
   & PrivateReadApiDependencies
   & PrivateCaptureApiDependencies
   & PrivateProposalActionsApiDependencies
-  & PrivateCalendarConfirmationApiDependencies;
+  & PrivateCalendarConfirmationApiDependencies
+  & PrivateDirectionApiDependencies
+  & { directionEnabled?: boolean };
 
 function jsonNotFound(response: ServerResponse) {
   response.statusCode = 404;
@@ -30,13 +33,16 @@ function pathOf(request: IncomingMessage): string {
   }
 }
 
-function routeFamily(path: string): "CAPTURE" | "READ" | "CALENDAR_CONFIRMATION" | "PROPOSAL_ACTION" | undefined {
+type RouteFamily = "CAPTURE" | "READ" | "CALENDAR_CONFIRMATION" | "PROPOSAL_ACTION" | "DIRECTION";
+
+function routeFamily(path: string, directionEnabled: boolean): RouteFamily | undefined {
   if (path === "/api/v1/captures") return "CAPTURE";
   if (path === "/api/v1/calendar") return "READ";
   if (/^\/api\/v1\/captures\/[^/]+\/review$/.test(path)) return "READ";
   if (/^\/api\/v1\/interactions\/[^/]+\/trace$/.test(path)) return "READ";
   if (/^\/api\/v1\/proposals\/[^/]+\/confirm-calendar$/.test(path)) return "CALENDAR_CONFIRMATION";
   if (/^\/api\/v1\/proposals\/[^/]+\/(apply|reject)$/.test(path)) return "PROPOSAL_ACTION";
+  if (directionEnabled && (path === "/api/v1/direction" || path === "/api/v1/direction/current")) return "DIRECTION";
   return undefined;
 }
 
@@ -45,7 +51,7 @@ export async function handlePrivateApiRequest(
   response: ServerResponse,
   dependencies: PrivateApiDependencies,
 ): Promise<void> {
-  switch (routeFamily(pathOf(request))) {
+  switch (routeFamily(pathOf(request), dependencies.directionEnabled === true)) {
     case "CAPTURE":
       await handlePrivateCaptureRequest(request, response, dependencies);
       return;
@@ -57,6 +63,9 @@ export async function handlePrivateApiRequest(
       return;
     case "PROPOSAL_ACTION":
       await handlePrivateProposalActionRequest(request, response, dependencies);
+      return;
+    case "DIRECTION":
+      await handlePrivateDirectionRequest(request, response, dependencies);
       return;
     default:
       jsonNotFound(response);
