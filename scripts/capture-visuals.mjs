@@ -55,7 +55,7 @@ const pages = [
       'CURRENT DIRECTION · DECISION',
       'Your Direction belongs to you.',
       'DORMANT',
-      'Life OS will not substitute sample data or an AI guess while canonical Direction is dormant.',
+      'This high-authority surface is deliberately not live in this deployment yet. Life OS will not substitute sample data or an AI guess while canonical Direction is dormant.',
     ],
   },
   {
