@@ -1,10 +1,14 @@
 import type { CanonicalCalendarWindow } from "../../../packages/contracts/canonical-calendar";
-import type { CanonicalCalendarReader } from "../../../packages/domain/canonical-calendar-read";
-import type { AuthenticatedUserPrincipal } from "../../../packages/domain/write-boundary";
+import type { CanonicalCalendarReader, CanonicalCalendarRecord } from "../../../packages/domain/canonical-calendar-read";
+import type { AuthenticatedUserPrincipal, CalendarCategory, CalendarCommitment } from "../../../packages/domain/write-boundary";
 
 const MAX_WINDOW_MS = 31 * 24 * 60 * 60 * 1000;
 const MAX_WINDOW_ITEMS = 200;
 const zonedTimestampPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})$/;
+const calendarCategories = new Set<CalendarCategory>([
+  "Work", "Creator", "Learning", "Health", "Family", "Friends", "Travel", "Personal", "Rest",
+]);
+const calendarCommitments = new Set<CalendarCommitment>(["Fixed", "Important", "Flexible", "Optional"]);
 
 export class CanonicalCalendarReadError extends Error {
   constructor(message: string) {
@@ -37,6 +41,38 @@ function normalizeTimestamp(value: string, label: string): string {
   return new Date(milliseconds).toISOString();
 }
 
+function assertCanonicalRecord(
+  record: CanonicalCalendarRecord,
+  authenticatedUserId: string,
+  fromMilliseconds: number,
+  toMilliseconds: number,
+) {
+  requiredText(record.id, "calendar.id");
+  requiredText(record.title, "calendar.title");
+  requiredText(record.sourceProposalId, "calendar.sourceProposalId");
+  if (record.userId !== authenticatedUserId) {
+    throw new CanonicalCalendarReadError("Calendar reader returned a record outside authenticated scope");
+  }
+  if (!calendarCategories.has(record.category)) {
+    throw new CanonicalCalendarReadError("Calendar reader returned an unsupported category");
+  }
+  if (!calendarCommitments.has(record.commitment)) {
+    throw new CanonicalCalendarReadError("Calendar reader returned an unsupported commitment");
+  }
+
+  const startsAt = normalizeTimestamp(record.startsAt, "calendar.startsAt");
+  const endsAt = normalizeTimestamp(record.endsAt, "calendar.endsAt");
+  normalizeTimestamp(record.createdAt, "calendar.createdAt");
+  const startsMilliseconds = Date.parse(startsAt);
+  const endsMilliseconds = Date.parse(endsAt);
+  if (endsMilliseconds <= startsMilliseconds) {
+    throw new CanonicalCalendarReadError("Calendar reader returned a non-positive event interval");
+  }
+  if (startsMilliseconds >= toMilliseconds || endsMilliseconds <= fromMilliseconds) {
+    throw new CanonicalCalendarReadError("Calendar reader returned a record outside the requested window");
+  }
+}
+
 export async function getCanonicalCalendar(
   input: { from: string; to: string },
   context: CanonicalCalendarReadContext,
@@ -46,7 +82,9 @@ export async function getCanonicalCalendar(
 
   const from = normalizeTimestamp(input.from, "from");
   const to = normalizeTimestamp(input.to, "to");
-  const duration = Date.parse(to) - Date.parse(from);
+  const fromMilliseconds = Date.parse(from);
+  const toMilliseconds = Date.parse(to);
+  const duration = toMilliseconds - fromMilliseconds;
   if (duration <= 0 || duration > MAX_WINDOW_MS) {
     throw new CanonicalCalendarReadError("Calendar read window must be positive and no longer than 31 days");
   }
@@ -54,6 +92,15 @@ export async function getCanonicalCalendar(
   const records = await dependencies.reader.listOverlapping(userId, from, to);
   if (records.length > MAX_WINDOW_ITEMS) {
     throw new CanonicalCalendarReadError("Calendar read window is too dense; narrow the requested window");
+  }
+
+  const ids = new Set<string>();
+  for (const record of records) {
+    assertCanonicalRecord(record, userId, fromMilliseconds, toMilliseconds);
+    if (ids.has(record.id)) {
+      throw new CanonicalCalendarReadError("Calendar reader returned duplicate canonical identities");
+    }
+    ids.add(record.id);
   }
 
   return {
