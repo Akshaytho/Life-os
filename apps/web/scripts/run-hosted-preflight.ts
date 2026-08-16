@@ -6,7 +6,7 @@ import {
 
 async function main() {
   if (process.argv.slice(2).length > 0) {
-    throw new WebHostedPreflightConfigurationError("DIRECTION_EXPECTATION_INVALID");
+    throw new WebHostedPreflightConfigurationError("CLI_ARGUMENTS_INVALID");
   }
 
   const configuration = webHostedPreflightConfigurationFromEnv(process.env);
