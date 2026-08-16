@@ -49,6 +49,16 @@ const pages = [
     ],
   },
   {
+    name: 'you-direction-dormant',
+    path: '/you',
+    expected: [
+      'CURRENT DIRECTION · DECISION',
+      'Your Direction belongs to you.',
+      'DORMANT',
+      'Life OS will not substitute sample data or an AI guess while canonical Direction is dormant.',
+    ],
+  },
+  {
     name: 'interaction-ledger-committed',
     path: '/interactions/sample?state=committed',
     expected: [
