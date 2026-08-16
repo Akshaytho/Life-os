@@ -9,6 +9,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test:deployment": "tsx --test scripts/*.test.ts",
+    "hosted:preflight": "tsx scripts/run-hosted-preflight.ts",
     "lint": "echo \"Lint rules will be introduced with the first mutation flow.\""
   },
   "dependencies": {

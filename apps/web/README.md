@@ -36,7 +36,17 @@ Health endpoints:
 - `/health/live` — Next.js process liveness
 - `/health/ready` — HTTP 200 only for a valid explicit `live` deployment
 
-See `docs/architecture/WEB_HOSTED_DEPLOYMENT_V1.md` for the Railway development deployment and exact API CORS activation sequence.
+After the external web service has an HTTPS origin, run the read-only hosted web preflight:
+
+```bash
+LIFE_OS_WEB_PREFLIGHT_BASE_URL=https://<web-service-origin> \
+LIFE_OS_WEB_PREFLIGHT_EXPECT_DIRECTION=dormant \
+npm run hosted:preflight --workspace @life-os/web
+```
+
+It verifies liveness/readiness, privacy headers and the no-index robots policy using GET requests only. It does not authenticate or read/write Life OS state.
+
+See `docs/architecture/WEB_HOSTED_DEPLOYMENT_V1.md` for the Railway development deployment and exact API CORS activation sequence, and `docs/architecture/WEB_HOSTED_PREFLIGHT_V1.md` for the preflight contract.
 
 ## Trust state
 
