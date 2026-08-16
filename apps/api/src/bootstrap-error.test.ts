@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { safeBootstrapErrorClass } from "./bootstrap-error";
+import { safeBootstrapDiagnosticCode, safeBootstrapErrorClass } from "./bootstrap-error";
 
 test("returns a normal Error subclass name without exposing its message", () => {
   class ApiRuntimeConfigurationError extends Error {
@@ -23,4 +23,15 @@ test("refuses arbitrary error names that could carry secret-bearing text", () =>
 test("uses a fixed class for non-Error thrown values", () => {
   assert.equal(safeBootstrapErrorClass("secret-token"), "UnknownBootstrapError");
   assert.equal(safeBootstrapErrorClass({ password: "secret" }), "UnknownBootstrapError");
+});
+
+test("allows only fixed uppercase diagnostic tokens", () => {
+  const error = new Error("postgresql://user:secret@example.invalid/db") as Error & { diagnosticCode?: unknown };
+  error.diagnosticCode = "DATABASE_URL_SSL_PARAMETERS";
+  assert.equal(safeBootstrapDiagnosticCode(error), "DATABASE_URL_SSL_PARAMETERS");
+
+  error.diagnosticCode = "secret=value";
+  assert.equal(safeBootstrapDiagnosticCode(error), undefined);
+  error.diagnosticCode = { secret: "value" };
+  assert.equal(safeBootstrapDiagnosticCode(error), undefined);
 });
