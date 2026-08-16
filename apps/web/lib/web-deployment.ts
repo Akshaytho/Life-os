@@ -24,14 +24,14 @@ export class WebDeploymentConfigurationError extends Error {
   }
 }
 
-type WebDeploymentEnvironment = Pick<
+type WebDeploymentEnvironment = Partial<Pick<
   NodeJS.ProcessEnv,
   | "LIFE_OS_WEB_DEPLOYMENT"
   | "NEXT_PUBLIC_LIFE_OS_API_BASE_URL"
   | "NEXT_PUBLIC_SUPABASE_URL"
   | "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
   | "NEXT_PUBLIC_LIFE_OS_DIRECTION_ENABLED"
->;
+>>;
 
 function normalized(value: string | undefined): string | undefined {
   const result = value?.trim();
