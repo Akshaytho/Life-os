@@ -51,6 +51,9 @@ test("runtime composition uses server-owned clocks and opaque IDs with safe fall
     assert.match(dependencies.applyIds.next("event"), /^event-[0-9a-f-]+$/);
     assert.equal(dependencies.operationTimer.nowMs(), 101);
     assert.equal(dependencies.operationTimer.nowIso(), "2026-08-14T10:30:00.000Z");
+    assert.equal(dependencies.directionEnabled, false);
+    assert.equal(dependencies.directionReader, undefined);
+    assert.equal(dependencies.directionUnitOfWork, undefined);
 
     const interpreted = await dependencies.interpreter.interpret({
       rawText: "Private source",
@@ -59,6 +62,31 @@ test("runtime composition uses server-owned clocks and opaque IDs with safe fall
     assert.equal(interpreted.interpreter, "SAFE_FALLBACK");
     assert.equal(interpreted.proposals[0].destination, "BRAIN_DUMP");
     assert.equal(interpreted.proposals[0].state, "PROPOSED");
+  });
+});
+
+test("Direction runtime dependencies are composed only after the explicit server capability is enabled", async () => {
+  await withIdlePool((pool) => {
+    const verifier: SessionVerifier = { async verify() { return { userId: "verified-user" }; } };
+    let uuid = 0;
+    const dependencies = createPrivateApiRuntimeDependencies(
+      pool,
+      {},
+      runtime,
+      telemetry,
+      {
+        sessionVerifier: verifier,
+        directionEnabled: true,
+        randomUuid: () => `00000000-0000-4000-8000-${String(++uuid).padStart(12, "0")}`,
+        now: () => new Date("2026-08-16T08:00:00.000Z"),
+      },
+    );
+
+    assert.equal(dependencies.directionEnabled, true);
+    assert.ok(dependencies.directionReader);
+    assert.ok(dependencies.directionUnitOfWork);
+    assert.equal(dependencies.directionClock?.now(), "2026-08-16T08:00:00.000Z");
+    assert.match(dependencies.directionIds?.next("direction") ?? "", /^direction-[0-9a-f-]+$/);
   });
 });
 
@@ -88,5 +116,6 @@ test("ordinary private runtime configuration needs only browser-safe Supabase pr
     assert.ok(dependencies.unitOfWork);
     assert.ok(dependencies.proposalReviewReader);
     assert.ok(dependencies.interactionLedgerReader);
+    assert.equal(dependencies.directionEnabled, false);
   });
 });

@@ -13,3 +13,11 @@ export const userScopeFunction = "lifeos_current_user_id" as const;
 
 export const requiredApplicationTablePrivileges = ["SELECT", "INSERT", "UPDATE", "DELETE"] as const;
 export const forbiddenApplicationTablePrivileges = ["TRUNCATE", "REFERENCES", "TRIGGER"] as const;
+
+/**
+ * Direction is a separate high-authority capability, not another ordinary CRUD table.
+ * The live application needs read + append + supersession authority, but never DELETE.
+ */
+export const directionDecisionTable = "direction_decision" as const;
+export const requiredDirectionApplicationTablePrivileges = ["SELECT", "INSERT", "UPDATE"] as const;
+export const forbiddenDirectionApplicationTablePrivileges = ["DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"] as const;
