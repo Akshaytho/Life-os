@@ -1,0 +1,98 @@
+.page {
+  min-height: 100vh;
+  padding: 28px 24px 120px;
+}
+
+.canvas {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+}
+
+.hero {
+  margin-top: 72px;
+  display: grid;
+  gap: 18px;
+  max-width: 820px;
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2.5rem, 8vw, 5.8rem);
+  line-height: 0.95;
+  letter-spacing: -0.055em;
+}
+
+.hero p {
+  margin: 0;
+  max-width: 680px;
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  line-height: 1.65;
+  opacity: 0.72;
+}
+
+.statusCard {
+  margin-top: 56px;
+  border: 1px solid rgba(24, 24, 20, 0.18);
+  padding: 24px;
+  max-width: 760px;
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.topline {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.64;
+}
+
+.statusCard h2 {
+  margin: 26px 0 10px;
+  font-size: clamp(1.45rem, 3vw, 2.1rem);
+  letter-spacing: -0.025em;
+}
+
+.statusCard p {
+  margin: 0;
+  line-height: 1.65;
+  opacity: 0.72;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.actions a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid currentColor;
+  text-decoration: none;
+  color: inherit;
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding: 20px 18px 112px;
+  }
+
+  .hero {
+    margin-top: 48px;
+  }
+
+  .statusCard {
+    margin-top: 36px;
+    padding: 20px;
+  }
+
+  .topline {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
