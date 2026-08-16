@@ -1,5 +1,5 @@
 import type { CaptureProposalReview, ProposalReviewDetail } from "../../../packages/contracts/proposal-review";
-import type { ProposalReviewReader } from "../../../packages/domain/proposal-review";
+import type { ProposalReviewReader, PersistedCaptureProposalReview } from "../../../packages/domain/proposal-review";
 import type { AuthenticatedUserPrincipal, RoutingProposalRecord } from "../../../packages/domain/write-boundary";
 
 export class ProposalReviewValidationError extends Error {
@@ -49,6 +49,34 @@ function reviewDetails(proposal: RoutingProposalRecord): ProposalReviewDetail[] 
   return [];
 }
 
+function assertPersistedOwnership(
+  persisted: PersistedCaptureProposalReview,
+  requestedCaptureId: string,
+  authenticatedUserId: string,
+) {
+  if (persisted.capture.captureId !== requestedCaptureId || persisted.capture.userId !== authenticatedUserId) {
+    throw new ProposalReviewValidationError("Proposal review reader returned Capture outside authenticated scope");
+  }
+
+  const interpretation = persisted.interpretation;
+  if (interpretation) {
+    if (interpretation.captureId !== requestedCaptureId || interpretation.userId !== authenticatedUserId) {
+      throw new ProposalReviewValidationError("Proposal review reader returned interpretation outside Capture ownership");
+    }
+  } else if (persisted.proposals.length > 0) {
+    throw new ProposalReviewValidationError("Proposal review reader returned proposals without their interpretation");
+  }
+
+  for (const proposal of persisted.proposals) {
+    if (proposal.captureId !== requestedCaptureId || proposal.userId !== authenticatedUserId) {
+      throw new ProposalReviewValidationError(`Proposal ${proposal.proposalId} is outside Capture ownership`);
+    }
+    if (interpretation && proposal.interpretationId !== interpretation.interpretationId) {
+      throw new ProposalReviewValidationError(`Proposal ${proposal.proposalId} is outside interpretation provenance`);
+    }
+  }
+}
+
 export async function getCaptureProposalReview(
   captureId: string,
   context: ProposalReviewReadContext,
@@ -63,6 +91,7 @@ export async function getCaptureProposalReview(
 
   const persisted = await dependencies.reader.getCaptureReview(captureId, context.principal.userId);
   if (!persisted) return undefined;
+  assertPersistedOwnership(persisted, captureId, context.principal.userId);
 
   return {
     reviewState: persisted.interpretation ? "READY_FOR_REVIEW" : "AWAITING_INTERPRETATION",
