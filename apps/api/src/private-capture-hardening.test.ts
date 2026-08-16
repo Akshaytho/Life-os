@@ -161,8 +161,8 @@ const invalidKeys = [
   "has+plus12345678901",
   "üunicode12345678901",
   "x".repeat(129),
-  " leading-1234567890",
-  "trailing-1234567890 ",
+  "has,comma1234567890",
+  "has;semi12345678901",
 ];
 
 test("Capture private transport hardening matrix covers 100+ distinct cases", async (t) => {
