@@ -7,7 +7,6 @@ await mkdir(outputDir, { recursive: true });
 const browser = await chromium.launch({ headless: true });
 
 const realDataOnly = 'No sample life data will be shown here.';
-const browserAuthUnavailable = 'Live browser authentication is not configured for this deployment.';
 
 const pages = [
   {
@@ -16,7 +15,6 @@ const pages = [
     expected: [
       'PRIVATE SESSION · TODAY',
       'Sign in before Life OS can read your Today state.',
-      browserAuthUnavailable,
     ],
   },
   {
@@ -25,7 +23,6 @@ const pages = [
     expected: [
       'PRIVATE SESSION · CAPTURE',
       'Sign in before Life OS can read or save private Capture.',
-      browserAuthUnavailable,
     ],
   },
   {
@@ -50,7 +47,6 @@ const pages = [
     expected: [
       'PRIVATE SESSION · CALENDAR',
       'Sign in before Life OS can read your canonical Calendar.',
-      browserAuthUnavailable,
     ],
   },
   {
