@@ -9,6 +9,7 @@ import {
   parsePort,
   privateApiEnabledForRuntime,
 } from "./api-runtime";
+import { safeBootstrapErrorClass } from "./bootstrap-error";
 import { databasePoolConfigurationFromEnv } from "./database-runtime";
 import {
   combineReadinessProbes,
@@ -111,15 +112,16 @@ async function main() {
   });
 }
 
-void main().catch(() => {
-  // Bootstrap can fail before RuntimeProvenance is valid. Do not invent runtime
-  // identity or echo provider/configuration errors just to make the failure verbose.
+void main().catch((error: unknown) => {
+  // Bootstrap can fail before RuntimeProvenance is valid. Emit only a validated error class;
+  // messages and stacks can contain provider URLs, credentials or certificate details.
   console.error(JSON.stringify({
     timestamp: new Date().toISOString(),
     level: "ERROR",
     component: "API",
     event: "API_BOOTSTRAP_FAILED",
     errorCode: "BOOTSTRAP_FAILED",
+    errorClass: safeBootstrapErrorClass(error),
   }));
   process.exitCode = 1;
 });
