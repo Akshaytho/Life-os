@@ -86,8 +86,19 @@ export async function getInteractionChangeTrace(
 
   const persisted = await dependencies.reader.getTrace(captureId, principal.userId);
   if (!persisted) return undefined;
-  if (persisted.capture.userId !== principal.userId) {
+  if (persisted.capture.captureId !== captureId || persisted.capture.userId !== principal.userId) {
     throw new InteractionChangeTraceError("Reader returned Capture outside the authenticated user scope");
+  }
+
+  if (persisted.interpretation) {
+    if (
+      persisted.interpretation.captureId !== persisted.capture.captureId ||
+      persisted.interpretation.userId !== principal.userId
+    ) {
+      throw new InteractionChangeTraceError("Reader returned interpretation outside Capture ownership");
+    }
+  } else if (persisted.proposals.length > 0) {
+    throw new InteractionChangeTraceError("Reader returned proposals without their interpretation");
   }
 
   const interpretation = persisted.interpretation
@@ -107,6 +118,9 @@ export async function getInteractionChangeTrace(
   const proposals: InteractionProposalTrace[] = persisted.proposals.map(({ proposal, applied, rejection, event }) => {
     if (proposal.userId !== principal.userId || proposal.captureId !== persisted.capture.captureId) {
       throw new InteractionChangeTraceError(`Proposal ${proposal.proposalId} is outside Capture ownership`);
+    }
+    if (persisted.interpretation && proposal.interpretationId !== persisted.interpretation.interpretationId) {
+      throw new InteractionChangeTraceError(`Proposal ${proposal.proposalId} is outside interpretation provenance`);
     }
 
     if (proposal.state === "APPLIED") {
