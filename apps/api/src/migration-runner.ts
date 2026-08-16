@@ -7,6 +7,7 @@ import { resolveRuntimeProvenance } from "./runtime-provenance";
 
 const migrationNamePattern = /^(\d{4})_[a-z0-9_]+\.sql$/;
 const migrationLockName = "life-os-schema-migrations-v1";
+const migrationLedgerRestrictedRoleNames = ["anon", "authenticated", "service_role"];
 const knownLifeOsTables = [
   "calendar_event",
   "domain_event",
@@ -220,6 +221,29 @@ function validateHistory(migrations: MigrationFile[], history: MigrationHistoryR
   };
 }
 
+async function hardenMigrationLedger(client: PoolClient): Promise<void> {
+  // The ledger is technical deployment state, not user data. Ordinary RLS gives defense in
+  // depth without FORCE RLS, so its migration owner/admin can still maintain history while a
+  // non-owner with an accidental future grant sees no rows because the ledger has no policies.
+  await client.query("ALTER TABLE lifeos_schema_migration ENABLE ROW LEVEL SECURITY");
+  await client.query("REVOKE ALL PRIVILEGES ON TABLE lifeos_schema_migration FROM PUBLIC");
+
+  // Supabase can auto-grant new public-schema tables to these API roles. Other PostgreSQL
+  // environments may not define them, so discover only the exact reviewed role names that
+  // exist and let PostgreSQL quote the identifiers before revoking every table privilege.
+  const roles = await client.query<{ role_ident: string }>(`
+    SELECT quote_ident(rolname) AS role_ident
+    FROM pg_roles
+    WHERE rolname = ANY($1::text[])
+  `, [migrationLedgerRestrictedRoleNames]);
+
+  for (const role of roles.rows) {
+    await client.query(
+      `REVOKE ALL PRIVILEGES ON TABLE lifeos_schema_migration FROM ${role.role_ident}`,
+    );
+  }
+}
+
 async function ensureMigrationLedger(client: PoolClient): Promise<void> {
   await client.query(`
     CREATE TABLE IF NOT EXISTS lifeos_schema_migration (
@@ -229,6 +253,7 @@ async function ensureMigrationLedger(client: PoolClient): Promise<void> {
       applied_at timestamptz NOT NULL DEFAULT now()
     )
   `);
+  await hardenMigrationLedger(client);
 }
 
 async function withMigrationClient<T>(pool: Pool, work: (client: PoolClient) => Promise<T>): Promise<T> {
