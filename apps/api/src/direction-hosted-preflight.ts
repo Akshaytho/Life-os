@@ -18,9 +18,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
+function exactKeys(value: Record<string, unknown>, expected: string[]): boolean {
+  const actual = Object.keys(value).sort();
+  const sortedExpected = [...expected].sort();
+  return actual.length === sortedExpected.length && actual.every((key, index) => key === sortedExpected[index]);
+}
+
 function validCurrentDirection(value: unknown): boolean {
   if (value === null) return true;
-  if (!isRecord(value)) return false;
+  if (!isRecord(value) || !exactKeys(value, ["id", "statement", "status", "authorityClass", "decidedAt"])) return false;
   return (
     typeof value.id === "string"
     && typeof value.statement === "string"
@@ -31,7 +37,9 @@ function validCurrentDirection(value: unknown): boolean {
 }
 
 function validHistoryDirection(value: unknown): boolean {
-  if (!isRecord(value)) return false;
+  if (!isRecord(value) || !exactKeys(value, ["id", "statement", "status", "authorityClass", "decidedAt", "endedAt"])) {
+    return false;
+  }
   return (
     typeof value.id === "string"
     && typeof value.statement === "string"
@@ -43,8 +51,7 @@ function validHistoryDirection(value: unknown): boolean {
 }
 
 function validDirectionOverview(value: unknown): boolean {
-  if (!isRecord(value)) return false;
-  if (!Object.prototype.hasOwnProperty.call(value, "current")) return false;
+  if (!isRecord(value) || !exactKeys(value, ["current", "history"])) return false;
   if (!validCurrentDirection(value.current)) return false;
   if (!Array.isArray(value.history)) return false;
   return value.history.every(validHistoryDirection);
@@ -78,7 +85,7 @@ export async function runDirectionHostedPreflight(
   const fetchImpl = options.fetchImpl ?? fetch;
   let direction: DirectionHostedPreflightReport["direction"];
   try {
-    const response = await fetchImpl(`${configuration.baseUrl}/api/v1/direction`, {
+    const response = await fetchImpl(new URL("/api/v1/direction", configuration.baseUrl), {
       method: "GET",
       redirect: "error",
       headers: {
@@ -99,7 +106,7 @@ export async function runDirectionHostedPreflight(
       name: "DIRECTION_READ_SCOPED",
       outcome: passed ? "PASSED" : "FAILED",
       detail: passed
-        ? "authenticated Direction read returned the reviewed canonical overview shape"
+        ? "authenticated Direction read returned the exact reviewed canonical overview shape"
         : `expected 200 canonical Direction overview, received ${response.status} ${body === undefined ? "unparsable" : "unexpected_shape"}`,
     };
   } catch {
