@@ -326,7 +326,7 @@ test("Capture private transport hardening matrix covers 100+ distinct cases", as
   const snapshot = f.unitOfWork.snapshot();
   assert.equal(snapshot.captures.length, successfulCreates);
   assert.equal(snapshot.interpretations.length, successfulCreates);
-  assert.equal(snapshot.proposals.length, successfulCreates);
+  assert.equal(snapshot.routingProposals.length, successfulCreates);
   assert.equal(snapshot.calendarPlans.length, 0);
   assert.equal(snapshot.domainEvents.length, 0);
   assert.equal(f.interpreter.calls, successfulCreates);
