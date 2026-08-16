@@ -12,7 +12,7 @@ const navItems: NavItem[] = [
   { label: "Journey", icon: "journey", href: "/journey", match: (path) => path.startsWith("/journey") },
   { label: "Calendar", icon: "calendar", href: "/calendar", match: (path) => path.startsWith("/calendar") },
   { label: "Memory", icon: "memory", href: "/memory", match: (path) => path.startsWith("/memory") },
-  { label: "You", icon: "you" },
+  { label: "You", icon: "you", href: "/you", match: (path) => path.startsWith("/you") },
 ];
 
 function Icon({ name, size = 20 }: { name: IconName; size?: number }) {

@@ -1,4 +1,8 @@
 import type { CanonicalCalendarWindow } from "../../../packages/contracts/canonical-calendar";
+import type {
+  DirectionDecisionOverview,
+  SetCurrentDirectionCommand,
+} from "../../../packages/contracts/direction";
 import type { InteractionChangeTrace } from "../../../packages/contracts/interaction-change-ledger";
 import type { ProposalState } from "../../../packages/contracts/input-routing";
 import type { CaptureProposalReview } from "../../../packages/contracts/proposal-review";
@@ -52,6 +56,14 @@ export interface RejectProposalReceipt {
   proposalId: string;
   rejectedAt: string;
   recordedAt: string;
+}
+
+export interface SetCurrentDirectionReceipt {
+  status: "active" | "replayed";
+  directionId: string;
+  authorityClass: "DECISION";
+  decidedAt: string;
+  supersededDirectionId?: string;
 }
 
 function requiredPublicValue(value: string | undefined, name: string): string {
@@ -166,6 +178,26 @@ export function getCanonicalCalendar(
 ): Promise<CanonicalCalendarWindow> {
   const query = new URLSearchParams({ from, to });
   return privateRequest<CanonicalCalendarWindow>(accessToken, `/api/v1/calendar?${query.toString()}`);
+}
+
+export function getDirectionOverview(accessToken: string): Promise<DirectionDecisionOverview> {
+  return privateRequest<DirectionDecisionOverview>(accessToken, "/api/v1/direction");
+}
+
+export function setCurrentDirection(
+  accessToken: string,
+  command: SetCurrentDirectionCommand,
+  idempotencyKey: string,
+): Promise<SetCurrentDirectionReceipt> {
+  const headers = new Headers({
+    "Content-Type": "application/json",
+    "Idempotency-Key": idempotencyKey,
+  });
+  return privateRequest<SetCurrentDirectionReceipt>(accessToken, "/api/v1/direction/current", {
+    method: "POST",
+    headers,
+    body: JSON.stringify(command),
+  });
 }
 
 export function confirmCalendarProposal(
