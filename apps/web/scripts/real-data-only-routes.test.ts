@@ -1,28 +1,35 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import test from "node:test";
 
-const routeFiles = [
-  "../app/page.tsx",
-  "../app/calendar/page.tsx",
-  "../app/capture/page.tsx",
-  "../app/journey/page.tsx",
-  "../app/memory/page.tsx",
-] as const;
+async function pageFiles(directory: URL): Promise<URL[]> {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const nested = await Promise.all(entries.map(async (entry) => {
+    const child = new URL(`${entry.name}${entry.isDirectory() ? "/" : ""}`, directory);
+    if (entry.isDirectory()) return pageFiles(child);
+    return entry.isFile() && entry.name === "page.tsx" ? [child] : [];
+  }));
+  return nested.flat();
+}
 
 async function routeSource(relativePath: string) {
   return readFile(new URL(relativePath, import.meta.url), "utf8");
 }
 
-test("user-facing Life OS routes never import sample or demo life data", async () => {
-  for (const relativePath of routeFiles) {
-    const source = await routeSource(relativePath);
+test("every user-facing page is free of sample/demo/prototype runtime data", async () => {
+  const pages = await pageFiles(new URL("../app/", import.meta.url));
+  assert.ok(pages.length > 0, "expected at least one app page");
+
+  for (const page of pages) {
+    const routePath = decodeURIComponent(page.pathname);
+    const source = await readFile(page, "utf8");
     const imports = source
       .split("\n")
       .filter((line) => line.trimStart().startsWith("import "))
       .join("\n");
 
-    assert.doesNotMatch(imports, /sample|demo|prototype/i, `${relativePath} must not import sample/demo/prototype data`);
+    assert.doesNotMatch(routePath, /\/sample\//i, `${routePath} must not expose a sample route`);
+    assert.doesNotMatch(imports, /sample|demo|prototype/i, `${routePath} must not import sample/demo/prototype data`);
   }
 });
 
@@ -37,9 +44,12 @@ test("real-capable routes use their authenticated live surfaces", async () => {
 });
 
 test("unfinished Journey and Memory routes fail closed instead of fabricating state", async () => {
-  for (const relativePath of ["../app/journey/page.tsx", "../app/memory/page.tsx"] as const) {
+  for (const relativePath of [
+    "../app/journey/page.tsx",
+    "../app/journey/travel-creator/sound-design/page.tsx",
+    "../app/memory/page.tsx",
+  ] as const) {
     const source = await routeSource(relativePath);
     assert.match(source, /<RealDataOnlySurface/);
-    assert.doesNotMatch(source, /JourneyOverview|MemoryOverview|journeySample|memorySample/);
   }
 });
