@@ -313,7 +313,7 @@ export function LiveToday() {
             <aside className={styles.missingDomains}>
               <span>INTENTIONALLY NOT SHOWN</span>
               <strong>No fake direction, focus, Journey progress, Memory, or AI guidance.</strong>
-              <p>Those areas need their own persisted read models before the live Today page can claim them as current state. The sample prototype still exists when live browser configuration is absent.</p>
+              <p>Those areas need their own persisted read models before the live Today page can claim them as current state. When a real read model is unavailable, Life OS stays explicit and empty rather than substituting sample state.</p>
             </aside>
           </>
         )}
