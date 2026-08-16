@@ -53,6 +53,37 @@ test("operation telemetry emits only typed technical references and outcome", ()
   });
 });
 
+test("provider-style runtime service names are accepted without relaxing generic identifiers", () => {
+  const serialized = serializeTechnicalTelemetry({
+    timestamp: "2026-08-13T03:45:00.000Z",
+    level: "INFO",
+    component: "API",
+    runtime: {
+      ...runtime,
+      serviceName: "@life-os/api",
+    },
+    kind: "RUNTIME_LIFECYCLE",
+    event: "STARTED",
+  });
+
+  assert.equal(JSON.parse(serialized).runtime.serviceName, "@life-os/api");
+
+  assert.throws(
+    () => serializeTechnicalTelemetry({
+      timestamp: "2026-08-13T03:45:00.000Z",
+      level: "INFO",
+      component: "API",
+      runtime: {
+        ...runtime,
+        serviceName: "@life os/api",
+      },
+      kind: "RUNTIME_LIFECYCLE",
+      event: "STARTED",
+    }),
+    (error: unknown) => error instanceof TechnicalTelemetryError && /provider-safe technical service name/.test(error.message),
+  );
+});
+
 test("unknown properties cannot leak even when untyped runtime input carries private values", () => {
   const malicious = {
     timestamp: "2026-08-13T03:45:00.000Z",
