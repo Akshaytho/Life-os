@@ -4,9 +4,11 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "next dev",
+    "prebuild": "tsx scripts/validate-deployment.ts",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test:deployment": "tsx --test scripts/*.test.ts",
     "lint": "echo \"Lint rules will be introduced with the first mutation flow.\""
   },
   "dependencies": {
