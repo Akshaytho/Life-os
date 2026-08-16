@@ -6,46 +6,53 @@ await mkdir(outputDir, { recursive: true });
 
 const browser = await chromium.launch({ headless: true });
 
+const browserAuthUnavailable = 'Live browser authentication is not configured for this deployment.';
+const realDataOnly = 'No sample life data will be shown here.';
+
 const pages = [
-  { name: 'today', path: '/' },
   {
-    name: 'capture-routing',
+    name: 'today-real-boundary',
+    path: '/',
+    expected: [
+      'Sign in before Life OS can read your Today state.',
+      browserAuthUnavailable,
+    ],
+  },
+  {
+    name: 'capture-real-boundary',
     path: '/capture',
     expected: [
-      'Review only. Nothing changed.',
-      'YOU SAID · USER SOURCE',
-      'LIFE OS SAW · OBSERVATION',
-      'LIFE OS PROPOSES · SUGGESTION',
-      'IF APPROVED',
+      'Sign in before Life OS can read or save private Capture.',
+      browserAuthUnavailable,
     ],
   },
   {
-    name: 'capture-confirmed-dates',
-    path: '/capture?sample=confirmed',
+    name: 'journey-real-boundary',
+    path: '/journey',
     expected: [
-      'Review only. Nothing changed.',
-      'YOU SAID · USER SOURCE',
-      'LIFE OS SAW · OBSERVATION',
-      'LIFE OS PROPOSES · SUGGESTION',
-      'Preserve that these dates were explicitly decided, with the capture as provenance.',
+      'Journey will appear only when it is real.',
+      realDataOnly,
     ],
   },
-  { name: 'journey-overview', path: '/journey' },
-  { name: 'journey-sound-design', path: '/journey/travel-creator/sound-design' },
-  { name: 'calendar-day', path: '/calendar', expected: ['DAY / CAPACITY'] },
-  { name: 'calendar-week', path: '/calendar?lens=week', expected: ['WEEK / RHYTHM'] },
-  { name: 'calendar-month', path: '/calendar?lens=month', expected: ['MONTH / TEXTURE'] },
-  { name: 'calendar-year', path: '/calendar?lens=year', expected: ['YEAR / SEASONS'] },
   {
-    name: 'memory-overview',
+    name: 'journey-sound-design-real-boundary',
+    path: '/journey/travel-creator/sound-design',
+    expected: [
+      'Sound Design will appear only from real Journey state.',
+      realDataOnly,
+    ],
+  },
+  {
+    name: 'calendar-real-boundary',
+    path: '/calendar',
+    expected: [browserAuthUnavailable],
+  },
+  {
+    name: 'memory-real-boundary',
     path: '/memory',
     expected: [
-      'MEMORY / RECALL',
-      'RECALL / ASK MEMORY',
-      'TRUSTED NOW',
-      'WORTH KEEPING',
-      'TIME MEMORY',
-      'DERIVED / LOWER AUTHORITY',
+      'Memory will show only trusted persisted context.',
+      realDataOnly,
     ],
   },
   {
@@ -56,34 +63,6 @@ const pages = [
       'Your Direction belongs to you.',
       'DORMANT',
       'This high-authority surface is deliberately not live in this deployment yet. Life OS will not substitute sample data or an AI guess while canonical Direction is dormant.',
-    ],
-  },
-  {
-    name: 'interaction-ledger-committed',
-    path: '/interactions/sample?state=committed',
-    expected: [
-      'COMMITTED',
-      'A canonical change was made.',
-      'YOU SAID',
-      'LIFE OS SAW',
-      'LIFE OS PROPOSED',
-      'YOU CHOSE',
-      'CALENDAR CHANGED',
-      'Not recorded yet.',
-    ],
-  },
-  {
-    name: 'interaction-ledger-rejected',
-    path: '/interactions/sample?state=rejected',
-    expected: [
-      'CLOSED · NO CHANGE',
-      'Nothing in your canonical life state changed.',
-      'YOU SAID',
-      'LIFE OS SAW',
-      'LIFE OS PROPOSED',
-      'YOU CHOSE',
-      'No canonical change',
-      'Not recorded yet.',
     ],
   },
 ];
