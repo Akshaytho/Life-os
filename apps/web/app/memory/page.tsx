@@ -1,6 +1,11 @@
-import { MemoryOverview } from "../../components/memory-overview";
-import { memorySample } from "../../lib/memory-sample-data";
+import { RealDataOnlySurface } from "../../components/real-data-only-surface";
 
 export default function MemoryPage() {
-  return <MemoryOverview model={memorySample} />;
+  return (
+    <RealDataOnlySurface
+      area="Memory"
+      title="Memory will show only trusted persisted context."
+      description="This area is not backed by a canonical Memory read model yet, so Life OS will not present sample memories, invented context, or placeholder personal history."
+    />
+  );
 }
