@@ -12,6 +12,27 @@ import { resolveRuntimeProvenance } from "./runtime-provenance";
 export const supportedDatabaseTlsModes = ["disable", "verify-full"] as const;
 export type DatabaseTlsMode = (typeof supportedDatabaseTlsModes)[number];
 
+export type DatabaseRuntimeDiagnosticCode =
+  | "DATABASE_URL_SSL_PARAMETERS"
+  | "DATABASE_TLS_MODE_INVALID"
+  | "DATABASE_TLS_MODE_UNVERIFIED"
+  | "DATABASE_TLS_CA_REQUIRED"
+  | "DATABASE_TLS_CA_URL_FORBIDDEN"
+  | "DATABASE_TLS_CA_UNREADABLE"
+  | "DATABASE_TLS_CA_NOT_FILE"
+  | "DATABASE_TLS_CA_TOO_LARGE"
+  | "DATABASE_TLS_CA_PRIVATE_KEY"
+  | "DATABASE_TLS_CA_NOT_PEM";
+
+class DatabaseRuntimeConfigurationError extends ApiRuntimeConfigurationError {
+  readonly diagnosticCode: DatabaseRuntimeDiagnosticCode;
+
+  constructor(diagnosticCode: DatabaseRuntimeDiagnosticCode, message: string) {
+    super(message);
+    this.diagnosticCode = diagnosticCode;
+  }
+}
+
 /** Connection-string parameters that would let an operator override the reviewed TLS object. */
 const forbiddenConnectionStringSslParameters = ["sslmode", "sslrootcert", "sslcert", "sslkey"];
 
@@ -53,7 +74,8 @@ function assertNoConnectionStringSslParameters(databaseUrl: string): void {
       for (const parameter of query.split("&")) {
         const name = parameter.split("=")[0]?.trim().toLowerCase();
         if (name && forbiddenConnectionStringSslParameters.includes(name)) {
-          throw new ApiRuntimeConfigurationError(
+          throw new DatabaseRuntimeConfigurationError(
+            "DATABASE_URL_SSL_PARAMETERS",
             "DATABASE_URL must not contain SSL parameters; Life OS owns TLS verification through the reviewed runtime TLS configuration",
           );
         }
@@ -64,7 +86,8 @@ function assertNoConnectionStringSslParameters(databaseUrl: string): void {
 
   for (const name of parsed.searchParams.keys()) {
     if (forbiddenConnectionStringSslParameters.includes(name.trim().toLowerCase())) {
-      throw new ApiRuntimeConfigurationError(
+      throw new DatabaseRuntimeConfigurationError(
+        "DATABASE_URL_SSL_PARAMETERS",
         "DATABASE_URL must not contain SSL parameters; Life OS owns TLS verification through the reviewed runtime TLS configuration",
       );
     }
@@ -75,7 +98,8 @@ function resolveDatabaseTlsMode(env: NodeJS.ProcessEnv): DatabaseTlsMode {
   const value = optionalText(env.LIFE_OS_DATABASE_TLS_MODE)?.toLowerCase();
   if (value === undefined) return "disable";
   if (!supportedDatabaseTlsModes.includes(value as DatabaseTlsMode)) {
-    throw new ApiRuntimeConfigurationError(
+    throw new DatabaseRuntimeConfigurationError(
+      "DATABASE_TLS_MODE_INVALID",
       `LIFE_OS_DATABASE_TLS_MODE must be one of ${supportedDatabaseTlsModes.join(", ")}`,
     );
   }
@@ -90,12 +114,14 @@ function resolveDatabaseTlsMode(env: NodeJS.ProcessEnv): DatabaseTlsMode {
 function readReviewedCertificateAuthority(env: NodeJS.ProcessEnv): string {
   const configuredPath = optionalText(env.LIFE_OS_DATABASE_TLS_CA_FILE);
   if (!configuredPath) {
-    throw new ApiRuntimeConfigurationError(
+    throw new DatabaseRuntimeConfigurationError(
+      "DATABASE_TLS_CA_REQUIRED",
       "LIFE_OS_DATABASE_TLS_CA_FILE is required when LIFE_OS_DATABASE_TLS_MODE is verify-full",
     );
   }
   if (/^[a-z][a-z0-9+.-]*:\/\//i.test(configuredPath)) {
-    throw new ApiRuntimeConfigurationError(
+    throw new DatabaseRuntimeConfigurationError(
+      "DATABASE_TLS_CA_URL_FORBIDDEN",
       "LIFE_OS_DATABASE_TLS_CA_FILE must be a repository file path, not a URL",
     );
   }
@@ -106,17 +132,20 @@ function readReviewedCertificateAuthority(env: NodeJS.ProcessEnv): string {
   try {
     stats = statSync(certificatePath);
   } catch {
-    throw new ApiRuntimeConfigurationError(
+    throw new DatabaseRuntimeConfigurationError(
+      "DATABASE_TLS_CA_UNREADABLE",
       `LIFE_OS_DATABASE_TLS_CA_FILE could not be read at ${configuredPath}`,
     );
   }
   if (!stats.isFile()) {
-    throw new ApiRuntimeConfigurationError(
+    throw new DatabaseRuntimeConfigurationError(
+      "DATABASE_TLS_CA_NOT_FILE",
       `LIFE_OS_DATABASE_TLS_CA_FILE must be a regular file at ${configuredPath}`,
     );
   }
   if (stats.size > maximumCertificateFileBytes) {
-    throw new ApiRuntimeConfigurationError(
+    throw new DatabaseRuntimeConfigurationError(
+      "DATABASE_TLS_CA_TOO_LARGE",
       `LIFE_OS_DATABASE_TLS_CA_FILE must be at most ${maximumCertificateFileBytes} bytes`,
     );
   }
@@ -125,19 +154,22 @@ function readReviewedCertificateAuthority(env: NodeJS.ProcessEnv): string {
   try {
     certificate = readFileSync(certificatePath, "utf8");
   } catch {
-    throw new ApiRuntimeConfigurationError(
+    throw new DatabaseRuntimeConfigurationError(
+      "DATABASE_TLS_CA_UNREADABLE",
       `LIFE_OS_DATABASE_TLS_CA_FILE could not be read at ${configuredPath}`,
     );
   }
 
   // Never echo the file body. A malformed anchor is reported by shape, not by content.
   if (certificate.includes(privateKeyMarker)) {
-    throw new ApiRuntimeConfigurationError(
+    throw new DatabaseRuntimeConfigurationError(
+      "DATABASE_TLS_CA_PRIVATE_KEY",
       "LIFE_OS_DATABASE_TLS_CA_FILE must contain only public certificate material",
     );
   }
   if (!certificate.includes(certificateMarker)) {
-    throw new ApiRuntimeConfigurationError(
+    throw new DatabaseRuntimeConfigurationError(
+      "DATABASE_TLS_CA_NOT_PEM",
       "LIFE_OS_DATABASE_TLS_CA_FILE must contain a PEM certificate",
     );
   }
@@ -164,7 +196,8 @@ export function databasePoolConfigurationFromEnv(
   // transport there is not a degraded mode, it is a different security posture, so the
   // permissive mode is refused outright rather than warned about.
   if (environment === "development" && mode !== "verify-full") {
-    throw new ApiRuntimeConfigurationError(
+    throw new DatabaseRuntimeConfigurationError(
+      "DATABASE_TLS_MODE_UNVERIFIED",
       "LIFE_OS_DATABASE_TLS_MODE must be verify-full when DATABASE_URL is used in development",
     );
   }
