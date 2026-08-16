@@ -73,6 +73,14 @@ function assertCanonicalRecord(
   }
 }
 
+function compareCanonicalRecords(left: CanonicalCalendarRecord, right: CanonicalCalendarRecord): number {
+  const startDifference = Date.parse(left.startsAt) - Date.parse(right.startsAt);
+  if (startDifference !== 0) return startDifference;
+  const endDifference = Date.parse(left.endsAt) - Date.parse(right.endsAt);
+  if (endDifference !== 0) return endDifference;
+  return left.id.localeCompare(right.id);
+}
+
 export async function getCanonicalCalendar(
   input: { from: string; to: string },
   context: CanonicalCalendarReadContext,
@@ -103,10 +111,11 @@ export async function getCanonicalCalendar(
     ids.add(record.id);
   }
 
+  const orderedRecords = [...records].sort(compareCanonicalRecords);
   return {
     from,
     to,
-    items: records.map((record) => ({
+    items: orderedRecords.map((record) => ({
       id: record.id,
       title: record.title,
       startsAt: record.startsAt,
