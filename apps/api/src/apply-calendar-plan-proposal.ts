@@ -141,7 +141,7 @@ export async function applyCalendarPlanProposal(
 
   return dependencies.unitOfWork.run(authenticatedUserId, async (transaction) => {
     const proposal = await transaction.getStoredCalendarProposalForUpdate(command.proposalId, authenticatedUserId);
-    if (!proposal) {
+    if (!proposal || proposal.proposalId !== command.proposalId || proposal.userId !== authenticatedUserId) {
       throw new ProposalValidationError("Proposal is unavailable for this authenticated user");
     }
 
