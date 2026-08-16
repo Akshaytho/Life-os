@@ -13,6 +13,7 @@
     "direction-role:apply": "tsx src/run-direction-db-role.ts --apply",
     "direction-role:revoke": "tsx src/run-direction-db-role.ts --revoke",
     "hosted:preflight": "tsx src/run-hosted-preflight.ts",
+    "hosted:preflight:direction": "tsx src/run-direction-hosted-preflight.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "tsx --test src/*.test.ts"
   },
