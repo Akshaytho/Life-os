@@ -10,6 +10,11 @@ import {
   parsePort,
   privateApiEnabledForRuntime,
 } from "./api-runtime";
+import {
+  combineReadinessProbes,
+  createDirectionDatabaseReadinessProbe,
+} from "./direction-database-readiness";
+import { directionEnabledForRuntime } from "./direction-runtime";
 import { privateCorsPolicyFromEnv } from "./private-cors";
 import { createPrivateApiRuntimeDependencies } from "./private-api-runtime";
 import { resolveRuntimeProvenance } from "./runtime-provenance";
@@ -22,23 +27,28 @@ async function main() {
   const port = parsePort(process.env.PORT);
   const databaseUrl = databaseUrlForRuntime(process.env);
   const privateApiEnabled = privateApiEnabledForRuntime(process.env, provenance);
+  const directionEnabled = directionEnabledForRuntime(process.env, provenance);
   const pool = databaseUrl ? new Pool({ connectionString: databaseUrl }) : undefined;
 
   if (privateApiEnabled && !pool) {
     throw new ApiRuntimeConfigurationError("DATABASE_URL is required when the private API is enabled");
   }
 
-  const readiness = privateApiEnabled
+  const baselineReadiness = privateApiEnabled
     ? createPrivateDatabaseReadinessProbe(pool!)
     : createDatabaseReadinessProbe(pool);
+  const readiness = directionEnabled
+    ? combineReadinessProbes(baselineReadiness, createDirectionDatabaseReadinessProbe(pool!))
+    : baselineReadiness;
 
   const privateApi = privateApiEnabled
-    ? createPrivateApiRuntimeDependencies(pool!, process.env, provenance, telemetry)
+    ? createPrivateApiRuntimeDependencies(pool!, process.env, provenance, telemetry, { directionEnabled })
     : undefined;
   const privateCors = privateApiEnabled ? privateCorsPolicyFromEnv(process.env) : undefined;
 
   // Do not listen with a private surface when the connected application role cannot
-  // prove the reviewed RLS/ownership boundary. Readiness continues checking after start.
+  // prove every explicitly enabled RLS/ownership boundary. Direction adds a separate
+  // narrower readiness proof only when its high-authority flag is true.
   if (privateApiEnabled && !(await readiness.check())) {
     throw new ApiRuntimeConfigurationError("Private API database authorization readiness failed");
   }
