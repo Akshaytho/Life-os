@@ -7,8 +7,9 @@ import { PostgresUserScope } from "../../../packages/database/postgres-user-scop
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error("DATABASE_URL is required for PostgreSQL integration tests");
 
-const schema = "database_authorization_matrix_test";
-const appRole = "lifeos_rls_matrix_app";
+const runSuffix = String(process.pid);
+const schema = `database_authorization_matrix_${runSuffix}`;
+const appRole = `lifeos_rls_matrix_app_${runSuffix}`;
 const userCount = 100;
 const adminPool = new Pool({ connectionString: databaseUrl, max: 1 });
 const pool = new Pool({
