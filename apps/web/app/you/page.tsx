@@ -1,3 +1,4 @@
+import { LifeOsAuthGate } from "../../components/life-os-auth-gate";
 import { LiveDirection } from "../../components/live-direction";
 import styles from "../../components/live-direction.module.css";
 
@@ -33,6 +34,16 @@ function DormantDirection() {
 }
 
 export default function YouPage() {
-  if (liveDirectionConfigured()) return <LiveDirection />;
+  if (liveDirectionConfigured()) {
+    return (
+      <LifeOsAuthGate
+        area="Direction"
+        title="Sign in before Life OS can read or change your Direction."
+        description="Direction uses your normal Supabase user session, but the private API and PostgreSQL RLS still verify every read and reviewed high-authority decision."
+      >
+        <LiveDirection />
+      </LifeOsAuthGate>
+    );
+  }
   return <DormantDirection />;
 }
