@@ -83,7 +83,7 @@ This prevents the deployment helper from turning an existing platform role into 
 
 ## Exact application role contract
 
-The desired role is created/altered as:
+The desired role attributes are:
 
 ```text
 LOGIN
@@ -98,6 +98,30 @@ NOBYPASSRLS
 V1 also requires **zero role memberships**.
 
 An existing role with memberships is not silently repaired. Apply fails with `ROLE_STATE_UNSAFE` so inherited/group authority can be reviewed manually.
+
+### New role versus existing role
+
+Apply establishes those attributes when it creates the role, and verifies rather than rewrites them when the role already exists.
+
+**Role does not exist.** Apply issues `CREATE ROLE` with the full reviewed attribute set above, then grants the reviewed object privileges.
+
+**Role exists and attributes are safe.** Apply confirms, before any mutation, that every attribute above already holds and that the role has zero memberships. Only then does it rotate the credential with a password-only statement:
+
+```text
+ALTER ROLE <role> PASSWORD <new password>
+```
+
+It deliberately does not restate `LOGIN`, `NOSUPERUSER`, `NOCREATEDB`, `NOCREATEROLE`, `NOINHERIT`, `NOREPLICATION`, or `NOBYPASSRLS`, because those attributes were just inspected and are re-inspected afterwards. Object-privilege repair is unchanged and still runs after rotation, and final inspection must still report `ready`.
+
+**Role exists and any attribute is unsafe.** Apply fails closed with `ROLE_STATE_UNSAFE` **before** it rotates the password or issues any `GRANT`/`REVOKE`. The unsafe attribute is left exactly as found so the elevated authority can be reviewed deliberately. The tool never repairs a privileged attribute automatically — a role that has gained `SUPERUSER`, `BYPASSRLS`, `CREATEROLE`, or inheritance is treated as a security event, not as drift to silently normalise.
+
+### Why existing roles are verified rather than rewritten
+
+On a managed PostgreSQL service the administrative role supplied to customers is frequently not a true superuser. Such a role can create a custom login role and can rotate that role's password, but PostgreSQL rejects an `ALTER ROLE` that names superuser-sensitive attributes — including the negative forms — unless the caller is a superuser. Restating the already-correct attributes therefore fails with `permission denied to alter role` even though nothing about the role needs to change.
+
+Restating them buys nothing in either case: on a superuser build the attributes are already correct, and on a managed build the statement cannot execute at all. Inspecting before mutating and re-inspecting after is strictly stronger, because it also refuses roles that were tampered with out of band.
+
+This rule is not specific to any one provider. It is the general contract for managed PostgreSQL, where role attributes are platform-governed and credentials are the part the application is expected to rotate.
 
 ## Schema authority
 
