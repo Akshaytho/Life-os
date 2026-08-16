@@ -22,7 +22,9 @@ function requestedMode(argv: string[]): Mode {
 async function main() {
   const mode = requestedMode(process.argv.slice(2));
   const configuration = directionDbRoleConfigurationFromEnv(process.env);
-  const pool = new Pool({ connectionString: configuration.migrationDatabaseUrl, max: 1 });
+  // Revoke can inspect migration state while holding one scoped client, so keep a
+  // second administrative connection available rather than deadlocking a max=1 pool.
+  const pool = new Pool({ connectionString: configuration.migrationDatabaseUrl, max: 2 });
   try {
     const plan = mode === "apply"
       ? await applyDirectionDatabaseRole(pool, configuration.roleName)
