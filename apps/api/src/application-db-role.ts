@@ -348,6 +348,12 @@ export async function applyApplicationDatabaseRole(
           "ROLE_STATE_UNSAFE",
         );
       }
+      if (before.roleExists && !before.roleAttributesSafe) {
+        throw new ApplicationDbRoleError(
+          "Existing application role attributes do not match the reviewed least-privilege contract and require manual review",
+          "ROLE_STATE_UNSAFE",
+        );
+      }
 
       const quoted = await quotedRoleMaterial(client, validatedRoleName, validatedPassword);
       await client.query("BEGIN");
@@ -359,10 +365,14 @@ export async function applyApplicationDatabaseRole(
             NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS
           `);
         } else {
+          // Managed Postgres providers may run their administrative role without true
+          // superuser rights, which makes reasserting superuser-sensitive attributes on an
+          // existing role impossible even when the attributes are already correct. The
+          // attributes are therefore verified before this point and re-verified below, and
+          // this path rotates only the credential.
           await client.query(`
             ALTER ROLE ${quoted.role_ident}
-            WITH LOGIN PASSWORD ${quoted.password_literal}
-            NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS
+            PASSWORD ${quoted.password_literal}
           `);
         }
 
