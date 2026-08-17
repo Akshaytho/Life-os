@@ -6,12 +6,15 @@ import { PostgresCanonicalCalendarReader } from "../../../packages/database/post
 import { PostgresDirectionDecisionReader } from "../../../packages/database/postgres-direction-decision-reader";
 import { PostgresDirectionDecisionUnitOfWork } from "../../../packages/database/postgres-direction-decision-unit-of-work";
 import { PostgresInteractionChangeLedgerReader } from "../../../packages/database/postgres-interaction-change-ledger-reader";
+import { PostgresJourneyDecisionReader } from "../../../packages/database/postgres-journey-decision-reader";
+import { PostgresJourneyDecisionUnitOfWork } from "../../../packages/database/postgres-journey-decision-unit-of-work";
 import { PostgresProposalReviewReader } from "../../../packages/database/postgres-proposal-review-reader";
 import { PostgresWriteUnitOfWork } from "../../../packages/database/postgres-write-unit-of-work";
 import type { SessionVerifier } from "../../../packages/domain/trusted-transport-auth";
 import type { CaptureInterpreter } from "../../../packages/intelligence/capture-interpreter";
 import { createCaptureInterpreterFromEnv } from "./capture-interpreter-runtime";
 import { directionEnabledForRuntime } from "./direction-runtime";
+import { journeyEnabledForRuntime } from "./journey-runtime";
 import type { PrivateApiDependencies } from "./private-api";
 import { PostgresCalendarProposalConfirmationStore } from "./postgres-calendar-proposal-confirmation-store";
 import { createSupabaseSessionVerifierFromEnv } from "./supabase-session-verifier";
@@ -24,6 +27,7 @@ export interface PrivateApiRuntimeOptions {
   now?: () => Date;
   monotonicNowMs?: () => number;
   directionEnabled?: boolean;
+  journeyEnabled?: boolean;
 }
 
 function isoClock(now: () => Date) {
@@ -47,6 +51,7 @@ export function createPrivateApiRuntimeDependencies(
   const monotonicNowMs = options.monotonicNowMs ?? (() => performance.now());
   const clock = isoClock(now);
   const directionEnabled = options.directionEnabled ?? directionEnabledForRuntime(env, runtime);
+  const journeyEnabled = options.journeyEnabled ?? journeyEnabledForRuntime(env, runtime);
 
   return {
     sessionVerifier: options.sessionVerifier ?? createSupabaseSessionVerifierFromEnv(env),
@@ -68,6 +73,13 @@ export function createPrivateApiRuntimeDependencies(
       directionUnitOfWork: new PostgresDirectionDecisionUnitOfWork(pool),
       directionClock: clock,
       directionIds: { next: (prefix: string) => `${prefix}-${uuid()}` },
+    } : {}),
+    journeyEnabled,
+    ...(journeyEnabled ? {
+      journeyReader: new PostgresJourneyDecisionReader(pool),
+      journeyUnitOfWork: new PostgresJourneyDecisionUnitOfWork(pool),
+      journeyClock: clock,
+      journeyIds: { next: (prefix: string) => `${prefix}-${uuid()}` },
     } : {}),
     runtime,
     telemetry,
