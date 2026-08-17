@@ -16,6 +16,8 @@ import {
   createDirectionDatabaseReadinessProbe,
 } from "./direction-database-readiness";
 import { directionEnabledForRuntime } from "./direction-runtime";
+import { createJourneyDatabaseReadinessProbe } from "./journey-database-readiness";
+import { journeyEnabledForRuntime } from "./journey-runtime";
 import { privateCorsPolicyFromEnv } from "./private-cors";
 import { createPrivateApiRuntimeDependencies } from "./private-api-runtime";
 import { resolveRuntimeProvenance } from "./runtime-provenance";
@@ -28,8 +30,7 @@ async function main() {
   const port = parsePort(process.env.PORT);
   const privateApiEnabled = privateApiEnabledForRuntime(process.env, provenance);
   const directionEnabled = directionEnabledForRuntime(process.env, provenance);
-  // The database transport contract, including which certificate authority is trusted, is
-  // owned by the reviewed runtime configuration rather than assembled here.
+  const journeyEnabled = journeyEnabledForRuntime(process.env, provenance);
   const databaseConfiguration = databasePoolConfigurationFromEnv(process.env);
   const pool = databaseConfiguration ? new Pool(databaseConfiguration) : undefined;
 
@@ -40,18 +41,18 @@ async function main() {
   const baselineReadiness = privateApiEnabled
     ? createPrivateDatabaseReadinessProbe(pool!)
     : createDatabaseReadinessProbe(pool);
-  const readiness = directionEnabled
-    ? combineReadinessProbes(baselineReadiness, createDirectionDatabaseReadinessProbe(pool!))
-    : baselineReadiness;
+  const readinessProbes = [baselineReadiness];
+  if (directionEnabled) readinessProbes.push(createDirectionDatabaseReadinessProbe(pool!));
+  if (journeyEnabled) readinessProbes.push(createJourneyDatabaseReadinessProbe(pool!));
+  const readiness = readinessProbes.length === 1
+    ? baselineReadiness
+    : combineReadinessProbes(...readinessProbes);
 
   const privateApi = privateApiEnabled
-    ? createPrivateApiRuntimeDependencies(pool!, process.env, provenance, telemetry, { directionEnabled })
+    ? createPrivateApiRuntimeDependencies(pool!, process.env, provenance, telemetry, { directionEnabled, journeyEnabled })
     : undefined;
   const privateCors = privateApiEnabled ? privateCorsPolicyFromEnv(process.env) : undefined;
 
-  // Do not listen with a private surface when the connected application role cannot
-  // prove every explicitly enabled RLS/ownership boundary. Direction adds a separate
-  // narrower readiness proof only when its high-authority flag is true.
   if (privateApiEnabled && !(await readiness.check())) {
     throw new ApiRuntimeConfigurationError("Private API database authorization readiness failed");
   }
@@ -113,8 +114,6 @@ async function main() {
 }
 
 void main().catch((error: unknown) => {
-  // Bootstrap can fail before RuntimeProvenance is valid. Emit only validated class/code
-  // tokens; messages and stacks can contain provider URLs, credentials or certificate details.
   const diagnosticCode = safeBootstrapDiagnosticCode(error);
   console.error(JSON.stringify({
     timestamp: new Date().toISOString(),
