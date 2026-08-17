@@ -41,11 +41,21 @@ test("Railway Git SHA and deployment metadata are projected without arbitrary en
   assert.equal(serialized.includes("service-id-internal"), false);
 });
 
-test("explicit Life OS release SHA overrides platform-provided SHA", () => {
+test("Railway deployment-scoped Git SHA cannot be shadowed by a stale manual release SHA", () => {
+  assert.equal(resolveRuntimeProvenance({
+    LIFE_OS_ENVIRONMENT: "development",
+    LIFE_OS_RELEASE_SHA: "stale-manual-release",
+    RAILWAY_GIT_COMMIT_SHA: "actual-railway-release",
+    RAILWAY_DEPLOYMENT_ID: "deploy-current",
+    RAILWAY_SERVICE_ID: "service-current",
+  }).releaseSha, "actual-railway-release");
+});
+
+test("explicit Life OS release SHA still overrides incidental platform variables outside Railway", () => {
   assert.equal(resolveRuntimeProvenance({
     LIFE_OS_ENVIRONMENT: "development",
     LIFE_OS_RELEASE_SHA: "explicit-release",
-    RAILWAY_GIT_COMMIT_SHA: "platform-release",
+    RAILWAY_GIT_COMMIT_SHA: "incidental-release",
   }).releaseSha, "explicit-release");
 });
 
