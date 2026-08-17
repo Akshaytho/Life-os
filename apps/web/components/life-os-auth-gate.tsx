@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { FormEvent, ReactNode } from "react";
 import { useState } from "react";
 import { useLifeOsAuth } from "./life-os-auth-provider";
@@ -52,6 +53,9 @@ export function LifeOsAuthGate({ area, title, description, children }: LifeOsAut
                 <label>Password<input autoComplete="current-password" type="password" required value={password} onChange={(event) => setPassword(event.target.value)} /></label>
                 <button disabled={authBusy || authState === "checking"} type="submit">{authBusy ? "Signing in…" : "Sign in"}</button>
               </form>
+            )}
+            {authState !== "configuration_error" && (
+              <div className={liveStyles.retryRow}><Link href="/auth/recovery">Forgot password?</Link></div>
             )}
             {authMessage && <p className={liveStyles.authMessage}>{authMessage}</p>}
           </section>
