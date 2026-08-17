@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { isTodayPath } from "../lib/navigation-paths";
 import styles from "./app-navigation.module.css";
 
 type IconName = "today" | "journey" | "calendar" | "memory" | "you" | "plus";
 type NavItem = { label: string; icon: IconName; href?: string; match?: (path: string) => boolean };
 
 const navItems: NavItem[] = [
-  { label: "Today", icon: "today", href: "/", match: (path) => path === "/" || path.startsWith("/today") },
+  { label: "Today", icon: "today", href: "/", match: isTodayPath },
   { label: "Journey", icon: "journey", href: "/journey", match: (path) => path.startsWith("/journey") },
   { label: "Calendar", icon: "calendar", href: "/calendar", match: (path) => path.startsWith("/calendar") },
   { label: "Memory", icon: "memory", href: "/memory", match: (path) => path.startsWith("/memory") },
