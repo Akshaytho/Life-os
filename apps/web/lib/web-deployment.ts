@@ -5,6 +5,7 @@ export interface WebDeploymentConfiguration {
   apiOrigin?: string;
   supabaseOrigin?: string;
   directionEnabled: boolean;
+  journeyEnabled: boolean;
 }
 
 export class WebDeploymentConfigurationError extends Error {
@@ -17,19 +18,14 @@ export class WebDeploymentConfigurationError extends Error {
       | "SUPABASE_ORIGIN_INVALID"
       | "SUPABASE_PUBLISHABLE_KEY_REQUIRED"
       | "SUPABASE_PUBLISHABLE_KEY_INVALID"
-      | "DIRECTION_FLAG_INVALID",
+      | "DIRECTION_FLAG_INVALID"
+      | "JOURNEY_FLAG_INVALID",
   ) {
     super(code);
     this.name = "WebDeploymentConfigurationError";
   }
 }
 
-/**
- * Small environment-shaped contract rather than NodeJS.ProcessEnv itself.
- * Next augments ProcessEnv with required framework fields such as NODE_ENV;
- * deployment validation only needs the public Life OS variables below, and
- * tests must be able to model their absence without inventing framework state.
- */
 export interface WebDeploymentEnvironment {
   [key: string]: string | undefined;
   LIFE_OS_WEB_DEPLOYMENT?: string;
@@ -37,6 +33,7 @@ export interface WebDeploymentEnvironment {
   NEXT_PUBLIC_SUPABASE_URL?: string;
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?: string;
   NEXT_PUBLIC_LIFE_OS_DIRECTION_ENABLED?: string;
+  NEXT_PUBLIC_LIFE_OS_JOURNEY_ENABLED?: string;
 }
 
 function normalized(value: string | undefined): string | undefined {
@@ -51,11 +48,14 @@ function parseMode(value: string | undefined): WebDeploymentMode {
   throw new WebDeploymentConfigurationError("MODE_INVALID");
 }
 
-function parseBooleanFlag(value: string | undefined): boolean {
+function parseBooleanFlag(
+  value: string | undefined,
+  invalidCode: "DIRECTION_FLAG_INVALID" | "JOURNEY_FLAG_INVALID",
+): boolean {
   const flag = normalized(value)?.toLowerCase();
   if (flag === undefined || flag === "false") return false;
   if (flag === "true") return true;
-  throw new WebDeploymentConfigurationError("DIRECTION_FLAG_INVALID");
+  throw new WebDeploymentConfigurationError(invalidCode);
 }
 
 function httpsOrigin(
@@ -89,10 +89,6 @@ function httpsOrigin(
 function publishableKey(value: string | undefined): string {
   const key = normalized(value);
   if (!key) throw new WebDeploymentConfigurationError("SUPABASE_PUBLISHABLE_KEY_REQUIRED");
-
-  // Hosted Life OS uses Supabase's current browser-safe publishable-key format.
-  // Requiring the explicit public prefix makes accidental sb_secret_* exposure
-  // fail the build before any browser bundle can be deployed.
   if (!/^sb_publishable_[A-Za-z0-9_-]+$/.test(key)) {
     throw new WebDeploymentConfigurationError("SUPABASE_PUBLISHABLE_KEY_INVALID");
   }
@@ -103,10 +99,11 @@ export function webDeploymentConfigurationFromEnv(
   env: WebDeploymentEnvironment,
 ): WebDeploymentConfiguration {
   const mode = parseMode(env.LIFE_OS_WEB_DEPLOYMENT);
-  const directionEnabled = parseBooleanFlag(env.NEXT_PUBLIC_LIFE_OS_DIRECTION_ENABLED);
+  const directionEnabled = parseBooleanFlag(env.NEXT_PUBLIC_LIFE_OS_DIRECTION_ENABLED, "DIRECTION_FLAG_INVALID");
+  const journeyEnabled = parseBooleanFlag(env.NEXT_PUBLIC_LIFE_OS_JOURNEY_ENABLED, "JOURNEY_FLAG_INVALID");
 
   if (mode === "prototype") {
-    return { mode, directionEnabled };
+    return { mode, directionEnabled, journeyEnabled };
   }
 
   const apiOrigin = httpsOrigin(
@@ -126,5 +123,6 @@ export function webDeploymentConfigurationFromEnv(
     apiOrigin,
     supabaseOrigin,
     directionEnabled,
+    journeyEnabled,
   };
 }
