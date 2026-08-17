@@ -4,17 +4,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { CanonicalCalendarItem, CanonicalCalendarWindow } from "../../../packages/contracts/canonical-calendar";
 import { getCanonicalCalendar, LifeOsApiError } from "../lib/life-os-api";
+import { todayRange } from "../lib/today-time";
 import liveStyles from "./live-capture-routing.module.css";
 import { useLifeOsAuth } from "./life-os-auth-provider";
 import styles from "./live-today.module.css";
-
-function todayRange() {
-  const from = new Date();
-  from.setHours(0, 0, 0, 0);
-  const to = new Date(from);
-  to.setDate(to.getDate() + 1);
-  return { from: from.toISOString(), to: to.toISOString() };
-}
 
 function localDayKey(value: Date) {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
