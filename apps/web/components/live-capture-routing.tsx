@@ -1,8 +1,7 @@
 "use client";
 
-import type { Session } from "@supabase/supabase-js";
 import type { FormEvent } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { InteractionChangeTrace } from "../../../packages/contracts/interaction-change-ledger";
 import type { CaptureProposalReview, ProposalReviewItem } from "../../../packages/contracts/proposal-review";
 import {
@@ -15,12 +14,9 @@ import {
   rejectProposal,
   type ConfirmCalendarProposalInput,
 } from "../lib/life-os-api";
-import {
-  BrowserAuthConfigurationError,
-  getBrowserSupabaseClient,
-} from "../lib/supabase-browser";
 import captureStyles from "./capture-routing.module.css";
 import liveStyles from "./live-capture-routing.module.css";
+import { useLifeOsAuth } from "./life-os-auth-provider";
 import { ProposalDecisionControls } from "./proposal-decision-controls";
 
 function humanEnum(value: string) {
@@ -215,13 +211,7 @@ function TraceSummary({ trace }: { trace: InteractionChangeTrace }) {
 }
 
 export function LiveCaptureRouting() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [authState, setAuthState] = useState<"checking" | "signed_out" | "signed_in" | "configuration_error">("checking");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [authMessage, setAuthMessage] = useState("");
-  const [authBusy, setAuthBusy] = useState(false);
-
+  const { session, authBusy, signOut } = useLifeOsAuth();
   const [draft, setDraft] = useState("");
   const [review, setReview] = useState<CaptureProposalReview>();
   const [trace, setTrace] = useState<InteractionChangeTrace>();
@@ -230,87 +220,8 @@ export function LiveCaptureRouting() {
   const [flowMessage, setFlowMessage] = useState("");
   const idempotencyAttempt = useRef<{ rawText: string; key: string } | undefined>(undefined);
 
-  useEffect(() => {
-    let active = true;
-    let unsubscribe: (() => void) | undefined;
-
-    try {
-      const client = getBrowserSupabaseClient();
-      void client.auth.getSession().then(({ data, error }) => {
-        if (!active) return;
-        if (error) {
-          setAuthState("signed_out");
-          setAuthMessage("Life OS could not restore the browser session.");
-          return;
-        }
-        setSession(data.session);
-        setAuthState(data.session ? "signed_in" : "signed_out");
-      });
-
-      const listener = client.auth.onAuthStateChange((_event, nextSession) => {
-        if (!active) return;
-        setSession(nextSession);
-        setAuthState(nextSession ? "signed_in" : "signed_out");
-        if (!nextSession) {
-          setReview(undefined);
-          setTrace(undefined);
-          setLastCaptureId(undefined);
-        }
-      });
-      unsubscribe = () => listener.data.subscription.unsubscribe();
-    } catch (error) {
-      if (error instanceof BrowserAuthConfigurationError) {
-        setAuthState("configuration_error");
-        setAuthMessage("Live browser authentication is not configured for this deployment.");
-      } else {
-        setAuthState("configuration_error");
-        setAuthMessage("Live browser authentication could not be initialized.");
-      }
-    }
-
-    return () => {
-      active = false;
-      unsubscribe?.();
-    };
-  }, []);
-
-  async function signIn(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setAuthBusy(true);
-    setAuthMessage("");
-    try {
-      const client = getBrowserSupabaseClient();
-      const result = await client.auth.signInWithPassword({ email, password });
-      setPassword("");
-      if (result.error || !result.data.session) {
-        setAuthMessage("Sign-in failed. Check the development account credentials and try again.");
-        return;
-      }
-      setSession(result.data.session);
-      setAuthState("signed_in");
-    } catch {
-      setPassword("");
-      setAuthMessage("Sign-in could not be completed.");
-    } finally {
-      setAuthBusy(false);
-    }
-  }
-
-  async function signOut() {
-    setAuthBusy(true);
-    try {
-      await getBrowserSupabaseClient().auth.signOut({ scope: "local" });
-    } finally {
-      setSession(null);
-      setAuthState("signed_out");
-      setAuthBusy(false);
-    }
-  }
-
-  async function currentAccessToken(): Promise<string> {
-    const client = getBrowserSupabaseClient();
-    const result = await client.auth.getSession();
-    const token = result.data.session?.access_token;
+  function currentAccessToken(): string {
+    const token = session?.access_token;
     if (!token) throw new LifeOsApiError(401, "authentication_required");
     return token;
   }
@@ -328,7 +239,7 @@ export function LiveCaptureRouting() {
     setFlowBusy(true);
     setFlowMessage("Loading the persisted review and trace…");
     try {
-      const token = await currentAccessToken();
+      const token = currentAccessToken();
       await readCurrentState(token, captureId);
       setFlowMessage("Persisted Capture, Review and Trace loaded with the current decision state.");
     } catch (error) {
@@ -350,7 +261,7 @@ export function LiveCaptureRouting() {
     idempotencyAttempt.current = attempt;
 
     try {
-      const token = await currentAccessToken();
+      const token = currentAccessToken();
       const receipt = await createCapture(token, draft, attempt.key);
       setLastCaptureId(receipt.captureId);
       idempotencyAttempt.current = undefined;
@@ -378,7 +289,7 @@ export function LiveCaptureRouting() {
     setFlowBusy(true);
     setFlowMessage("Confirming your Calendar details without applying them yet…");
     try {
-      const token = await currentAccessToken();
+      const token = currentAccessToken();
       const receipt = await confirmCalendarProposal(token, proposalId, plan);
       await readCurrentState(token, captureId);
       setFlowMessage(receipt.status === "replayed"
@@ -400,7 +311,7 @@ export function LiveCaptureRouting() {
     setFlowBusy(true);
     setFlowMessage("Sending your explicit Calendar Apply decision for server-side revalidation…");
     try {
-      const token = await currentAccessToken();
+      const token = currentAccessToken();
       const receipt = await applyCalendarProposal(token, proposalId);
       await readCurrentState(token, captureId);
       setFlowMessage(receipt.status === "replayed"
@@ -422,7 +333,7 @@ export function LiveCaptureRouting() {
     setFlowBusy(true);
     setFlowMessage("Recording your proposal rejection…");
     try {
-      const token = await currentAccessToken();
+      const token = currentAccessToken();
       const receipt = await rejectProposal(token, proposalId, reason);
       await readCurrentState(token, captureId);
       setFlowMessage(receipt.status === "replayed"
@@ -458,27 +369,11 @@ export function LiveCaptureRouting() {
         </div>
       </section>
 
-      {authState !== "signed_in" && (
-        <section className={liveStyles.authPanel} aria-label="Life OS development sign in">
-          <div className={liveStyles.authTopline}><span>PRIVATE SESSION</span><span>{authState === "checking" ? "CHECKING" : "SIGNED OUT"}</span></div>
-          <h2>Sign in before Life OS can read or save private Capture.</h2>
-          <p>The browser receives only a normal Supabase user session. The API still verifies that session and PostgreSQL still enforces the user scope.</p>
-          {authState !== "configuration_error" && (
-            <form className={liveStyles.authForm} onSubmit={signIn}>
-              <label>Email<input autoComplete="username" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></label>
-              <label>Password<input autoComplete="current-password" type="password" required value={password} onChange={(event) => setPassword(event.target.value)} /></label>
-              <button disabled={authBusy || authState === "checking"} type="submit">{authBusy ? "Signing in…" : "Sign in"}</button>
-            </form>
-          )}
-          {authMessage && <p className={liveStyles.authMessage}>{authMessage}</p>}
-        </section>
-      )}
-
-      {authState === "signed_in" && session && (
+      {session && (
         <>
           <section className={liveStyles.sessionRow} aria-label="Authenticated browser session">
             <span className={liveStyles.sessionState}><i />Authenticated user session · private API enabled</span>
-            <button disabled={authBusy || flowBusy} onClick={signOut} type="button">Sign out</button>
+            <button disabled={authBusy || flowBusy} onClick={() => void signOut()} type="button">Sign out</button>
           </section>
 
           <section className={captureStyles.captureInstrument} aria-label="Live Capture input">

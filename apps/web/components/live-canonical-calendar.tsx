@@ -1,16 +1,11 @@
 "use client";
 
-import type { Session } from "@supabase/supabase-js";
 import Link from "next/link";
-import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import type { CanonicalCalendarItem, CanonicalCalendarWindow } from "../../../packages/contracts/canonical-calendar";
 import { getCanonicalCalendar, LifeOsApiError } from "../lib/life-os-api";
-import {
-  BrowserAuthConfigurationError,
-  getBrowserSupabaseClient,
-} from "../lib/supabase-browser";
 import liveStyles from "./live-capture-routing.module.css";
+import { useLifeOsAuth } from "./life-os-auth-provider";
 import styles from "./live-canonical-calendar.module.css";
 
 function calendarRange() {
@@ -64,56 +59,11 @@ function groupItems(items: CanonicalCalendarItem[]) {
 }
 
 export function LiveCanonicalCalendar() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [authState, setAuthState] = useState<"checking" | "signed_out" | "signed_in" | "configuration_error">("checking");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [authBusy, setAuthBusy] = useState(false);
-  const [authMessage, setAuthMessage] = useState("");
+  const { session, authBusy, signOut } = useLifeOsAuth();
   const [calendar, setCalendar] = useState<CanonicalCalendarWindow>();
   const [readBusy, setReadBusy] = useState(false);
   const [readMessage, setReadMessage] = useState("");
   const timeZone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "Local time", []);
-
-  useEffect(() => {
-    let active = true;
-    let unsubscribe: (() => void) | undefined;
-
-    try {
-      const client = getBrowserSupabaseClient();
-      void client.auth.getSession().then(({ data, error }) => {
-        if (!active) return;
-        if (error) {
-          setAuthState("signed_out");
-          setAuthMessage("Life OS could not restore the browser session.");
-          return;
-        }
-        setSession(data.session);
-        setAuthState(data.session ? "signed_in" : "signed_out");
-      });
-
-      const listener = client.auth.onAuthStateChange((_event, nextSession) => {
-        if (!active) return;
-        setSession(nextSession);
-        setAuthState(nextSession ? "signed_in" : "signed_out");
-        if (!nextSession) setCalendar(undefined);
-      });
-      unsubscribe = () => listener.data.subscription.unsubscribe();
-    } catch (error) {
-      if (error instanceof BrowserAuthConfigurationError) {
-        setAuthState("configuration_error");
-        setAuthMessage("Live browser authentication is not configured for this deployment.");
-      } else {
-        setAuthState("configuration_error");
-        setAuthMessage("Live browser authentication could not be initialized.");
-      }
-    }
-
-    return () => {
-      active = false;
-      unsubscribe?.();
-    };
-  }, []);
 
   useEffect(() => {
     if (!session?.access_token) return;
@@ -140,39 +90,6 @@ export function LiveCanonicalCalendar() {
     }
   }
 
-  async function signIn(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setAuthBusy(true);
-    setAuthMessage("");
-    try {
-      const result = await getBrowserSupabaseClient().auth.signInWithPassword({ email, password });
-      setPassword("");
-      if (result.error || !result.data.session) {
-        setAuthMessage("Sign-in failed. Check the development account credentials and try again.");
-        return;
-      }
-      setSession(result.data.session);
-      setAuthState("signed_in");
-    } catch {
-      setPassword("");
-      setAuthMessage("Sign-in could not be completed.");
-    } finally {
-      setAuthBusy(false);
-    }
-  }
-
-  async function signOut() {
-    setAuthBusy(true);
-    try {
-      await getBrowserSupabaseClient().auth.signOut({ scope: "local" });
-    } finally {
-      setSession(null);
-      setCalendar(undefined);
-      setAuthState("signed_out");
-      setAuthBusy(false);
-    }
-  }
-
   const grouped = calendar ? groupItems(calendar.items) : [];
 
   return (
@@ -195,29 +112,13 @@ export function LiveCanonicalCalendar() {
           </nav>
         </section>
 
-        {authState !== "signed_in" && (
-          <section className={liveStyles.authPanel} aria-label="Life OS development sign in">
-            <div className={liveStyles.authTopline}><span>PRIVATE SESSION</span><span>{authState === "checking" ? "CHECKING" : "SIGNED OUT"}</span></div>
-            <h2>Sign in before Life OS can read your canonical Calendar.</h2>
-            <p>The browser holds only a normal Supabase user session. The API verifies it again and PostgreSQL RLS still decides which Calendar rows exist for that user.</p>
-            {authState !== "configuration_error" && (
-              <form className={liveStyles.authForm} onSubmit={signIn}>
-                <label>Email<input autoComplete="username" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></label>
-                <label>Password<input autoComplete="current-password" type="password" required value={password} onChange={(event) => setPassword(event.target.value)} /></label>
-                <button disabled={authBusy || authState === "checking"} type="submit">{authBusy ? "Signing in…" : "Sign in"}</button>
-              </form>
-            )}
-            {authMessage && <p className={liveStyles.authMessage}>{authMessage}</p>}
-          </section>
-        )}
-
-        {authState === "signed_in" && session && (
+        {session && (
           <>
             <section className={liveStyles.sessionRow} aria-label="Authenticated Calendar session">
               <span className={liveStyles.sessionState}><i />Authenticated user session · canonical read only</span>
               <div className={styles.sessionActions}>
                 <button disabled={readBusy} onClick={() => void loadCalendar()} type="button">{readBusy ? "Reading…" : "Refresh"}</button>
-                <button disabled={authBusy || readBusy} onClick={signOut} type="button">Sign out</button>
+                <button disabled={authBusy || readBusy} onClick={() => void signOut()} type="button">Sign out</button>
               </div>
             </section>
 
