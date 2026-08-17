@@ -29,7 +29,7 @@ const pages = [
     name: 'journey-real-boundary',
     path: '/journey',
     expected: [
-      'Journey will appear only when it is real.',
+      'Journey will appear only when canonical activation is live.',
       realDataOnly,
     ],
   },
