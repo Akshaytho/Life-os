@@ -75,7 +75,7 @@ before(async () => {
       'interpretation-' || lpad(g::text, 3, '0'),
       'capture-' || lpad(g::text, 3, '0'),
       'matrix-user-' || lpad(g::text, 3, '0'),
-      1, 'SAFE_FALLBACK', 'RAW_THOUGHT', 'UNSPECIFIED', 0,
+      1, 'LOCAL_SAMPLE', 'RAW_THOUGHT', 'UNSPECIFIED', 0,
       '[]'::jsonb, NULL, '2026-08-17T00:00:02Z'::timestamptz
     FROM generate_series(1, ${userCount}) AS g;
 
@@ -90,7 +90,7 @@ before(async () => {
       'capture-' || lpad(g::text, 3, '0'),
       'interpretation-' || lpad(g::text, 3, '0'),
       'BRAIN_DUMP', 'KEEP_RAW_CAPTURE', 'Keep private capture ' || g,
-      'SUGGESTION', 'REVIEW_AND_APPLY', 'APPLIED', 'matrix isolation', '{}'::jsonb,
+      'SUGGESTION', 'REVIEW_AND_APPLY', 'PROPOSED', 'matrix isolation', '{}'::jsonb,
       '2026-08-17T00:00:03Z'::timestamptz
     FROM generate_series(1, ${userCount}) AS g;
 
@@ -120,6 +120,12 @@ before(async () => {
       'WEB_APP', 'capture-' || lpad(g::text, 3, '0'), NULL,
       jsonb_build_object('proposalId', 'proposal-' || lpad(g::text, 3, '0')), 1
     FROM generate_series(1, ${userCount}) AS g;
+
+    UPDATE routing_proposal
+       SET state = 'APPLIED',
+           applied_at = '2026-08-17T00:00:06Z'::timestamptz,
+           applied_entity_id = 'calendar-' || right(proposal_id, 3),
+           applied_event_id = 'event-' || right(proposal_id, 3);
 
     INSERT INTO applied_proposal
       (proposal_id, applied_at, confirmed_by_actor_id, request_fingerprint,
