@@ -48,7 +48,7 @@ export function LiveJourney() {
   }>();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const idempotencyAttempt = useRef<{ fingerprint: string; key: string }>();
+  const idempotencyAttempt = useRef<{ fingerprint: string; key: string } | undefined>(undefined);
 
   useEffect(() => {
     if (!session?.access_token) return;
