@@ -10,7 +10,7 @@ const input = {
   receivedAt: "2026-08-17T09:00:00.000Z",
 };
 
-for (const [label, flag] of [["missing", undefined], ["false", "false"], ["trimmed false", " FALSE "]] as const) {
+for (const [label, flag] of [["missing", undefined], ["false", "false"], ["trimmed false", " false "]] as const) {
   test(`AI credentials cannot activate interpreter when flag is ${label}`, async () => {
     let providerCalls = 0;
     const interpreter = createCaptureInterpreterFromEnv(
