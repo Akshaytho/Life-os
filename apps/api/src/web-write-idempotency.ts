@@ -8,7 +8,7 @@ export class WebWriteIdempotencyError extends Error {
   }
 }
 
-export type WebWriteIdempotencyScope = "CAPTURE_CREATE" | "DIRECTION_SET_CURRENT";
+export type WebWriteIdempotencyScope = "CAPTURE_CREATE" | "DIRECTION_SET_CURRENT" | "JOURNEY_ACTIVATE";
 
 const keyPattern = /^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$/;
 
