@@ -13,6 +13,8 @@ import type {
 
 export type JourneyDecisionErrorCode =
   | "APPROVAL_REQUIRED"
+  | "INVALID_NAME"
+  | "INVALID_ACTIVE_CAPABILITY"
   | "INVALID_JOURNEY"
   | "IDEMPOTENCY_REQUIRED"
   | "CURRENT_JOURNEY_CHANGED"
@@ -36,6 +38,8 @@ const opaqueIdPattern = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/;
 const journeyIdempotencyPrefix = "web-idem-v1:journey_activate:";
 const maxJourneyFieldLength = 240;
 
+type JourneyFieldErrorCode = "INVALID_NAME" | "INVALID_ACTIVE_CAPABILITY";
+
 function requiredOpaqueId(value: string, code: JourneyDecisionErrorCode): string {
   const normalized = value.trim();
   if (!opaqueIdPattern.test(normalized)) throw new JourneyDecisionError(code);
@@ -54,10 +58,11 @@ function requiredJourneyRequestId(value: string): string {
   return normalized;
 }
 
-function normalizedField(value: string): string {
+function normalizedField(value: unknown, code: JourneyFieldErrorCode): string {
+  if (typeof value !== "string") throw new JourneyDecisionError(code);
   const normalized = value.trim();
   if (!normalized || normalized.length > maxJourneyFieldLength) {
-    throw new JourneyDecisionError("INVALID_JOURNEY");
+    throw new JourneyDecisionError(code);
   }
   return normalized;
 }
@@ -118,8 +123,8 @@ export async function activateJourneyDecision(
 ): Promise<JourneyDecisionReceipt> {
   const userId = requiredOpaqueId(context.principal.userId, "INVALID_JOURNEY");
   const requestId = requiredJourneyRequestId(context.requestId);
-  const name = normalizedField(command.name);
-  const activeCapability = normalizedField(command.activeCapability);
+  const name = normalizedField(command.name, "INVALID_NAME");
+  const activeCapability = normalizedField(command.activeCapability, "INVALID_ACTIVE_CAPABILITY");
   const expectedCurrentJourneyId = expectedJourneyId(command.expectedCurrentJourneyId);
 
   if (command.approval.explicit !== true || command.approval.acknowledgement !== "ACTIVATE_JOURNEY") {
