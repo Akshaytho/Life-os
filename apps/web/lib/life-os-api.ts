@@ -5,6 +5,10 @@ import type {
 } from "../../../packages/contracts/direction";
 import type { InteractionChangeTrace } from "../../../packages/contracts/interaction-change-ledger";
 import type { ProposalState } from "../../../packages/contracts/input-routing";
+import type {
+  ActivateJourneyCommand,
+  JourneyDecisionOverview,
+} from "../../../packages/contracts/journey";
 import type { CaptureProposalReview } from "../../../packages/contracts/proposal-review";
 
 export class LifeOsApiError extends Error {
@@ -64,6 +68,14 @@ export interface SetCurrentDirectionReceipt {
   authorityClass: "DECISION";
   decidedAt: string;
   supersededDirectionId?: string;
+}
+
+export interface ActivateJourneyReceipt {
+  status: "active" | "replayed";
+  journeyId: string;
+  authorityClass: "DECISION";
+  decidedAt: string;
+  supersededJourneyId?: string;
 }
 
 function requiredPublicValue(value: string | undefined, name: string): string {
@@ -194,6 +206,26 @@ export function setCurrentDirection(
     "Idempotency-Key": idempotencyKey,
   });
   return privateRequest<SetCurrentDirectionReceipt>(accessToken, "/api/v1/direction/current", {
+    method: "POST",
+    headers,
+    body: JSON.stringify(command),
+  });
+}
+
+export function getJourneyOverview(accessToken: string): Promise<JourneyDecisionOverview> {
+  return privateRequest<JourneyDecisionOverview>(accessToken, "/api/v1/journey");
+}
+
+export function activateJourney(
+  accessToken: string,
+  command: ActivateJourneyCommand,
+  idempotencyKey: string,
+): Promise<ActivateJourneyReceipt> {
+  const headers = new Headers({
+    "Content-Type": "application/json",
+    "Idempotency-Key": idempotencyKey,
+  });
+  return privateRequest<ActivateJourneyReceipt>(accessToken, "/api/v1/journey/current", {
     method: "POST",
     headers,
     body: JSON.stringify(command),
