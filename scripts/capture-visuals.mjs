@@ -114,10 +114,6 @@ const visualSession = {
 };
 
 async function configureAuthenticatedBoundary(context) {
-  await context.addInitScript((session) => {
-    window.localStorage.setItem('sb-127-auth-token', JSON.stringify(session));
-  }, visualSession);
-
   await context.route('**/auth/v1/**', async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname.endsWith('/user')) {
@@ -181,6 +177,13 @@ for (const targetPage of pages) {
 
     const page = await context.newPage();
     await page.goto(`http://127.0.0.1:3000${targetPage.path}`, { waitUntil: 'networkidle' });
+
+    if (targetPage.authenticated) {
+      await page.getByLabel('Email').fill('visual-review@example.invalid');
+      await page.getByLabel('Password').fill('Visual-review-password-123!');
+      await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    }
+
     await page.evaluate(() => document.fonts.ready);
 
     for (const expected of targetPage.expected ?? []) {
