@@ -1,0 +1,278 @@
+.surface {
+  width: min(100%, 1120px);
+  margin: 48px auto 0;
+  padding: clamp(24px, 5vw, 48px);
+  color: #f4efe5;
+  background: #182a2c;
+}
+
+.heading,
+.reviewTop,
+.blockTop,
+.quickLog > div,
+.finalReview > div {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.heading > div > span,
+.blockTop span,
+.reviewTop span,
+.reviewTop small,
+.logEntry span,
+.quickLog > div span,
+.finalReview > span,
+.historyNote {
+  font: 700 11px/1.2 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.heading h2 {
+  max-width: 720px;
+  margin: 8px 0 0;
+  font-size: clamp(36px, 6vw, 68px);
+  line-height: .94;
+  letter-spacing: -.045em;
+}
+
+.heading > p {
+  max-width: 340px;
+  margin: 0;
+  color: rgba(244, 239, 229, .72);
+  line-height: 1.55;
+}
+
+.logGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, .72fr);
+  gap: 28px;
+  margin-top: 38px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(244, 239, 229, .25);
+}
+
+.blockTop strong {
+  font-size: 36px;
+  line-height: .8;
+}
+
+.logHistory {
+  display: grid;
+  align-content: start;
+  gap: 0;
+}
+
+.empty {
+  padding: 24px 0;
+  color: rgba(244, 239, 229, .66);
+}
+
+.logEntry {
+  padding: 18px 0;
+  border-top: 1px solid rgba(244, 239, 229, .16);
+}
+
+.logEntry > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.logEntry time {
+  font-size: 12px;
+  color: rgba(244, 239, 229, .65);
+}
+
+.logEntry p {
+  margin: 10px 0 0;
+  white-space: pre-wrap;
+  line-height: 1.55;
+}
+
+.quickLog,
+.reviewForm {
+  display: grid;
+  gap: 12px;
+}
+
+.quickLog label,
+.promptGrid label,
+.returnChoice legend {
+  font-weight: 700;
+}
+
+.quickLog textarea,
+.promptGrid textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid rgba(244, 239, 229, .32);
+  border-radius: 0;
+  padding: 14px;
+  color: inherit;
+  background: rgba(244, 239, 229, .06);
+  font: inherit;
+  line-height: 1.5;
+}
+
+.quickLog textarea:focus,
+.promptGrid textarea:focus {
+  outline: 2px solid #f4efe5;
+  outline-offset: 2px;
+}
+
+.quickLog button,
+.reviewButton,
+.finalReview button {
+  border: 1px solid currentColor;
+  padding: 11px 14px;
+  color: inherit;
+  background: transparent;
+  font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.quickLog button:disabled,
+.reviewButton:disabled,
+.finalReview button:disabled {
+  opacity: .42;
+}
+
+.reviewForm {
+  margin-top: 46px;
+  padding-top: 30px;
+  border-top: 1px solid rgba(244, 239, 229, .25);
+}
+
+.reviewTop h3 {
+  margin: 7px 0 0;
+  font-size: clamp(28px, 4vw, 46px);
+  line-height: 1;
+  letter-spacing: -.035em;
+}
+
+.promptGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.promptGrid label {
+  display: grid;
+  gap: 9px;
+}
+
+.returnChoice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 10px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.returnChoice legend {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.returnChoice label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 13px;
+  border: 1px solid rgba(244, 239, 229, .28);
+}
+
+.reviewButton {
+  justify-self: start;
+  margin-top: 8px;
+}
+
+.finalReview {
+  margin-top: 26px;
+  padding: 24px;
+  color: #182a2c;
+  background: #f4efe5;
+}
+
+.finalReview dl {
+  display: grid;
+  gap: 0;
+  margin: 18px 0;
+}
+
+.finalReview dl div {
+  display: grid;
+  grid-template-columns: minmax(130px, .32fr) 1fr;
+  gap: 18px;
+  padding: 12px 0;
+  border-top: 1px solid rgba(24, 42, 44, .18);
+}
+
+.finalReview dt {
+  font-weight: 700;
+}
+
+.finalReview dd {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.finalReview > div {
+  justify-content: flex-start;
+}
+
+.message,
+.historyNote {
+  margin: 22px 0 0;
+  padding-top: 18px;
+  border-top: 1px solid rgba(244, 239, 229, .2);
+}
+
+.message {
+  line-height: 1.5;
+}
+
+.historyNote {
+  color: rgba(244, 239, 229, .68);
+}
+
+@media (max-width: 760px) {
+  .surface {
+    margin-top: 34px;
+    padding: 24px 18px;
+  }
+
+  .heading,
+  .reviewTop,
+  .logGrid,
+  .promptGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .heading > p {
+    max-width: none;
+  }
+
+  .quickLog > div,
+  .finalReview > div {
+    flex-direction: column;
+  }
+
+  .quickLog button,
+  .reviewButton,
+  .finalReview button {
+    width: 100%;
+  }
+
+  .finalReview dl div {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
