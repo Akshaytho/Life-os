@@ -47,6 +47,7 @@ test("plan is read-only, apply is ordered/idempotent, and migration history is c
     "0009_brain_dump_not_now.sql",
     "0010_drift_return.sql",
     "0011_journey_activation_practice.sql",
+    "0012_periodic_reviews.sql",
   ]);
 
   const beforeApply = await adminPool.query<{ ledger: string | null }>(
