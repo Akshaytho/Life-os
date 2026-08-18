@@ -48,6 +48,17 @@ It verifies liveness/readiness, privacy headers and the no-index robots policy u
 
 See `docs/architecture/WEB_HOSTED_DEPLOYMENT_V1.md` for the Railway development deployment and exact API CORS activation sequence, and `docs/architecture/WEB_HOSTED_PREFLIGHT_V1.md` for the preflight contract.
 
+## Ask Life OS
+
+`/ask` is an authenticated real-data-only surface for the read-only AI retrieval
+boundary. The browser sends one explicit interaction mode, question, local date/time
+zone, and a bounded Calendar window. The server owns context selection and authority
+labels. The UI marks every answer as `AI OBSERVATION · READ ONLY`, shows cited sources,
+and states that no Life OS state or chat transcript changed.
+
+`/visual-review/ask` is available only under the existing visual-review gate and uses
+clearly synthetic source-visible content without calling a provider.
+
 ## Trust state
 
 Prototype/sample screens must remain visibly distinct from canonical state. Hosted live mode must not silently fall back to sample data because configuration was omitted. High-authority Direction remains separately gated until its server/database activation has passed hosted verification.

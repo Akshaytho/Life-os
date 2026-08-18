@@ -20,6 +20,7 @@ test("real private entry routes require the shared session gate", async () => {
     ["../app/drift/page.tsx", "Drift + Return", "LiveDrift"],
     ["../app/journey/page.tsx", "Journey", "LiveJourneyPractice"],
     ["../app/journey/travel-creator/sound-design/page.tsx", "Journey / Sound Design", "LiveJourneyPractice"],
+    ["../app/ask/page.tsx", "Ask Life OS", "LiveAiRetrieval"],
   ] as const;
 
   for (const [path, area, liveSurface] of cases) {

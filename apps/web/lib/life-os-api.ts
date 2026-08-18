@@ -1,4 +1,5 @@
 import type { CanonicalCalendarWindow } from "../../../packages/contracts/canonical-calendar";
+import type { AskLifeOsCommand, AskLifeOsResponse } from "../../../packages/contracts/ai-retrieval";
 import type {
   BrainDumpClassificationReceipt,
   BrainDumpOverview,
@@ -144,6 +145,17 @@ export type StartJourneyPracticeTransportReceipt = StartJourneyPracticeReceipt &
 export type CompleteJourneyPracticeTransportReceipt = CompleteJourneyPracticeReceipt & {
   status: "recorded" | "replayed";
 };
+
+export function askLifeOs(
+  accessToken: string,
+  command: AskLifeOsCommand,
+): Promise<AskLifeOsResponse> {
+  return privateRequest<AskLifeOsResponse>(accessToken, "/api/v1/ask", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(command),
+  });
+}
 
 function requiredPublicValue(value: string | undefined, name: string): string {
   const normalized = value?.trim();

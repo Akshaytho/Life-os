@@ -18,6 +18,8 @@ import { PostgresProposalReviewReader } from "../../../packages/database/postgre
 import { PostgresWriteUnitOfWork } from "../../../packages/database/postgres-write-unit-of-work";
 import type { SessionVerifier } from "../../../packages/domain/trusted-transport-auth";
 import type { CaptureInterpreter } from "../../../packages/intelligence/capture-interpreter";
+import type { LifeOsAssistant } from "../../../packages/intelligence/life-os-assistant";
+import { aiRetrievalEnabledForRuntime, createLifeOsAssistantFromEnv } from "./ai-retrieval-runtime";
 import { createCaptureInterpreterFromEnv } from "./capture-interpreter-runtime";
 import { brainDumpNotNowEnabledForRuntime } from "./brain-dump-not-now-runtime";
 import { dailyReturnEnabledForRuntime } from "./daily-return-runtime";
@@ -40,6 +42,8 @@ export interface PrivateApiRuntimeOptions {
   brainDumpNotNowEnabled?: boolean;
   driftEnabled?: boolean;
   journeyPracticeEnabled?: boolean;
+  aiRetrievalEnabled?: boolean;
+  aiAssistant?: LifeOsAssistant;
 }
 
 function isoClock(now: () => Date) {
@@ -69,6 +73,8 @@ export function createPrivateApiRuntimeDependencies(
   const driftEnabled = options.driftEnabled ?? driftEnabledForRuntime(env, runtime);
   const journeyPracticeEnabled = options.journeyPracticeEnabled
     ?? journeyPracticeEnabledForRuntime(env, runtime);
+  const aiRetrievalEnabled = options.aiRetrievalEnabled
+    ?? aiRetrievalEnabledForRuntime(env, runtime);
 
   return {
     sessionVerifier: options.sessionVerifier ?? createSupabaseSessionVerifierFromEnv(env),
@@ -118,6 +124,16 @@ export function createPrivateApiRuntimeDependencies(
       journeyPracticeUnitOfWork: new PostgresJourneyPracticeUnitOfWork(pool),
       journeyPracticeClock: clock,
       journeyPracticeIds: { next: (prefix: string) => `${prefix}-${uuid()}` },
+    } : {}),
+    aiRetrievalEnabled,
+    ...(aiRetrievalEnabled ? {
+      aiAssistant: options.aiAssistant ?? createLifeOsAssistantFromEnv(env, runtime)!,
+      aiRetrievalClock: clock,
+      directionReader: new PostgresDirectionDecisionReader(pool),
+      dailyReturnReader: new PostgresDailyReturnReader(pool),
+      brainDumpNotNowReader: new PostgresBrainDumpNotNowReader(pool),
+      driftReader: new PostgresDriftReader(pool),
+      journeyPracticeReader: new PostgresJourneyPracticeReader(pool),
     } : {}),
     runtime,
     telemetry,

@@ -86,12 +86,37 @@
 .mobileDrift.driftActive { color: white; background: var(--ocean); }
 .mobileDrift:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
 
+.mobileAsk {
+  position: fixed;
+  z-index: 79;
+  left: 18px;
+  bottom: calc(max(9px, env(safe-area-inset-bottom)) + 76px);
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 13px;
+  border: 1px solid rgba(12,47,55,.38);
+  border-radius: 999px;
+  color: var(--ocean);
+  background: rgba(248,245,239,.94);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 8px 24px rgba(25,35,37,.11);
+  font: 700 8px/1 var(--mono);
+  letter-spacing: .06em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+.mobileAsk.askActive { color: white; background: var(--ocean); }
+.mobileAsk:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
+
 @media (min-width: 1000px) {
   :global(body) { padding-left: 104px; }
   :global(.life-app) { display: block !important; }
 
   .mobileDock,
-  .mobileDrift { display: none; }
+  .mobileDrift,
+  .mobileAsk { display: none; }
   .desktopDock {
     display: flex;
     position: fixed;
@@ -117,7 +142,7 @@
   .desktopDestination span { font-size: 8px; }
 
   .desktopDrift {
-    margin-top: auto;
+    margin-top: 9px;
     width: 62px;
     min-height: 42px;
     display: grid;
@@ -132,6 +157,24 @@
   .desktopDrift span { font: 700 7px/1.2 var(--mono); text-transform: uppercase; letter-spacing: .05em; }
   .desktopDrift.driftActive { color: white; background: var(--ocean); }
   .desktopDrift:focus-visible { outline: 2px solid var(--signal); outline-offset: 4px; }
+
+  .desktopAsk {
+    margin-top: auto;
+    width: 62px;
+    min-height: 42px;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 2px;
+    border: 1px solid rgba(12,47,55,.4);
+    border-radius: 16px;
+    color: var(--ocean);
+    background: rgba(248,245,239,.6);
+    text-decoration: none;
+  }
+  .desktopAsk span { font: 700 7px/1 var(--mono); text-transform: uppercase; letter-spacing: .05em; }
+  .desktopAsk.askActive { color: white; background: var(--ocean); }
+  .desktopAsk:focus-visible { outline: 2px solid var(--signal); outline-offset: 4px; }
 
   .desktopCapture {
     margin-top: 9px;

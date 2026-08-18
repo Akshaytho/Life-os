@@ -42,3 +42,23 @@ npm run journey-practice-role --workspace @life-os/api
 npm run journey-practice-role:apply --workspace @life-os/api
 npm run journey-practice-role:revoke --workspace @life-os/api
 ```
+
+## Ask Life OS retrieval
+
+`POST /api/v1/ask` is a separately activated, authenticated, read-only AI boundary.
+It assembles a bounded RLS-scoped context package from current Direction, Calendar,
+Daily Return, NOT NOW, Drift, and Journey sources. Source domain and authority labels
+remain code-owned; the model returns only an AI observation and citations to supplied
+source IDs.
+
+Activation requires all of:
+
+- `LIFE_OS_PRIVATE_API_ENABLED=true`
+- `LIFE_OS_AI_RETRIEVAL_ENABLED=true`
+- `LIFE_OS_AI_RETRIEVAL_MODEL=<explicit reviewed model>`
+- `OPENAI_API_KEY=<server-only secret>`
+- read readiness for every referenced RLS table
+
+An API key by itself never activates retrieval. Provider requests use `store: false`
+and no tools. The operation writes no table or domain event, creates no Memory item,
+and returns no invented fallback answer on provider failure.
