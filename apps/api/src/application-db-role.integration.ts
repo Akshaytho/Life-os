@@ -139,6 +139,7 @@ test("provisioner requires migrations first, then creates a credential that pass
     "0008_daily_return_review.sql",
     "0009_brain_dump_not_now.sql",
     "0010_drift_return.sql",
+    "0011_journey_activation_practice.sql",
   ]);
 
   await assert.rejects(

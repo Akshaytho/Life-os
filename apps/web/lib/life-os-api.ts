@@ -25,6 +25,15 @@ import type {
   RecordDriftCommand,
   RecordDriftReturnCommand,
 } from "../../../packages/contracts/drift-return";
+import type {
+  ActivateJourneyCommand,
+  ActivateJourneyReceipt,
+  CompleteJourneyPracticeCommand,
+  CompleteJourneyPracticeReceipt,
+  JourneyPracticeOverview,
+  StartJourneyPracticeCommand,
+  StartJourneyPracticeReceipt,
+} from "../../../packages/contracts/journey-practice";
 import type { InteractionChangeTrace } from "../../../packages/contracts/interaction-change-ledger";
 import type { ProposalState } from "../../../packages/contracts/input-routing";
 import type { CaptureProposalReview } from "../../../packages/contracts/proposal-review";
@@ -122,6 +131,18 @@ export type DriftOccurrenceTransportReceipt = DriftOccurrenceReceipt & {
 export type DriftDecisionTransportReceipt = Omit<DriftDecisionReceipt, "status"> & {
   status: "recorded" | "replayed";
   decisionStatus: "CURRENT";
+};
+
+export type ActivateJourneyTransportReceipt = ActivateJourneyReceipt & {
+  status: "recorded" | "replayed";
+};
+
+export type StartJourneyPracticeTransportReceipt = StartJourneyPracticeReceipt & {
+  status: "recorded" | "replayed";
+};
+
+export type CompleteJourneyPracticeTransportReceipt = CompleteJourneyPracticeReceipt & {
+  status: "recorded" | "replayed";
 };
 
 function requiredPublicValue(value: string | undefined, name: string): string {
@@ -333,6 +354,66 @@ export function recordDriftReturn(
   return privateRequest<DriftDecisionTransportReceipt>(
     accessToken,
     `/api/v1/drifts/${encodeURIComponent(driftId)}/return`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify(command),
+    },
+  );
+}
+
+export function getJourneyPracticeOverview(
+  accessToken: string,
+): Promise<JourneyPracticeOverview> {
+  return privateRequest<JourneyPracticeOverview>(accessToken, "/api/v1/journey");
+}
+
+export function activateJourney(
+  accessToken: string,
+  command: ActivateJourneyCommand,
+  idempotencyKey: string,
+): Promise<ActivateJourneyTransportReceipt> {
+  return privateRequest<ActivateJourneyTransportReceipt>(accessToken, "/api/v1/journey/activate", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Idempotency-Key": idempotencyKey,
+    },
+    body: JSON.stringify(command),
+  });
+}
+
+export function startJourneyPractice(
+  accessToken: string,
+  command: StartJourneyPracticeCommand,
+  idempotencyKey: string,
+): Promise<StartJourneyPracticeTransportReceipt> {
+  return privateRequest<StartJourneyPracticeTransportReceipt>(
+    accessToken,
+    "/api/v1/journey/practice",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify(command),
+    },
+  );
+}
+
+export function completeJourneyPractice(
+  accessToken: string,
+  sessionId: string,
+  command: CompleteJourneyPracticeCommand,
+  idempotencyKey: string,
+): Promise<CompleteJourneyPracticeTransportReceipt> {
+  return privateRequest<CompleteJourneyPracticeTransportReceipt>(
+    accessToken,
+    `/api/v1/journey/practice/${encodeURIComponent(sessionId)}/complete`,
     {
       method: "POST",
       headers: {
