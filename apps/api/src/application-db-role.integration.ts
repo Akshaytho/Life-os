@@ -136,6 +136,7 @@ test("provisioner requires migrations first, then creates a credential that pass
     "0005_proposal_rejection_provenance.sql",
     "0006_safe_fallback_interpreter.sql",
     "0007_direction_decision.sql",
+    "0008_journey_decision.sql",
   ]);
 
   await assert.rejects(
