@@ -24,7 +24,7 @@ const pages = [
     expected: [
       'REFLECTION / DAILY RETURN',
       'Remember the day. Choose the return.',
-      'No Daily Log reflections yet.',
+      'What is worth remembering right now?',
       'Did I return to my direction after drifting?',
     ],
   },
