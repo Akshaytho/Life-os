@@ -22,6 +22,8 @@ test("Today composition is independently browser-gated and keeps the Calendar-on
 test("Today focus remains a source-labeled projection with no write", async () => {
   const component = await source("../components/today-composition.tsx");
   assert.match(component, /DELIBERATE FOCUS · \{deliberate\.authority\}/);
+  assert.match(component, /item\.commitment === "Fixed"/);
+  assert.match(component, /model\.direction \? "DECISION" : "EMPTY"/);
   assert.match(component, /Not a task or Calendar commitment/);
   assert.match(component, /MEMORY · REFLECTION · OPTIONAL CONTEXT/);
   assert.match(component, /Return is the goal, not zero drift/);

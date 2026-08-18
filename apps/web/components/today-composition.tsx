@@ -16,7 +16,7 @@ export interface TodayCompositionModel {
 function label(value: string) { return value.replaceAll("_", " ") }
 
 function focus(items: CanonicalCalendarItem[], now: string, journey: JourneyPracticeOverview) {
-  const current = items.find((item) => Date.parse(item.startsAt) <= Date.parse(now) && Date.parse(item.endsAt) > Date.parse(now));
+  const current = items.find((item) => item.commitment === "Fixed" && Date.parse(item.startsAt) <= Date.parse(now) && Date.parse(item.endsAt) > Date.parse(now));
   if (current) return { authority: "FACT", title: current.title, reason: "Protect the Calendar commitment already happening." };
   if (journey.openSession) return { authority: "FACT", title: `Active ${label(journey.openSession.technique)} practice`, reason: "Finish or deliberately stop the practice already in progress." };
   const next = items.find((item) => Date.parse(item.startsAt) > Date.parse(now));
@@ -36,7 +36,7 @@ export function TodayComposition({ model, calendar, now, part }: { model: TodayC
   const latest = model.journey.openSession ?? model.journey.completedSessions[0] ?? null;
   if (part === "COMPASS") return (
     <section className={styles.compass} aria-label="Current Direction compass">
-      <span>COMPASS · YOU · DECISION</span>
+      <span>COMPASS · YOU · {model.direction ? "DECISION" : "EMPTY"}</span>
       <strong>{model.direction?.statement ?? "No current Direction decision exists."}</strong>
       <Link href="/you">Inspect Direction</Link>
     </section>
