@@ -19,8 +19,8 @@ const pages = [
   },
   {
     name: 'today-daily-return-empty',
-    path: '/',
-    authenticated: true,
+    path: '/visual-review/daily-return',
+    syntheticPrivateBoundary: true,
     expected: [
       'REFLECTION / DAILY RETURN',
       'Remember the day. Choose the return.',
@@ -87,46 +87,7 @@ const targets = [
   { name: 'desktop-1440', width: 1440, height: 1000 },
 ];
 
-const visualUser = {
-  id: '00000000-0000-4000-8000-000000000001',
-  aud: 'authenticated',
-  role: 'authenticated',
-  email: 'visual-review@example.invalid',
-  email_confirmed_at: '2026-01-01T00:00:00.000Z',
-  phone: '',
-  confirmed_at: '2026-01-01T00:00:00.000Z',
-  last_sign_in_at: '2026-01-01T00:00:00.000Z',
-  app_metadata: { provider: 'email', providers: ['email'] },
-  user_metadata: {},
-  identities: [],
-  created_at: '2026-01-01T00:00:00.000Z',
-  updated_at: '2026-01-01T00:00:00.000Z',
-  is_anonymous: false,
-};
-
-const visualSession = {
-  access_token: 'visual-review-access-token',
-  refresh_token: 'visual-review-refresh-token',
-  token_type: 'bearer',
-  expires_in: 3600,
-  expires_at: 4102444800,
-  user: visualUser,
-};
-
-async function configureAuthenticatedBoundary(context) {
-  await context.route('**/auth/v1/**', async (route) => {
-    const url = new URL(route.request().url());
-    if (url.pathname.endsWith('/user')) {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(visualUser) });
-      return;
-    }
-    if (url.pathname.endsWith('/token')) {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(visualSession) });
-      return;
-    }
-    await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
-  });
-
+async function configureSyntheticPrivateBoundary(context) {
   await context.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname === '/api/v1/calendar' && route.request().method() === 'GET') {
@@ -171,18 +132,12 @@ for (const targetPage of pages) {
       hasTouch: target.width < 600,
     });
 
-    if (targetPage.authenticated) {
-      await configureAuthenticatedBoundary(context);
+    if (targetPage.syntheticPrivateBoundary) {
+      await configureSyntheticPrivateBoundary(context);
     }
 
     const page = await context.newPage();
     await page.goto(`http://127.0.0.1:3000${targetPage.path}`, { waitUntil: 'networkidle' });
-
-    if (targetPage.authenticated) {
-      await page.getByLabel('Email').fill('visual-review@example.invalid');
-      await page.getByLabel('Password').fill('Visual-review-password-123!');
-      await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-    }
 
     await page.evaluate(() => document.fonts.ready);
 
