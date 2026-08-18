@@ -117,9 +117,8 @@ test("appends the user's exact Daily Log reflection and one correlated domain ev
       localDate: "2026-08-18",
       timeZone: "Asia/Kolkata",
       body: "  Work was heavy.\nI still noticed three clean sound transitions.  ",
-      occurredAt: "2026-08-18T18:30:00.000Z",
     },
-    context("DAILY_LOG_APPEND", "daily-log-retry-0001"),
+    context("DAILY_LOG_APPEND", "daily-log-retry-0001", "2026-08-18T18:30:00.000Z"),
     {
       unitOfWork,
       clock: { now: () => "2026-08-18T20:00:01.000Z" },
@@ -156,7 +155,6 @@ test("Daily Log retries replay once and refuse changed content under the same ke
     localDate: "2026-08-18",
     timeZone: "Asia/Kolkata",
     body: "A short exact reflection.",
-    occurredAt: "2026-08-18T19:00:00.000Z",
   };
 
   const first = await appendDailyLogEntry(
@@ -186,17 +184,15 @@ test("Daily Log retries replay once and refuse changed content under the same ke
   );
 });
 
-test("Daily Log rejects impossible dates, unknown time zones, future occurrences, and untrusted request IDs", async () => {
+test("Daily Log rejects impossible dates, unknown time zones, and untrusted request IDs", async () => {
   const valid = {
     localDate: "2026-08-18",
     timeZone: "Asia/Kolkata",
     body: "Synthetic reflection",
-    occurredAt: "2026-08-18T19:00:00.000Z",
   };
   const cases = [
     { command: { ...valid, localDate: "2026-02-30" }, expected: "INVALID_DATE" },
     { command: { ...valid, timeZone: "Not/A_Real_Zone" }, expected: "INVALID_TIME_ZONE" },
-    { command: { ...valid, occurredAt: "2026-08-18T21:00:00.000Z" }, expected: "INVALID_ENTRY" },
   ] as const;
 
   for (const item of cases) {
