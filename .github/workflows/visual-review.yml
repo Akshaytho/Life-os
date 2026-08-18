@@ -32,6 +32,7 @@ jobs:
 
       - name: Start Life OS
         env:
+          LIFE_OS_VISUAL_REVIEW_ENABLED: "true"
           NEXT_PUBLIC_LIFE_OS_API_BASE_URL: http://127.0.0.1:3000
           NEXT_PUBLIC_LIFE_OS_DAILY_RETURN_ENABLED: "true"
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: visual-review-publishable-key
