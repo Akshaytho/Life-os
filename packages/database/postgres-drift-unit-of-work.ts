@@ -103,8 +103,7 @@ class PostgresDriftTransaction implements DriftTransaction {
     const result = await this.client.query<OccurrenceRow>(
       `SELECT ${occurrenceColumns}
          FROM drift_occurrence
-        WHERE request_id = $1 AND user_id = $2
-        FOR UPDATE`,
+        WHERE request_id = $1 AND user_id = $2`,
       [requestId, userId],
     );
     return result.rows[0] ? occurrenceFromRow(result.rows[0]) : undefined;
@@ -114,8 +113,7 @@ class PostgresDriftTransaction implements DriftTransaction {
     const result = await this.client.query<OccurrenceRow>(
       `SELECT ${occurrenceColumns}
          FROM drift_occurrence
-        WHERE drift_id = $1 AND user_id = $2
-        FOR UPDATE`,
+        WHERE drift_id = $1 AND user_id = $2`,
       [driftId, userId],
     );
     return result.rows[0] ? occurrenceFromRow(result.rows[0]) : undefined;
