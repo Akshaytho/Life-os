@@ -61,7 +61,15 @@
 
 @media (max-width: 760px) {
   .canvas { padding-inline: 11px; }
-  .recall form,.candidates,.time { grid-template-columns: 1fr; }
+  .hero { padding: 26px 0 22px; }
+  .hero h1 { margin-block: 9px 16px; font-size: 46px; line-height: .88; }
+  .hero p { font-size: 16px; line-height: 1.42; }
+  .recall { padding: 20px; }
+  .recall form { grid-template-columns: minmax(0,1fr) auto; margin-top: 20px; }
+  .recall form label:first-child { grid-column: 1 / -1; }
+  .recall form button { min-width: 94px; }
+  .recall > p { margin-top: 14px; font-size: 12px; }
+  .candidates,.time { grid-template-columns: 1fr; }
   .heading { display: grid; }
   .anchors > a { grid-template-columns: 1fr; gap: 7px; }
   .confirm > div { flex-direction: column; }
