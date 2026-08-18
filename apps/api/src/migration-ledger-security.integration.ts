@@ -80,7 +80,7 @@ after(async () => {
 
 test("migration apply keeps the ledger admin-only and repairs API-role drift even with zero pending migrations", async () => {
   const first = await applyDatabaseMigrations(migrationPool);
-  assert.equal(first.appliedNow.length, 11);
+  assert.equal(first.appliedNow.length, 12);
   assert.deepEqual(first.pending, []);
 
   assert.deepEqual(await ledgerSecurityState(), {
@@ -121,5 +121,5 @@ test("migration apply keeps the ledger admin-only and repairs API-role drift eve
   const history = await migrationPool.query<{ count: number }>(
     "SELECT count(*)::int AS count FROM lifeos_schema_migration",
   );
-  assert.equal(history.rows[0].count, 11, "hardening must not rewrite migration history");
+  assert.equal(history.rows[0].count, 12, "hardening must not rewrite migration history");
 });
