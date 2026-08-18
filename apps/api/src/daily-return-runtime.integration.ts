@@ -152,7 +152,6 @@ test("Daily Return is separately granted, RLS-scoped, replay-safe and revocable"
       localDate: "2026-08-18",
       timeZone: "Asia/Kolkata",
       body: "Work was heavy; one attentive listening exercise still happened.",
-      occurredAt: "2026-08-18T18:30:00.000Z",
     };
     const logContext = context(
       "user-a",
