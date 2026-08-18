@@ -89,8 +89,7 @@ class PostgresDailyReturnTransaction implements DailyReturnTransaction {
       `SELECT daily_log_entry_id, user_id, local_date::text, time_zone, body,
               occurred_at, recorded_at, request_id, request_fingerprint
          FROM daily_log_entry
-        WHERE request_id = $1 AND user_id = $2
-        FOR UPDATE`,
+        WHERE request_id = $1 AND user_id = $2`,
       [requestId, userId],
     );
     return result.rows[0] ? toLogEntry(result.rows[0]) : undefined;
