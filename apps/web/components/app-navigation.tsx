@@ -42,21 +42,28 @@ function Destination({ item, path, desktop = false }: { item: NavItem; path: str
 export function AppNavigation() {
   const path = usePathname();
   const captureActive = path.startsWith("/capture");
+  const driftActive = path.startsWith("/drift");
 
   return (
     <>
       <aside className={styles.desktopDock} aria-label="Primary navigation">
         <div className={styles.brand}><strong>L/O</strong><span>PRIVATE</span></div>
         <div className={styles.desktopLinks}>{navItems.map((item) => <Destination item={item} path={path} desktop key={item.label} />)}</div>
+        <Link href="/drift" className={`${styles.desktopDrift} ${driftActive ? styles.driftActive : ""}`} aria-current={driftActive ? "page" : undefined}>
+          <span>I&apos;m<br />drifting</span>
+        </Link>
         <Link href="/capture" className={`${styles.desktopCapture} ${captureActive ? styles.captureActive : ""}`} aria-current={captureActive ? "page" : undefined}>
           <Icon name="plus" size={22} /><span>Brain Dump</span>
         </Link>
       </aside>
 
+      <Link href="/drift" className={`${styles.mobileDrift} ${driftActive ? styles.driftActive : ""}`} aria-current={driftActive ? "page" : undefined}>
+        I&apos;m drifting
+      </Link>
       <nav className={styles.mobileDock} aria-label="Primary navigation">
         <Destination item={navItems[0]} path={path} />
         <Destination item={navItems[1]} path={path} />
-        <Link href="/capture" className={`${styles.mobileCapture} ${captureActive ? styles.captureActive : ""}`} aria-label="Capture" aria-current={captureActive ? "page" : undefined}>
+        <Link href="/capture" className={`${styles.mobileCapture} ${captureActive ? styles.captureActive : ""}`} aria-label="Brain Dump" aria-current={captureActive ? "page" : undefined}>
           <Icon name="plus" size={23} /><span>Brain Dump</span>
         </Link>
         <Destination item={navItems[2]} path={path} />

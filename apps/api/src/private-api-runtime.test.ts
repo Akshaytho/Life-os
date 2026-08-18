@@ -54,6 +54,9 @@ test("runtime composition uses server-owned clocks and opaque IDs with safe fall
     assert.equal(dependencies.directionEnabled, false);
     assert.equal(dependencies.directionReader, undefined);
     assert.equal(dependencies.directionUnitOfWork, undefined);
+    assert.equal(dependencies.driftEnabled, false);
+    assert.equal(dependencies.driftReader, undefined);
+    assert.equal(dependencies.driftUnitOfWork, undefined);
 
     const interpreted = await dependencies.interpreter.interpret({
       rawText: "Private source",
@@ -62,6 +65,31 @@ test("runtime composition uses server-owned clocks and opaque IDs with safe fall
     assert.equal(interpreted.interpreter, "SAFE_FALLBACK");
     assert.equal(interpreted.proposals[0].destination, "BRAIN_DUMP");
     assert.equal(interpreted.proposals[0].state, "PROPOSED");
+  });
+});
+
+test("Drift runtime dependencies are composed only after the explicit server capability is enabled", async () => {
+  await withIdlePool((pool) => {
+    const verifier: SessionVerifier = { async verify() { return { userId: "verified-user" }; } };
+    let uuid = 0;
+    const dependencies = createPrivateApiRuntimeDependencies(
+      pool,
+      {},
+      runtime,
+      telemetry,
+      {
+        sessionVerifier: verifier,
+        driftEnabled: true,
+        randomUuid: () => `00000000-0000-4000-8000-${String(++uuid).padStart(12, "0")}`,
+        now: () => new Date("2026-08-18T08:00:00.000Z"),
+      },
+    );
+
+    assert.equal(dependencies.driftEnabled, true);
+    assert.ok(dependencies.driftReader);
+    assert.ok(dependencies.driftUnitOfWork);
+    assert.equal(dependencies.driftClock?.now(), "2026-08-18T08:00:00.000Z");
+    assert.match(dependencies.driftIds?.next("drift") ?? "", /^drift-[0-9a-f-]+$/);
   });
 });
 

@@ -17,6 +17,14 @@ import type {
   DailyReturnOverview,
   SubmitDailyReturnReviewCommand,
 } from "../../../packages/contracts/daily-return";
+import type {
+  ConfirmDriftUnderstandingCommand,
+  DriftDecisionReceipt,
+  DriftOccurrenceReceipt,
+  DriftOverview,
+  RecordDriftCommand,
+  RecordDriftReturnCommand,
+} from "../../../packages/contracts/drift-return";
 import type { InteractionChangeTrace } from "../../../packages/contracts/interaction-change-ledger";
 import type { ProposalState } from "../../../packages/contracts/input-routing";
 import type { CaptureProposalReview } from "../../../packages/contracts/proposal-review";
@@ -103,6 +111,15 @@ export type BrainDumpClassificationTransportReceipt = Omit<BrainDumpClassificati
 };
 
 export type NotNowItemTransportReceipt = Omit<NotNowItemReceipt, "status"> & {
+  status: "recorded" | "replayed";
+  decisionStatus: "CURRENT";
+};
+
+export type DriftOccurrenceTransportReceipt = DriftOccurrenceReceipt & {
+  status: "recorded" | "replayed";
+};
+
+export type DriftDecisionTransportReceipt = Omit<DriftDecisionReceipt, "status"> & {
   status: "recorded" | "replayed";
   decisionStatus: "CURRENT";
 };
@@ -257,6 +274,65 @@ export function reviewNotNowItem(
   return privateRequest<NotNowItemTransportReceipt>(
     accessToken,
     `/api/v1/not-now/${encodeURIComponent(rootId)}/review`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify(command),
+    },
+  );
+}
+
+export function getDriftOverview(accessToken: string): Promise<DriftOverview> {
+  return privateRequest<DriftOverview>(accessToken, "/api/v1/drifts");
+}
+
+export function recordDrift(
+  accessToken: string,
+  command: RecordDriftCommand,
+  idempotencyKey: string,
+): Promise<DriftOccurrenceTransportReceipt> {
+  return privateRequest<DriftOccurrenceTransportReceipt>(accessToken, "/api/v1/drifts", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Idempotency-Key": idempotencyKey,
+    },
+    body: JSON.stringify(command),
+  });
+}
+
+export function confirmDriftUnderstanding(
+  accessToken: string,
+  driftId: string,
+  command: ConfirmDriftUnderstandingCommand,
+  idempotencyKey: string,
+): Promise<DriftDecisionTransportReceipt> {
+  return privateRequest<DriftDecisionTransportReceipt>(
+    accessToken,
+    `/api/v1/drifts/${encodeURIComponent(driftId)}/understanding`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify(command),
+    },
+  );
+}
+
+export function recordDriftReturn(
+  accessToken: string,
+  driftId: string,
+  command: RecordDriftReturnCommand,
+  idempotencyKey: string,
+): Promise<DriftDecisionTransportReceipt> {
+  return privateRequest<DriftDecisionTransportReceipt>(
+    accessToken,
+    `/api/v1/drifts/${encodeURIComponent(driftId)}/return`,
     {
       method: "POST",
       headers: {

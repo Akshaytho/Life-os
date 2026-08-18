@@ -17,14 +17,16 @@ test("real private entry routes require the shared session gate", async () => {
     ["../app/page.tsx", "Today", "LiveToday"],
     ["../app/calendar/page.tsx", "Calendar", "LiveCanonicalCalendar"],
     ["../app/capture/page.tsx", "Brain Dump", "LiveCaptureRouting"],
+    ["../app/drift/page.tsx", "Drift + Return", "LiveDrift"],
   ] as const;
 
   for (const [path, area, liveSurface] of cases) {
     const page = await source(path);
+    const escapedArea = area.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     assert.match(page, /import \{ LifeOsAuthGate \}/, `${path} must use the shared auth gate`);
     assert.match(
       page,
-      new RegExp(`<LifeOsAuthGate[\\s\\S]*area="${area}"[\\s\\S]*<${liveSurface}(?:\\s+[^>]*)?\\s*\\/>[\\s\\S]*<\\/LifeOsAuthGate>`),
+      new RegExp(`<LifeOsAuthGate[\\s\\S]*area="${escapedArea}"[\\s\\S]*<${liveSurface}(?:\\s+[^>]*)?\\s*\\/>[\\s\\S]*<\\/LifeOsAuthGate>`),
     );
   }
 });

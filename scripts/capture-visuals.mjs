@@ -48,6 +48,19 @@ const pages = [
     ],
   },
   {
+    name: 'drift-return-review',
+    path: '/visual-review/drift',
+    syntheticPrivateBoundary: true,
+    expected: [
+      'RELIABLE RETURN',
+      /You noticed\.\s*That is already a return\./,
+      "I'M DRIFTING",
+      'Temporary inspiration',
+      'I am still returning',
+      'RESOLVED · Return to my direction · provenance retained',
+    ],
+  },
+  {
     name: 'journey-real-boundary',
     path: '/journey',
     expected: [
