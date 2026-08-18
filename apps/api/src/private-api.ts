@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { handlePrivateCalendarConfirmationRequest, type PrivateCalendarConfirmationApiDependencies } from "./private-calendar-confirmation-api";
 import { handlePrivateCaptureRequest, type PrivateCaptureApiDependencies } from "./private-capture-api";
 import { appendVaryHeader } from "./private-cors";
+import { handlePrivateDailyReturnRequest, type PrivateDailyReturnApiDependencies } from "./private-daily-return-api";
 import { handlePrivateDirectionRequest, type PrivateDirectionApiDependencies } from "./private-direction-api";
 import { handlePrivateProposalActionRequest, type PrivateProposalActionsApiDependencies } from "./private-proposal-actions-api";
 import { handlePrivateReadRequest, type PrivateReadApiDependencies } from "./private-read-api";
@@ -12,7 +13,8 @@ export type PrivateApiDependencies =
   & PrivateProposalActionsApiDependencies
   & PrivateCalendarConfirmationApiDependencies
   & PrivateDirectionApiDependencies
-  & { directionEnabled?: boolean };
+  & PrivateDailyReturnApiDependencies
+  & { directionEnabled?: boolean; dailyReturnEnabled?: boolean };
 
 function jsonNotFound(response: ServerResponse) {
   response.statusCode = 404;
@@ -33,9 +35,13 @@ function pathOf(request: IncomingMessage): string {
   }
 }
 
-type RouteFamily = "CAPTURE" | "READ" | "CALENDAR_CONFIRMATION" | "PROPOSAL_ACTION" | "DIRECTION";
+type RouteFamily = "CAPTURE" | "READ" | "CALENDAR_CONFIRMATION" | "PROPOSAL_ACTION" | "DIRECTION" | "DAILY_RETURN";
 
-function routeFamily(path: string, directionEnabled: boolean): RouteFamily | undefined {
+function routeFamily(
+  path: string,
+  directionEnabled: boolean,
+  dailyReturnEnabled: boolean,
+): RouteFamily | undefined {
   if (path === "/api/v1/captures") return "CAPTURE";
   if (path === "/api/v1/calendar") return "READ";
   if (/^\/api\/v1\/captures\/[^/]+\/review$/.test(path)) return "READ";
@@ -43,6 +49,11 @@ function routeFamily(path: string, directionEnabled: boolean): RouteFamily | und
   if (/^\/api\/v1\/proposals\/[^/]+\/confirm-calendar$/.test(path)) return "CALENDAR_CONFIRMATION";
   if (/^\/api\/v1\/proposals\/[^/]+\/(apply|reject)$/.test(path)) return "PROPOSAL_ACTION";
   if (directionEnabled && (path === "/api/v1/direction" || path === "/api/v1/direction/current")) return "DIRECTION";
+  if (dailyReturnEnabled && (
+    path === "/api/v1/daily-return"
+    || path === "/api/v1/daily-return/logs"
+    || path === "/api/v1/daily-return/review"
+  )) return "DAILY_RETURN";
   return undefined;
 }
 
@@ -51,7 +62,11 @@ export async function handlePrivateApiRequest(
   response: ServerResponse,
   dependencies: PrivateApiDependencies,
 ): Promise<void> {
-  switch (routeFamily(pathOf(request), dependencies.directionEnabled === true)) {
+  switch (routeFamily(
+    pathOf(request),
+    dependencies.directionEnabled === true,
+    dependencies.dailyReturnEnabled === true,
+  )) {
     case "CAPTURE":
       await handlePrivateCaptureRequest(request, response, dependencies);
       return;
@@ -66,6 +81,9 @@ export async function handlePrivateApiRequest(
       return;
     case "DIRECTION":
       await handlePrivateDirectionRequest(request, response, dependencies);
+      return;
+    case "DAILY_RETURN":
+      await handlePrivateDailyReturnRequest(request, response, dependencies);
       return;
     default:
       jsonNotFound(response);
