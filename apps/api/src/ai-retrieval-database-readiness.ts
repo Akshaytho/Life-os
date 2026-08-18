@@ -10,10 +10,11 @@ import {
   journeyCapabilityDecisionTable,
   journeyPracticeCompletionTable,
   journeyPracticeSessionTable,
+  memoryItemTable,
   notNowItemTable,
 } from "./private-database-contract";
 
-const tables = [
+const baselineTables = [
   "calendar_event",
   "capture_record",
   directionDecisionTable,
@@ -28,7 +29,11 @@ const tables = [
   journeyPracticeCompletionTable,
 ] as const;
 
-const readinessSql = `
+function retrievalTables(includeMemory: boolean): readonly string[] {
+  return includeMemory ? [...baselineTables, memoryItemTable] : baselineTables;
+}
+
+function readinessSql(tables: readonly string[]) { return `
 WITH required_table(table_name) AS (
   VALUES ${tables.map((table) => `('${table}')`).join(", ")}
 )
@@ -45,9 +50,9 @@ SELECT required.table_name,
    AND c.relname = required.table_name
    AND c.relkind IN ('r', 'p')
  ORDER BY required.table_name
-`;
+` }
 
-const unscopedSql = `
+function unscopedSql(includeMemory: boolean) { return `
 SELECT
   (SELECT count(*)::int FROM calendar_event) AS calendar_count,
   (SELECT count(*)::int FROM capture_record) AS capture_count,
@@ -58,14 +63,17 @@ SELECT
   (SELECT count(*)::int FROM ${driftOccurrenceTable}) AS drift_count,
   (SELECT count(*)::int FROM ${journeyCapabilityDecisionTable}) AS journey_count,
   (SELECT count(*)::int FROM ${journeyPracticeSessionTable}) AS practice_count
-`;
+  ${includeMemory ? `, (SELECT count(*)::int FROM ${memoryItemTable}) AS memory_count` : ""}
+` }
 
 export function createAiRetrievalDatabaseReadinessProbe(
   database: DatabaseProbe,
+  includeMemory = false,
 ): ReadinessProbe {
   return {
     async check() {
-      const result = await database.query(readinessSql);
+      const tables = retrievalTables(includeMemory);
+      const result = await database.query(readinessSql(tables));
       if (result.rows.length !== tables.length) return false;
       if (result.rows.some((row) => (
         row.table_exists !== true
@@ -74,7 +82,7 @@ export function createAiRetrievalDatabaseReadinessProbe(
         || row.non_owner !== true
         || row.can_select !== true
       ))) return false;
-      const unscoped = await database.query(unscopedSql);
+      const unscoped = await database.query(unscopedSql(includeMemory));
       if (unscoped.rows.length !== 1) return false;
       return Object.values(unscoped.rows[0] ?? {}).every((value) => value === 0);
     },

@@ -68,7 +68,7 @@ async function main() {
     ...(brainDumpNotNowEnabled ? [createBrainDumpNotNowDatabaseReadinessProbe(pool!)] : []),
     ...(driftEnabled ? [createDriftDatabaseReadinessProbe(pool!)] : []),
     ...(journeyPracticeEnabled ? [createJourneyPracticeDatabaseReadinessProbe(pool!)] : []),
-    ...(aiRetrievalEnabled ? [createAiRetrievalDatabaseReadinessProbe(pool!)] : []),
+    ...(aiRetrievalEnabled ? [createAiRetrievalDatabaseReadinessProbe(pool!, memoryEnabled)] : []),
     ...(periodicReviewsEnabled ? [createPeriodicReviewsDatabaseReadinessProbe(pool!)] : []),
     ...(memoryEnabled ? [createMemoryDatabaseReadinessProbe(pool!)] : []),
   );

@@ -118,6 +118,8 @@ const pages = [
       'Nothing changed.',
       'Cited canonical context',
       'Current direction',
+      'MEMORY V2 · LEARNING · REINFORCES',
+      'Source · Journey practice · Environmental sound',
     ],
   },
   {

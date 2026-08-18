@@ -10,6 +10,7 @@ import type { DailyReturnReader } from "../../../packages/domain/daily-return-re
 import type { DirectionDecisionReader } from "../../../packages/domain/direction-read";
 import type { DriftReader } from "../../../packages/domain/drift-return-read";
 import type { JourneyPracticeReader } from "../../../packages/domain/journey-practice-read";
+import type { MemoryReader } from "../../../packages/domain/memory-read";
 import type {
   SessionVerifier,
   TransportClock,
@@ -42,6 +43,7 @@ export interface PrivateAiRetrievalApiDependencies {
   brainDumpNotNowReader?: BrainDumpNotNowReader;
   driftReader?: DriftReader;
   journeyPracticeReader?: JourneyPracticeReader;
+  memoryReader?: MemoryReader;
   runtime: RuntimeProvenance;
   telemetry: TechnicalTelemetrySink;
   operationTimer: OperationTimer;
@@ -189,6 +191,7 @@ export async function handlePrivateAiRetrievalRequest(
             brainDumpNotNowReader: dependencies.brainDumpNotNowReader,
             driftReader: dependencies.driftReader,
             journeyPracticeReader: dependencies.journeyPracticeReader,
+            ...(dependencies.memoryReader ? { memoryReader: dependencies.memoryReader } : {}),
             clock: dependencies.aiRetrievalClock,
           }),
         };

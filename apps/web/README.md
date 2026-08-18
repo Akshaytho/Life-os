@@ -54,7 +54,9 @@ See `docs/architecture/WEB_HOSTED_DEPLOYMENT_V1.md` for the Railway development 
 boundary. The browser sends one explicit interaction mode, question, local date/time
 zone, and a bounded Calendar window. The server owns context selection and authority
 labels. The UI marks every answer as `AI OBSERVATION · READ ONLY`, shows cited sources,
-and states that no Life OS state or chat transcript changed.
+and states that no Life OS state or chat transcript changed. Retained Memory sources,
+when separately enabled, remain labeled `REFLECTION` and expose current revision,
+relationship, and their exact Review/Journey provenance on the source card.
 
 `/visual-review/ask` is available only under the existing visual-review gate and uses
 clearly synthetic source-visible content without calling a provider.

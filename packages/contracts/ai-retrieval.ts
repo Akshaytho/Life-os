@@ -17,6 +17,7 @@ export const aiContextDomains = [
   "NOT_NOW",
   "DRIFT",
   "JOURNEY",
+  "MEMORY",
 ] as const;
 
 export type AiContextDomain = typeof aiContextDomains[number];
@@ -29,6 +30,19 @@ export const aiContextAuthorityClasses = [
 ] as const;
 
 export type AiContextAuthorityClass = typeof aiContextAuthorityClasses[number];
+
+export interface AiMemoryProvenance {
+  rootId: string;
+  itemId: string;
+  revision: number;
+  kind: import("./memory").MemoryKind;
+  relationship: import("./memory").MemoryRelationship;
+  relatedRootId?: string;
+  sourceDomain: import("./memory").MemorySourceDomain;
+  sourceEntityId: string;
+  sourceLabel: string;
+  sourceOccurredAt: string;
+}
 
 export interface AskLifeOsCommand {
   mode: AiInteractionMode;
@@ -46,6 +60,7 @@ export interface AiContextSource {
   title: string;
   excerpt: string;
   occurredAt: string;
+  memoryProvenance?: AiMemoryProvenance;
 }
 
 export interface AskLifeOsResponse {
@@ -55,6 +70,6 @@ export interface AskLifeOsResponse {
   citedSourceIds: string[];
   sources: AiContextSource[];
   generatedAt: string;
-  policyVersion: "ask-life-os-retrieval-v1";
+  policyVersion: "ask-life-os-retrieval-v1.1";
   modelName: string;
 }

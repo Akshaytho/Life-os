@@ -7,6 +7,7 @@ import { PostgresDailyReturnReader } from "../../../packages/database/postgres-d
 import { PostgresDirectionDecisionReader } from "../../../packages/database/postgres-direction-decision-reader";
 import { PostgresDriftReader } from "../../../packages/database/postgres-drift-reader";
 import { PostgresJourneyPracticeReader } from "../../../packages/database/postgres-journey-practice-reader";
+import { PostgresMemoryReader } from "../../../packages/database/postgres-memory-reader";
 import { PostgresUserScope } from "../../../packages/database/postgres-user-scope";
 import type { LifeOsAssistant, LifeOsAssistantInput } from "../../../packages/intelligence/life-os-assistant";
 import { createAiRetrievalDatabaseReadinessProbe } from "./ai-retrieval-database-readiness";
@@ -17,7 +18,9 @@ import { applyDailyReturnDatabaseRole } from "./daily-return-db-role";
 import { applyDirectionDatabaseRole } from "./direction-db-role";
 import { applyDriftDatabaseRole } from "./drift-db-role";
 import { applyJourneyPracticeDatabaseRole } from "./journey-practice-db-role";
+import { applyMemoryDatabaseRole } from "./memory-db-role";
 import { applyDatabaseMigrations } from "./migration-runner";
+import { applyPeriodicReviewsDatabaseRole } from "./periodic-reviews-db-role";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error("DATABASE_URL is required for PostgreSQL integration tests");
@@ -72,7 +75,7 @@ class InspectingAssistant implements LifeOsAssistant {
 function command() {
   return {
     mode: "ASK" as const,
-    question: "What is current?",
+    question: "What did I learn about room tone?",
     localDate: "2026-08-19",
     timeZone: "Asia/Kolkata",
     calendarFrom: "2026-08-19T00:00:00.000Z",
@@ -88,10 +91,12 @@ test("AI retrieval is read-only, forced-RLS scoped, and source-visible on real P
   await applyBrainDumpNotNowDatabaseRole(migrationPool, roleName);
   await applyDriftDatabaseRole(migrationPool, roleName);
   await applyJourneyPracticeDatabaseRole(migrationPool, roleName);
+  await applyPeriodicReviewsDatabaseRole(migrationPool, roleName);
+  await applyMemoryDatabaseRole(migrationPool, roleName);
 
   const appPool = applicationPool();
   try {
-    const readiness = createAiRetrievalDatabaseReadinessProbe(appPool);
+    const readiness = createAiRetrievalDatabaseReadinessProbe(appPool, true);
     assert.equal(await readiness.check(), true);
 
     const adminScope = new PostgresUserScope(migrationPool);
@@ -107,6 +112,43 @@ test("AI retrieval is read-only, forced-RLS scoped, and source-visible on real P
           VALUES ($1, $2, $3, 'ACTIVE', '2026-08-12T09:00:00.000Z',
                   '2026-08-12T09:00:01.000Z', $4, $5)
         `, [directionId, userId, statement, `request-${userId}`, userId === "user-a" ? "a".repeat(64) : "b".repeat(64)]);
+        await client.query(`
+          INSERT INTO periodic_review
+            (periodic_review_id, user_id, period_kind, period_start, period_end,
+             time_zone, what_mattered, what_changed, what_moved_forward,
+             drift_and_return, what_was_learned, carry_forward, worth_preserving,
+             authority_class, status, submitted_at, recorded_at, request_id,
+             request_fingerprint)
+          VALUES ($1, $2, 'WEEK', '2026-08-10', '2026-08-16', 'Asia/Kolkata',
+                  'Synthetic review', 'Synthetic change', 'Synthetic movement',
+                  'Synthetic return', 'Synthetic learning', 'Synthetic carry', $3,
+                  'REFLECTION', 'CURRENT', '2026-08-17T18:00:00.000Z',
+                  '2026-08-17T18:00:01.000Z', $4, $5)
+        `, [
+          `periodic-${userId}`,
+          userId,
+          `Room tone learning visible only to ${userId}.`,
+          `periodic-request-${userId}`,
+          userId === "user-a" ? "c".repeat(64) : "d".repeat(64),
+        ]);
+        await client.query(`
+          INSERT INTO memory_item
+            (memory_item_id, root_id, revision, user_id, kind, title, body,
+             authority_class, source_domain, source_entity_id, source_occurred_at,
+             relationship, related_root_id, status, retained_at, recorded_at,
+             ended_at, supersedes_memory_item_id, request_id, request_fingerprint)
+          VALUES ($1, $1, 1, $2, 'LEARNING', 'Room tone learning', $3,
+                  'REFLECTION', 'PERIODIC_REVIEW', $4, '2026-08-17T18:00:00.000Z',
+                  'NEW', NULL, 'CURRENT', '2026-08-17T18:30:00.000Z',
+                  '2026-08-17T18:30:01.000Z', NULL, NULL, $5, $6)
+        `, [
+          `memory-${userId}`,
+          userId,
+          `Retained room tone evidence visible only to ${userId}.`,
+          `periodic-${userId}`,
+          `memory-request-${userId}`,
+          userId === "user-a" ? "e".repeat(64) : "f".repeat(64),
+        ]);
       });
     }
 
@@ -119,6 +161,7 @@ test("AI retrieval is read-only, forced-RLS scoped, and source-visible on real P
       brainDumpNotNowReader: new PostgresBrainDumpNotNowReader(appPool),
       driftReader: new PostgresDriftReader(appPool),
       journeyPracticeReader: new PostgresJourneyPracticeReader(appPool),
+      memoryReader: new PostgresMemoryReader(appPool),
       clock: { now: () => "2026-08-19T12:00:00.000Z" },
     };
 
@@ -130,6 +173,8 @@ test("AI retrieval is read-only, forced-RLS scoped, and source-visible on real P
         + (SELECT count(*) FROM not_now_item)
         + (SELECT count(*) FROM drift_occurrence)
         + (SELECT count(*) FROM journey_practice_session)
+        + (SELECT count(*) FROM periodic_review)
+        + (SELECT count(*) FROM memory_item)
         + (SELECT count(*) FROM domain_event)
       )::int AS count
     `);
@@ -137,13 +182,21 @@ test("AI retrieval is read-only, forced-RLS scoped, and source-visible on real P
     const userA = await askLifeOs(command(), { actorType: "USER", userId: "user-a" }, common);
     const userB = await askLifeOs(command(), { actorType: "USER", userId: "user-b" }, common);
 
-    assert.equal(userA.sources.length, 1);
-    assert.equal(userB.sources.length, 1);
+    assert.equal(userA.sources.length, 2);
+    assert.equal(userB.sources.length, 2);
     assert.match(userA.sources[0]!.excerpt, /user A/);
     assert.doesNotMatch(userA.sources[0]!.excerpt, /user B/);
     assert.match(userB.sources[0]!.excerpt, /user B/);
     assert.doesNotMatch(userB.sources[0]!.excerpt, /user A/);
     assert.equal(userA.sources[0]!.authorityClass, "DECISION");
+    const memoryA = userA.sources.find((source) => source.domain === "MEMORY")!;
+    const memoryB = userB.sources.find((source) => source.domain === "MEMORY")!;
+    assert.equal(memoryA.authorityClass, "REFLECTION");
+    assert.match(memoryA.excerpt, /user-a/);
+    assert.doesNotMatch(memoryA.excerpt, /user-b/);
+    assert.match(memoryB.excerpt, /user-b/);
+    assert.doesNotMatch(memoryB.excerpt, /user-a/);
+    assert.equal(memoryA.memoryProvenance?.sourceDomain, "PERIODIC_REVIEW");
     assert.equal(userA.answerAuthority, "AI_OBSERVATION");
     assert.equal(assistant.calls.length, 2);
 
@@ -155,13 +208,15 @@ test("AI retrieval is read-only, forced-RLS scoped, and source-visible on real P
         + (SELECT count(*) FROM not_now_item)
         + (SELECT count(*) FROM drift_occurrence)
         + (SELECT count(*) FROM journey_practice_session)
+        + (SELECT count(*) FROM periodic_review)
+        + (SELECT count(*) FROM memory_item)
         + (SELECT count(*) FROM domain_event)
       )::int AS count
     `);
     assert.equal(after.rows[0]?.count, before.rows[0]?.count);
 
     const unscoped = await appPool.query<{ count: number }>(
-      "SELECT count(*)::int AS count FROM direction_decision",
+      "SELECT count(*)::int AS count FROM memory_item",
     );
     assert.equal(unscoped.rows[0]?.count, 0);
   } finally {
