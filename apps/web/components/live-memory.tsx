@@ -132,7 +132,7 @@ export function LiveMemory({ visualOverview }: { visualOverview?: MemoryOverview
   return (
     <div className="life-app">
       <main className={styles.canvas}>
-        <header className="system-bar"><div className="wordmark">LIFE<span>/</span>OS</div><div className="system-state"><i />PRIVATE · MEMORY / RECALL</div></header>
+        <header className="system-bar"><div className="wordmark">LIFE<span>/</span>OS</div><div className="system-state"><i />PRIVATE · MEMORY</div></header>
 
         <section className={styles.hero}>
           <span className="section-kicker">TRUST BEFORE RECENCY</span>
