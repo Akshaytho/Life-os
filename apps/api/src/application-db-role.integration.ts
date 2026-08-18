@@ -178,6 +178,7 @@ test("provisioner requires migrations first, then creates a credential that pass
     await assert.rejects(() => appPool.query("SELECT sequence FROM lifeos_schema_migration"));
     await assert.rejects(() => appPool.query("UPDATE lifeos_schema_migration SET applied_at = now()"));
     await assert.rejects(() => appPool.query("SELECT direction_id FROM direction_decision"));
+    await assert.rejects(() => appPool.query("SELECT journey_id FROM journey_decision"));
 
     const forbidden = await appPool.query(`
       SELECT
@@ -187,7 +188,10 @@ test("provisioner requires migrations first, then creates a credential that pass
         has_table_privilege(current_user, 'capture_record', 'TRIGGER') AS can_trigger,
         has_table_privilege(current_user, 'direction_decision', 'SELECT') AS can_read_direction,
         has_table_privilege(current_user, 'direction_decision', 'INSERT') AS can_insert_direction,
-        has_table_privilege(current_user, 'direction_decision', 'UPDATE') AS can_update_direction
+        has_table_privilege(current_user, 'direction_decision', 'UPDATE') AS can_update_direction,
+        has_table_privilege(current_user, 'journey_decision', 'SELECT') AS can_read_journey,
+        has_table_privilege(current_user, 'journey_decision', 'INSERT') AS can_insert_journey,
+        has_table_privilege(current_user, 'journey_decision', 'UPDATE') AS can_update_journey
     `);
     assert.deepEqual(forbidden.rows[0], {
       schema_create: false,
@@ -197,6 +201,9 @@ test("provisioner requires migrations first, then creates a credential that pass
       can_read_direction: false,
       can_insert_direction: false,
       can_update_direction: false,
+      can_read_journey: false,
+      can_insert_journey: false,
+      can_update_journey: false,
     });
   } finally {
     await appPool.end();
