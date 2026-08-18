@@ -169,7 +169,6 @@ test("private Daily Return transport records, replays, reads and user-isolates r
       localDate: "2026-08-18",
       timeZone: "Asia/Kolkata",
       body: "A private exact reflection.",
-      occurredAt: "2026-08-18T19:00:00.000Z",
     };
     const log = await fetch(`${baseUrl}/api/v1/daily-return/logs`, {
       method: "POST",
@@ -283,8 +282,7 @@ test("private Daily Return transport rejects malformed and conflicting requests 
         localDate: "2026-08-18",
         timeZone: "Asia/Kolkata",
         body: "Reflection",
-        occurredAt: "2026-08-18T19:00:00.000Z",
-        surprise: "must be rejected",
+          surprise: "must be rejected",
       }),
     });
     assert.equal(invalidBody.status, 400);
