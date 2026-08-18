@@ -84,7 +84,7 @@ export function LiveToday({ dailyReturnEnabled = false }: { dailyReturnEnabled?:
   const [readBusy, setReadBusy] = useState(false);
   const [readMessage, setReadMessage] = useState("");
   const [now, setNow] = useState(() => new Date());
-  const timeZone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "Local time", []);
+  const timeZone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", []);
   const dayKey = localDayKey(now);
 
   useEffect(() => {
@@ -222,7 +222,7 @@ export function LiveToday({ dailyReturnEnabled = false }: { dailyReturnEnabled?:
         )}
 
         <footer className={styles.footer}>
-          <span>SUPABASE SESSION · CANONICAL CALENDAR · POSTGRESQL RLS</span>
+          <span>{dailyReturnEnabled ? "SUPABASE SESSION · CALENDAR + DAILY RETURN · POSTGRESQL RLS" : "SUPABASE SESSION · CANONICAL CALENDAR · POSTGRESQL RLS"}</span>
           <span>{dailyReturnEnabled ? "EXPLICIT REFLECTION WRITES · NO HIDDEN ROUTING" : "READ ONLY · NO HIDDEN WRITES"}</span>
         </footer>
       </main>
