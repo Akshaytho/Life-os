@@ -36,3 +36,10 @@ test("composed Today visual fixture is synthetic-only", async () => {
   assert.match(page, /SYNTHETIC VISUAL REVIEW/);
   assert.match(page, /TodayComposition/);
 });
+
+test("mobile Today keeps current reality above the dock and preserves a safe scroll end", async () => {
+  const styles = await source("../components/live-today.module.css");
+  assert.match(styles, /padding-bottom: calc\(142px \+ env\(safe-area-inset-bottom\)\)/);
+  assert.match(styles, /\.heroGrid \{\s*grid-template-columns: minmax\(0, 1fr\) auto/);
+  assert.match(styles, /\.primarySignal,\s*\.nextSignal \{\s*min-height: 175px/);
+});

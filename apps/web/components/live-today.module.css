@@ -282,14 +282,51 @@
 }
 
 @media (max-width: 800px) {
-  .heroGrid,
-  .nowSection,
-  .eventCard {
-    grid-template-columns: 1fr;
+  .canvas {
+    padding-bottom: calc(142px + env(safe-area-inset-bottom));
+  }
+
+  .hero {
+    padding: 28px 0 20px;
+  }
+
+  .heroGrid {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 14px;
+    margin-top: 18px;
+  }
+
+  .heroGrid h1 {
+    font-size: clamp(38px, 11.8vw, 48px);
   }
 
   .clockBlock {
-    justify-items: start;
+    justify-items: end;
+    text-align: right;
+  }
+
+  .clockBlock strong {
+    font-size: clamp(30px, 9vw, 38px);
+  }
+
+  .orientation {
+    margin-top: 18px;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .nowSection {
+    grid-template-columns: 1fr;
+    margin-top: 18px;
+  }
+
+  .primarySignal,
+  .nextSignal {
+    min-height: 175px;
+  }
+
+  .eventCard {
+    grid-template-columns: 1fr;
   }
 
   .readout {
