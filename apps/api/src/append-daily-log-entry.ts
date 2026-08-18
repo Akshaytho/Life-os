@@ -40,8 +40,8 @@ export async function appendDailyLogEntry(
     localDate: normalizedLocalDate(command.localDate),
     timeZone: normalizedTimeZone(command.timeZone),
     body: normalizedReflection(command.body, "INVALID_ENTRY"),
-    occurredAt: normalizedInstant(command.occurredAt, "INVALID_ENTRY"),
   };
+  const occurredAt = normalizedInstant(context.receivedAt, "INVALID_ENTRY");
   const requestFingerprint = fingerprint(normalized);
 
   return dependencies.unitOfWork.run(userId, async (transaction) => {
@@ -61,7 +61,7 @@ export async function appendDailyLogEntry(
     }
 
     const recordedAt = normalizedInstant(dependencies.clock.now(), "INVALID_ENTRY");
-    if (Date.parse(recordedAt) < Date.parse(normalized.occurredAt)) {
+    if (Date.parse(recordedAt) < Date.parse(occurredAt)) {
       throw new DailyReturnError("INVALID_ENTRY");
     }
 
@@ -72,6 +72,7 @@ export async function appendDailyLogEntry(
       entryId,
       userId,
       ...normalized,
+      occurredAt,
       recordedAt,
       requestId,
       requestFingerprint,
@@ -79,7 +80,7 @@ export async function appendDailyLogEntry(
     await transaction.appendDomainEvent({
       eventId,
       userId,
-      occurredAt: normalized.occurredAt,
+      occurredAt,
       recordedAt,
       actorType: "USER",
       actorId: userId,
@@ -101,7 +102,7 @@ export async function appendDailyLogEntry(
       entryId,
       localDate: normalized.localDate,
       authorityClass: "REFLECTION",
-      occurredAt: normalized.occurredAt,
+      occurredAt,
       recordedAt,
       idempotentReplay: false,
     };
