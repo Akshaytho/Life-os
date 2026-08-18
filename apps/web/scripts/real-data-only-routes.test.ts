@@ -43,7 +43,7 @@ test("real-capable routes use their authenticated live surfaces", async () => {
 
   assert.match(today, /<LiveToday(?:\s+[^>]*)?\s*\/>/);
   assert.match(today, /NEXT_PUBLIC_LIFE_OS_DAILY_RETURN_ENABLED/);
-  assert.match(today, /<LiveToday dailyReturnEnabled=\{dailyReturnConfigured\(\)\} \/>/);
+  assert.match(today, /<LiveToday compositionEnabled=\{compositionConfigured\(\)\} dailyReturnEnabled=\{dailyReturnConfigured\(\)\} \/>/);
   assert.match(calendar, /<LiveCanonicalCalendar\s*\/>/);
   assert.match(capture, /<LiveCaptureRouting\s*\/>/);
   assert.match(ask, /<LifeOsAuthGate/);

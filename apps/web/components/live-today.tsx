@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { CanonicalCalendarItem, CanonicalCalendarWindow } from "../../../packages/contracts/canonical-calendar";
-import { getCanonicalCalendar, LifeOsApiError } from "../lib/life-os-api";
+import { getCanonicalCalendar, getDirectionOverview, getDriftOverview, getJourneyPracticeOverview, getMemoryOverview, LifeOsApiError } from "../lib/life-os-api";
 import { todayRange } from "../lib/today-time";
 import liveStyles from "./live-capture-routing.module.css";
 import { LiveDailyReturn } from "./live-daily-return";
 import { useLifeOsAuth } from "./life-os-auth-provider";
 import styles from "./live-today.module.css";
+import { TodayComposition, type TodayCompositionModel } from "./today-composition";
 
 function localDayKey(value: Date) {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
@@ -78,11 +79,12 @@ function safeMessage(error: unknown) {
   return "Life OS could not load Today. Provider details were kept private.";
 }
 
-export function LiveToday({ dailyReturnEnabled = false }: { dailyReturnEnabled?: boolean }) {
+export function LiveToday({ dailyReturnEnabled = false, compositionEnabled = false }: { dailyReturnEnabled?: boolean; compositionEnabled?: boolean }) {
   const { session, authBusy, signOut } = useLifeOsAuth();
   const [calendar, setCalendar] = useState<CanonicalCalendarWindow>();
   const [readBusy, setReadBusy] = useState(false);
   const [readMessage, setReadMessage] = useState("");
+  const [composition, setComposition] = useState<TodayCompositionModel>();
   const [now, setNow] = useState(() => new Date());
   const timeZone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", []);
   const dayKey = localDayKey(now);
@@ -102,15 +104,34 @@ export function LiveToday({ dailyReturnEnabled = false }: { dailyReturnEnabled?:
     if (!token) return;
 
     setReadBusy(true);
-    setReadMessage("Reading today's canonical Calendar facts…");
+    setReadMessage(compositionEnabled ? "Composing Today from its canonical owners…" : "Reading today's canonical Calendar facts…");
     try {
       const range = todayRange();
-      const result = await getCanonicalCalendar(token, range.from, range.to);
+      const [result, composed] = await Promise.all([
+        getCanonicalCalendar(token, range.from, range.to),
+        compositionEnabled ? Promise.all([
+          getDirectionOverview(token),
+          getJourneyPracticeOverview(token),
+          getDriftOverview(token),
+          getMemoryOverview(token, { timeZone }),
+        ]) : Promise.resolve(null),
+      ]);
       setCalendar(result);
+      if (composed) {
+        const [direction, journey, drift, memory] = composed;
+        setComposition({
+          direction: direction.current,
+          journey,
+          drift: drift.items.find((item) => item.lifecycleState !== "RESOLVED") ?? null,
+          retainedLearning: memory.items.find((item) => item.source.domain === "JOURNEY_PRACTICE") ?? null,
+        });
+      }
       setNow(new Date());
       setReadMessage(result.items.length === 0
         ? "Today has no canonical Calendar events yet."
-        : `Today contains ${result.items.length} canonical Calendar ${result.items.length === 1 ? "fact" : "facts"}.`);
+        : compositionEnabled
+          ? `Today composed ${result.items.length} Calendar ${result.items.length === 1 ? "fact" : "facts"} with current Direction, Journey, Drift, and optional retained learning.`
+          : `Today contains ${result.items.length} canonical Calendar ${result.items.length === 1 ? "fact" : "facts"}.`);
     } catch (error) {
       setReadMessage(safeMessage(error));
     } finally {
@@ -143,7 +164,7 @@ export function LiveToday({ dailyReturnEnabled = false }: { dailyReturnEnabled?:
             </div>
             <div className={styles.clockBlock}><span>LOCAL NOW</span><strong>{timeLabel(now.toISOString())}</strong></div>
           </div>
-          <p className={styles.orientation}>Today V1 shows durable Calendar facts and, when separately enabled, exact Daily Return reflections. Direction, Journey, Memory, focus, and AI guidance are not composed here yet.</p>
+          <p className={styles.orientation}>{compositionEnabled ? "Today composes current owners without becoming one: Direction guides, Calendar constrains, Journey supplies capability evidence, and any retained learning stays reflection." : "Today V1 shows durable Calendar facts and, when separately enabled, exact Daily Return reflections. Direction, Journey, Memory, focus, and AI guidance are not composed here yet."}</p>
           <nav className={styles.navRow} aria-label="Live Life OS navigation">
             <span>Today / canonical</span>
             <Link href="/calendar">Calendar</Link>
@@ -164,6 +185,8 @@ export function LiveToday({ dailyReturnEnabled = false }: { dailyReturnEnabled?:
 
             {readMessage && <section className={liveStyles.flowStatus} aria-live="polite"><span>TODAY READ</span><p>{readMessage}</p></section>}
 
+            {composition && <TodayComposition calendar={items} model={composition} now={now.toISOString()} part="COMPASS" />}
+
             <section className={styles.nowSection} aria-label="Current and next canonical Calendar state">
               <article className={styles.primarySignal} data-state={current ? "current" : "open"}>
                 <span>{current ? "HAPPENING NOW" : "NO CURRENT CANONICAL EVENT"}</span>
@@ -183,6 +206,8 @@ export function LiveToday({ dailyReturnEnabled = false }: { dailyReturnEnabled?:
               <div><strong>{completed}</strong><span>completed by clock</span></div>
               <div><strong>{upcoming}</strong><span>still ahead</span></div>
             </section>
+
+            {composition && <TodayComposition calendar={items} model={composition} now={now.toISOString()} part="DETAIL" />}
 
             <section className={styles.timeline} aria-label="Today's canonical Calendar events">
               <div className={styles.sectionHeading}>
@@ -214,16 +239,16 @@ export function LiveToday({ dailyReturnEnabled = false }: { dailyReturnEnabled?:
               />
             )}
 
-            <aside className={styles.missingDomains}>
+            {!compositionEnabled && <aside className={styles.missingDomains}>
               <span>INTENTIONALLY NOT SHOWN</span>
               <strong>No invented direction, focus, Journey progress, Memory, or AI guidance.</strong>
               <p>Daily Return appears only from its own persisted REFLECTION model. The remaining areas need their own reviewed composition before Today can claim them as current state; Life OS stays explicit and empty rather than substituting sample state.</p>
-            </aside>
+            </aside>}
           </>
         )}
 
         <footer className={styles.footer}>
-          <span>{dailyReturnEnabled ? "SUPABASE SESSION · CALENDAR + DAILY RETURN · POSTGRESQL RLS" : "SUPABASE SESSION · CANONICAL CALENDAR · POSTGRESQL RLS"}</span>
+          <span>{compositionEnabled ? "SUPABASE SESSION · COMPOSED CANONICAL OWNERS · POSTGRESQL RLS" : dailyReturnEnabled ? "SUPABASE SESSION · CALENDAR + DAILY RETURN · POSTGRESQL RLS" : "SUPABASE SESSION · CANONICAL CALENDAR · POSTGRESQL RLS"}</span>
           <span>{dailyReturnEnabled ? "EXPLICIT REFLECTION WRITES · NO HIDDEN ROUTING" : "READ ONLY · NO HIDDEN WRITES"}</span>
         </footer>
       </main>

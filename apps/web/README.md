@@ -61,6 +61,17 @@ relationship, and their exact Review/Journey provenance on the source card.
 `/visual-review/ask` is available only under the existing visual-review gate and uses
 clearly synthetic source-visible content without calling a provider.
 
+## Composed Today
+
+`NEXT_PUBLIC_LIFE_OS_TODAY_COMPOSITION_ENABLED=true` replaces the Calendar-only
+orientation with a browser projection over the existing authenticated Direction,
+Calendar, Journey, Drift, and Memory reads. Current owners keep their domain and
+authority labels. Today derives at most one small focus signal, persists nothing,
+and shows at most one Journey-sourced retained learning as optional `REFLECTION`.
+The flag defaults false and rejects ambiguous values.
+
+`/visual-review/today-composed` is synthetic-only behind the visual-review gate.
+
 ## Weekly + Monthly Reviews
 
 `/reviews` is an authenticated real-data-only period review surface linked from Today.
