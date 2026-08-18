@@ -148,12 +148,11 @@ function exactKeys(body: Record<string, unknown>, expected: string[]): void {
 }
 
 function logCommandFromBody(body: Record<string, unknown>): AppendDailyLogEntryCommand {
-  exactKeys(body, ["body", "localDate", "occurredAt", "timeZone"]);
+  exactKeys(body, ["body", "localDate", "timeZone"]);
   if (
     typeof body.localDate !== "string"
     || typeof body.timeZone !== "string"
     || typeof body.body !== "string"
-    || typeof body.occurredAt !== "string"
   ) {
     throw new DailyReturnRequestError();
   }
@@ -161,7 +160,6 @@ function logCommandFromBody(body: Record<string, unknown>): AppendDailyLogEntryC
     localDate: body.localDate,
     timeZone: body.timeZone,
     body: body.body,
-    occurredAt: body.occurredAt,
   };
 }
 
