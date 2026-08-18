@@ -1,0 +1,70 @@
+.canvas { min-height: 100vh; padding: 0 24px 130px; }
+.hero,.recall,.status,.section,.confirm,.boundary,.footer { width: min(100%,1120px); margin-inline: auto; }
+.hero { padding: clamp(48px,9vw,96px) 0 44px; border-bottom: 1px solid rgba(18,49,52,.16); }
+.hero h1 { max-width: 1000px; margin: 12px 0 24px; font-size: clamp(52px,9vw,104px); line-height: .87; letter-spacing: -.065em; }
+.hero p { max-width: 720px; font-size: clamp(17px,2.2vw,24px); line-height: 1.45; }
+.hero a { display: inline-block; margin-top: 10px; color: inherit; font-weight: 750; }
+.recall { margin-top: 20px; padding: clamp(24px,4vw,42px); color: #f7f1e5; background: radial-gradient(circle at 85% 0,rgba(134,169,162,.24),transparent 22rem),#14383d; }
+.recall > div,.meta,.candidates article > div,.footer { display: flex; justify-content: space-between; gap: 14px; font: 720 9px/1.3 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.recall form { display: grid; grid-template-columns: minmax(0,1fr) 220px auto; gap: 10px; margin-top: 30px; }
+.recall label,.confirm label { display: grid; gap: 8px; }
+.recall label > span,.confirm label > span,.status span,.heading span,.anchors small,.anchors span,.candidates span,.candidates small,.time span,.confirm > span { font: 720 9px/1.3 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.recall input,.recall select,.confirm input,.confirm select,.confirm textarea { width: 100%; min-height: 48px; border: 1px solid rgba(255,255,255,.28); padding: 12px; color: inherit; background: rgba(255,255,255,.06); font: inherit; }
+.recall option { color: #14282b; }
+.recall button,.candidates button,.memories button,.confirm button { min-height: 48px; align-self: end; border: 1px solid rgba(255,255,255,.42); padding: 12px 17px; color: inherit; background: transparent; font: 720 9px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+.recall > p { max-width: 760px; margin: 20px 0 0; color: rgba(247,241,229,.72); line-height: 1.5; }
+.status { margin-top: 18px; padding: 17px 19px; color: #f7f1e5; background: #758b88; }
+.status p { margin: 7px 0 0; }
+.section { padding: clamp(54px,8vw,88px) 0 0; }
+.heading { display: flex; justify-content: space-between; gap: 28px; align-items: end; padding-bottom: 20px; border-bottom: 1px solid rgba(18,49,52,.18); }
+.heading h2 { max-width: 760px; margin: 7px 0 0; font-size: clamp(38px,6vw,68px); line-height: .94; letter-spacing: -.052em; }
+.heading p { max-width: 390px; margin: 0; line-height: 1.5; }
+.anchors { border-bottom: 1px solid rgba(18,49,52,.18); }
+.anchors > a { display: grid; grid-template-columns: 150px 190px minmax(0,1fr) auto; gap: 18px; align-items: center; padding: 22px 4px; border-bottom: 1px solid rgba(18,49,52,.14); color: inherit; text-decoration: none; }
+.anchors > a:last-child { border-bottom: 0; }
+.anchors h3 { margin: 0; font-size: clamp(22px,3vw,34px); line-height: 1.06; letter-spacing: -.035em; }
+.anchors strong { font-size: 14px; }
+.anchors p { margin: 5px 0 0; color: #657574; }
+.candidates { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin-top: 22px; }
+.candidates article { display: grid; align-content: start; min-height: 280px; padding: 20px; border-top: 4px solid #d26a47; background: rgba(221,224,214,.58); }
+.candidates h3 { margin: 32px 0 9px; font-size: 28px; letter-spacing: -.035em; }
+.candidates p { line-height: 1.5; }
+.candidates small { margin-top: auto; padding-top: 20px; color: #657574; }
+.candidates button { margin-top: 14px; border-color: rgba(18,49,52,.36); color: #18383b; }
+.confirm { margin-top: 26px; display: grid; gap: 14px; padding: clamp(26px,5vw,54px); color: #f7f1e5; background: #18383b; }
+.confirm h2 { margin: 0; font-size: clamp(40px,6vw,70px); line-height: .94; letter-spacing: -.05em; }
+.confirm > p { max-width: 760px; line-height: 1.5; }
+.confirm textarea { min-height: 130px; resize: vertical; }
+.confirm > div { display: flex; gap: 10px; margin-top: 8px; }
+.memories { border-bottom: 1px solid rgba(18,49,52,.18); }
+.memories > article { display: grid; grid-template-columns: 70px minmax(0,1fr); gap: 18px; padding: 28px 0; border-bottom: 1px solid rgba(18,49,52,.16); }
+.memoryIndex { color: #91a09f; font: 720 12px/1 var(--mono); }
+.memories h3 { margin: 16px 0 8px; font-size: clamp(27px,4vw,46px); letter-spacing: -.04em; }
+.memories p { max-width: 850px; line-height: 1.55; }
+.memories aside { width: fit-content; margin: 14px 0; padding: 9px 11px; background: #efe0bd; font: 720 9px/1.3 var(--mono); text-transform: uppercase; }
+.memories details { margin-top: 18px; padding: 14px 0; border-top: 1px solid rgba(18,49,52,.14); }
+.memories summary { cursor: pointer; font-weight: 760; }
+.memories button { border-color: rgba(18,49,52,.35); color: #18383b; }
+.time { display: grid; grid-template-columns: 1.1fr 1fr; margin-top: 22px; border: 1px solid rgba(18,49,52,.18); }
+.time a { display: block; color: inherit; text-decoration: none; }
+.time > a { padding: 30px; color: #f7f1e5; background: #18383b; }
+.time > a h3 { margin: 30px 0 12px; font-size: clamp(34px,5vw,58px); letter-spacing: -.045em; }
+.time > div { padding: 8px 22px; }
+.time > div a { padding: 18px 0; border-bottom: 1px solid rgba(18,49,52,.16); }
+.time strong { display: block; margin-top: 8px; font-size: 21px; }
+.empty { width: 100%; margin-top: 20px; padding: 28px; border: 1px dashed rgba(18,49,52,.3); }
+.boundary { margin-top: 56px; padding: 26px; color: #f7f1e5; background: #18383b; }
+.boundary strong { font-size: 21px; }
+.boundary p { max-width: 850px; margin-bottom: 0; line-height: 1.5; }
+.footer { margin-top: 32px; padding-top: 18px; border-top: 1px solid rgba(18,49,52,.18); }
+.canvas button:disabled,.canvas input:disabled,.canvas select:disabled,.canvas textarea:disabled { cursor: not-allowed; opacity: .5; }
+
+@media (max-width: 760px) {
+  .canvas { padding-inline: 11px; }
+  .recall form,.candidates,.time { grid-template-columns: 1fr; }
+  .heading { display: grid; }
+  .anchors > a { grid-template-columns: 1fr; gap: 7px; }
+  .confirm > div { flex-direction: column; }
+  .memories > article { grid-template-columns: 38px minmax(0,1fr); gap: 10px; }
+  .footer { display: grid; }
+}

@@ -28,6 +28,8 @@ import { createJourneyPracticeDatabaseReadinessProbe } from "./journey-practice-
 import { journeyPracticeEnabledForRuntime } from "./journey-practice-runtime";
 import { createPeriodicReviewsDatabaseReadinessProbe } from "./periodic-reviews-database-readiness";
 import { periodicReviewsEnabledForRuntime } from "./periodic-reviews-runtime";
+import { createMemoryDatabaseReadinessProbe } from "./memory-database-readiness";
+import { memoryEnabledForRuntime } from "./memory-runtime";
 import { privateCorsPolicyFromEnv } from "./private-cors";
 import { createPrivateApiRuntimeDependencies } from "./private-api-runtime";
 import { resolveRuntimeProvenance } from "./runtime-provenance";
@@ -46,6 +48,7 @@ async function main() {
   const journeyPracticeEnabled = journeyPracticeEnabledForRuntime(process.env, provenance);
   const aiRetrievalEnabled = aiRetrievalEnabledForRuntime(process.env, provenance);
   const periodicReviewsEnabled = periodicReviewsEnabledForRuntime(process.env, provenance);
+  const memoryEnabled = memoryEnabledForRuntime(process.env, provenance);
   // The database transport contract, including which certificate authority is trusted, is
   // owned by the reviewed runtime configuration rather than assembled here.
   const databaseConfiguration = databasePoolConfigurationFromEnv(process.env);
@@ -67,6 +70,7 @@ async function main() {
     ...(journeyPracticeEnabled ? [createJourneyPracticeDatabaseReadinessProbe(pool!)] : []),
     ...(aiRetrievalEnabled ? [createAiRetrievalDatabaseReadinessProbe(pool!)] : []),
     ...(periodicReviewsEnabled ? [createPeriodicReviewsDatabaseReadinessProbe(pool!)] : []),
+    ...(memoryEnabled ? [createMemoryDatabaseReadinessProbe(pool!)] : []),
   );
 
   const privateApi = privateApiEnabled
@@ -78,6 +82,7 @@ async function main() {
         journeyPracticeEnabled,
         aiRetrievalEnabled,
         periodicReviewsEnabled,
+        memoryEnabled,
       })
     : undefined;
   const privateCors = privateApiEnabled ? privateCorsPolicyFromEnv(process.env) : undefined;

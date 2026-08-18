@@ -71,3 +71,11 @@ export const forbiddenJourneyPracticeApplicationTablePrivileges = ["UPDATE", "DE
 export const periodicReviewTable = "periodic_review" as const;
 export const requiredPeriodicReviewApplicationTablePrivileges = ["SELECT", "INSERT", "UPDATE"] as const;
 export const forbiddenPeriodicReviewApplicationTablePrivileges = ["DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"] as const;
+
+/**
+ * Memory revisions use INSERT + supersession UPDATE. Source capabilities remain
+ * independently readable and Memory never receives destructive table authority.
+ */
+export const memoryItemTable = "memory_item" as const;
+export const requiredMemoryApplicationTablePrivileges = ["SELECT", "INSERT", "UPDATE"] as const;
+export const forbiddenMemoryApplicationTablePrivileges = ["DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"] as const;

@@ -1,11 +1,14 @@
-import { RealDataOnlySurface } from "../../components/real-data-only-surface";
+import { LifeOsAuthGate } from "../../components/life-os-auth-gate";
+import { LiveMemory } from "../../components/live-memory";
 
 export default function MemoryPage() {
   return (
-    <RealDataOnlySurface
+    <LifeOsAuthGate
       area="Memory"
-      title="Memory will show only trusted persisted context."
-      description="This area is not backed by a canonical Memory read model yet, so Life OS will not present sample memories, invented context, or placeholder personal history."
-    />
+      title="Sign in before Life OS can retrieve your private Memory."
+      description="Memory reads only RLS-scoped current owners, explicit retained reflections, and review compression. It never treats recent text as automatic truth."
+    >
+      <LiveMemory />
+    </LifeOsAuthGate>
   );
 }
