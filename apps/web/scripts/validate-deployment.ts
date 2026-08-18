@@ -9,6 +9,7 @@ try {
     status: "web_deployment_configuration_ready",
     mode: configuration.mode,
     directionEnabled: configuration.directionEnabled,
+    journeyEnabled: configuration.journeyEnabled,
   }));
 } catch (error) {
   const configurationError = error instanceof WebDeploymentConfigurationError ? error : undefined;

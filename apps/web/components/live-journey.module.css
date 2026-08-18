@@ -1,0 +1,472 @@
+.page {
+  min-height: 100vh;
+  padding: 28px 24px 120px;
+}
+
+.canvas {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+}
+
+.hero {
+  margin-top: 58px;
+  display: grid;
+  gap: 16px;
+  max-width: 900px;
+}
+
+.hero h1 {
+  margin: 0;
+  max-width: 900px;
+  font-size: clamp(2.8rem, 8vw, 6.6rem);
+  line-height: 0.92;
+  letter-spacing: -0.06em;
+}
+
+.hero p {
+  margin: 0;
+  max-width: 720px;
+  font-size: clamp(1rem, 2vw, 1.22rem);
+  line-height: 1.65;
+  opacity: 0.72;
+}
+
+.heroMeta,
+.instrumentTop,
+.sectionHead,
+.sessionRow,
+.historyList article > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.heroMeta {
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(24, 24, 20, 0.16);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.62;
+}
+
+.sessionRow {
+  margin-top: 34px;
+  min-height: 54px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(24, 24, 20, 0.14);
+  border-bottom: 1px solid rgba(24, 24, 20, 0.14);
+  font-size: 0.78rem;
+}
+
+.sessionRow > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  opacity: 0.72;
+}
+
+.sessionRow i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #5d765f;
+}
+
+.sessionRow div,
+.finalActions {
+  display: flex;
+  gap: 8px;
+}
+
+.sessionRow button,
+.finalActions button,
+.reviewButton {
+  min-height: 44px;
+  border: 1px solid rgba(24, 24, 20, 0.28);
+  background: transparent;
+  padding: 0 14px;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sessionRow button:disabled,
+.finalActions button:disabled,
+.reviewButton:disabled {
+  cursor: default;
+  opacity: 0.42;
+}
+
+.currentInstrument {
+  margin-top: 38px;
+  min-height: 290px;
+  padding: clamp(22px, 5vw, 42px);
+  border-radius: 28px;
+  background: #12262b;
+  color: #f3efe5;
+  box-shadow: 0 18px 46px rgba(18, 38, 43, 0.13);
+}
+
+.instrumentTop,
+.capabilityLabel,
+.sectionHead span,
+.finalReview > span,
+.scopeNote > span {
+  font-size: 0.7rem;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.instrumentTop {
+  opacity: 0.66;
+}
+
+.capabilityLabel {
+  margin-top: 48px;
+  color: #e77c42;
+}
+
+.currentInstrument h2 {
+  margin: 10px 0 0;
+  max-width: 850px;
+  font-size: clamp(2.4rem, 7vw, 5.3rem);
+  line-height: 0.95;
+  letter-spacing: -0.05em;
+}
+
+.evidenceBoundary {
+  margin-top: 44px;
+  padding-top: 18px;
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 8px 24px;
+  border-top: 1px solid rgba(243, 239, 229, 0.18);
+}
+
+.evidenceBoundary span {
+  grid-row: span 2;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  opacity: 0.55;
+}
+
+.evidenceBoundary strong {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.evidenceBoundary p {
+  margin: 0;
+  max-width: 670px;
+  line-height: 1.55;
+  opacity: 0.64;
+}
+
+.emptyInstrument {
+  min-height: 190px;
+  display: grid;
+  align-content: center;
+  gap: 12px;
+}
+
+.emptyInstrument strong {
+  font-size: clamp(1.65rem, 4vw, 2.8rem);
+  letter-spacing: -0.035em;
+}
+
+.emptyInstrument p {
+  margin: 0;
+  max-width: 640px;
+  line-height: 1.6;
+  opacity: 0.66;
+}
+
+.editor,
+.history {
+  margin-top: 56px;
+  padding-top: 28px;
+  border-top: 1px solid rgba(24, 24, 20, 0.18);
+}
+
+.sectionHead {
+  align-items: flex-end;
+}
+
+.sectionHead h2 {
+  margin: 6px 0 0;
+  font-size: clamp(1.7rem, 4vw, 2.6rem);
+  letter-spacing: -0.035em;
+}
+
+.sectionHead small {
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+.editor > p {
+  margin: 14px 0 0;
+  max-width: 690px;
+  line-height: 1.65;
+  opacity: 0.7;
+}
+
+.editor form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 28px;
+}
+
+.editor form > label:not(.acknowledgement) {
+  display: grid;
+  gap: 9px;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+}
+
+.editor label input[type="text"],
+.editor form > label:not(.acknowledgement) input {
+  width: 100%;
+  min-height: 54px;
+  border: 1px solid rgba(24, 24, 20, 0.24);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.25);
+  padding: 0 14px;
+  color: inherit;
+  font: inherit;
+  font-size: 1rem;
+  outline: none;
+}
+
+.editor form > label:not(.acknowledgement) input:focus {
+  border-color: rgba(24, 24, 20, 0.65);
+}
+
+.editor form > label:not(.acknowledgement) > span {
+  justify-self: end;
+  font-size: 0.68rem;
+  opacity: 0.48;
+}
+
+.acknowledgement {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid rgba(24, 24, 20, 0.18);
+  line-height: 1.55;
+}
+
+.acknowledgement input {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+}
+
+.acknowledgement strong {
+  font-weight: 650;
+}
+
+.reviewButton {
+  grid-column: 1 / -1;
+  justify-self: start;
+  min-height: 48px;
+  padding: 0 20px;
+  background: #181814;
+  color: #f1eee5;
+  border-color: #181814;
+}
+
+.finalReview {
+  margin-top: 24px;
+  padding: 22px;
+  border: 1px solid rgba(24, 24, 20, 0.24);
+  background: rgba(255, 255, 255, 0.34);
+}
+
+.finalReview > span {
+  opacity: 0.58;
+}
+
+.finalReview dl {
+  margin: 22px 0;
+  display: grid;
+  gap: 14px;
+}
+
+.finalReview dl div {
+  display: grid;
+  grid-template-columns: 145px minmax(0, 1fr);
+  gap: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(24, 24, 20, 0.13);
+}
+
+.finalReview dt {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.55;
+}
+
+.finalReview dd {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.finalReview p,
+.message,
+.historyEmpty,
+.scopeNote p {
+  line-height: 1.6;
+}
+
+.finalActions {
+  margin-top: 18px;
+  justify-content: flex-end;
+}
+
+.finalActions button:last-child {
+  background: #181814;
+  color: #f1eee5;
+  border-color: #181814;
+}
+
+.message {
+  margin: 18px 0 0;
+  padding: 12px 0;
+  font-size: 0.88rem;
+  opacity: 0.78;
+}
+
+.historyList {
+  margin-top: 24px;
+  display: grid;
+  gap: 0;
+}
+
+.historyList article,
+.historyEmpty {
+  padding: 20px 0;
+  border-bottom: 1px solid rgba(24, 24, 20, 0.14);
+}
+
+.historyList article > div {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.52;
+}
+
+.historyList h3 {
+  margin: 14px 0 4px;
+  font-size: 1.2rem;
+}
+
+.historyList p {
+  margin: 0;
+  opacity: 0.68;
+}
+
+.historyEmpty {
+  opacity: 0.6;
+}
+
+.scopeNote {
+  margin-top: 56px;
+  padding: 20px 0;
+  border-top: 1px solid rgba(24, 24, 20, 0.18);
+  border-bottom: 1px solid rgba(24, 24, 20, 0.18);
+}
+
+.scopeNote p {
+  margin: 10px 0 0;
+  max-width: 780px;
+  opacity: 0.66;
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding: 20px 18px 112px;
+  }
+
+  .hero {
+    margin-top: 44px;
+  }
+
+  .hero h1 {
+    font-size: clamp(2.9rem, 16vw, 4.8rem);
+  }
+
+  .heroMeta,
+  .sessionRow,
+  .sectionHead,
+  .historyList article > div {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .sessionRow div {
+    width: 100%;
+  }
+
+  .sessionRow button {
+    flex: 1;
+  }
+
+  .currentInstrument {
+    margin-top: 28px;
+    min-height: 270px;
+    border-radius: 22px;
+  }
+
+  .capabilityLabel {
+    margin-top: 38px;
+  }
+
+  .evidenceBoundary {
+    grid-template-columns: 1fr;
+  }
+
+  .evidenceBoundary span {
+    grid-row: auto;
+  }
+
+  .editor,
+  .history {
+    margin-top: 44px;
+  }
+
+  .editor form {
+    grid-template-columns: 1fr;
+  }
+
+  .acknowledgement,
+  .reviewButton {
+    grid-column: auto;
+  }
+
+  .reviewButton {
+    width: 100%;
+  }
+
+  .finalReview dl div {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .finalActions {
+    flex-direction: column;
+  }
+
+  .finalActions button {
+    width: 100%;
+  }
+}

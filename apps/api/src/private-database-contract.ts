@@ -21,3 +21,11 @@ export const forbiddenApplicationTablePrivileges = ["TRUNCATE", "REFERENCES", "T
 export const directionDecisionTable = "direction_decision" as const;
 export const requiredDirectionApplicationTablePrivileges = ["SELECT", "INSERT", "UPDATE"] as const;
 export const forbiddenDirectionApplicationTablePrivileges = ["DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"] as const;
+
+/**
+ * Journey activation is also decision history: current rows may be superseded, but the
+ * application cannot delete historical Journey decisions.
+ */
+export const journeyDecisionTable = "journey_decision" as const;
+export const requiredJourneyApplicationTablePrivileges = ["SELECT", "INSERT", "UPDATE"] as const;
+export const forbiddenJourneyApplicationTablePrivileges = ["DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"] as const;

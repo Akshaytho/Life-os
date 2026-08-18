@@ -142,10 +142,12 @@ export function LiveToday() {
             </div>
             <div className={styles.clockBlock}><span>LOCAL NOW</span><strong>{timeLabel(now.toISOString())}</strong></div>
           </div>
-          <p className={styles.orientation}>Today V1 shows only durable Calendar facts. Journey, Memory, direction, focus, and AI guidance stay absent until their own canonical read contracts exist.</p>
+          <p className={styles.orientation}>Today V1 composes durable Calendar facts only. Direction and Journey have guarded canonical routes when their reviewed runtime flags are enabled; Today does not compose them yet. Memory, focus, and AI guidance remain absent until reviewed read models exist.</p>
           <nav className={styles.navRow} aria-label="Live Life OS navigation">
             <span>Today / canonical</span>
             <Link href="/calendar">Calendar</Link>
+            <Link href="/you">Direction</Link>
+            <Link href="/journey">Journey</Link>
             <Link href="/capture">Capture / Review</Link>
           </nav>
         </section>
@@ -206,8 +208,8 @@ export function LiveToday() {
 
             <aside className={styles.missingDomains}>
               <span>INTENTIONALLY NOT SHOWN</span>
-              <strong>No fake direction, focus, Journey progress, Memory, or AI guidance.</strong>
-              <p>Those areas need their own persisted read models before the live Today page can claim them as current state. When a real read model is unavailable, Life OS stays explicit and empty rather than substituting sample state.</p>
+              <strong>No invented focus, Journey progress, Memory, or AI guidance.</strong>
+              <p>Direction and Journey remain explicit user decisions on their dedicated surfaces and are not yet composed here. The remaining areas need their own persisted read models before Today can claim them as current state; Life OS stays explicit and empty rather than substituting sample state.</p>
             </aside>
           </>
         )}

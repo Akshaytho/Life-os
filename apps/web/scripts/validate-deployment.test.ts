@@ -13,6 +13,7 @@ function live(overrides: WebDeploymentEnvironment = {}): WebDeploymentEnvironmen
     NEXT_PUBLIC_SUPABASE_URL: "https://project-ref.supabase.co",
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_abc123_SAFE-BROWSER_key",
     NEXT_PUBLIC_LIFE_OS_DIRECTION_ENABLED: "false",
+    NEXT_PUBLIC_LIFE_OS_JOURNEY_ENABLED: "false",
     ...overrides,
   };
 }
@@ -21,6 +22,7 @@ test("prototype mode remains the default for local/sample development", () => {
   assert.deepEqual(webDeploymentConfigurationFromEnv({}), {
     mode: "prototype",
     directionEnabled: false,
+    journeyEnabled: false,
   });
 });
 
@@ -81,6 +83,18 @@ test("Direction browser exposure remains an exact separate boolean flag", () => 
   assert.throws(
     () => webDeploymentConfigurationFromEnv(live({ NEXT_PUBLIC_LIFE_OS_DIRECTION_ENABLED: "yes" })),
     (error: unknown) => error instanceof WebDeploymentConfigurationError && error.code === "DIRECTION_FLAG_INVALID",
+  );
+});
+
+test("Journey browser exposure is an independent exact boolean flag", () => {
+  assert.equal(webDeploymentConfigurationFromEnv(live()).journeyEnabled, false);
+  assert.equal(
+    webDeploymentConfigurationFromEnv(live({ NEXT_PUBLIC_LIFE_OS_JOURNEY_ENABLED: " TRUE " })).journeyEnabled,
+    true,
+  );
+  assert.throws(
+    () => webDeploymentConfigurationFromEnv(live({ NEXT_PUBLIC_LIFE_OS_JOURNEY_ENABLED: "yes" })),
+    (error: unknown) => error instanceof WebDeploymentConfigurationError && error.code === "JOURNEY_FLAG_INVALID",
   );
 });
 
