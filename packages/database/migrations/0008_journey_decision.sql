@@ -36,6 +36,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS journey_decision_one_active_per_user_idx
 CREATE INDEX IF NOT EXISTS journey_decision_user_history_idx
   ON journey_decision (user_id, decided_at DESC, journey_id);
 
+CREATE INDEX IF NOT EXISTS journey_decision_supersession_fk_idx
+  ON journey_decision (supersedes_journey_id, user_id)
+  WHERE supersedes_journey_id IS NOT NULL;
+
 ALTER TABLE journey_decision ENABLE ROW LEVEL SECURITY;
 ALTER TABLE journey_decision FORCE ROW LEVEL SECURITY;
 
