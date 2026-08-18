@@ -80,7 +80,7 @@ after(async () => {
 
 test("migration apply keeps the ledger admin-only and repairs API-role drift even with zero pending migrations", async () => {
   const first = await applyDatabaseMigrations(migrationPool);
-  assert.equal(first.appliedNow.length, 8);
+  assert.equal(first.appliedNow.length, 9);
   assert.deepEqual(first.pending, []);
 
   assert.deepEqual(await ledgerSecurityState(), {
