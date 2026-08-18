@@ -120,8 +120,7 @@ class PostgresMemoryTransaction implements MemoryTransaction {
           AND session.user_id = completion.user_id
         WHERE completion.user_id = $1 AND completion.practice_completion_id = $2
           AND completion.retained_learning_candidate IS NOT NULL
-          AND length(btrim(completion.retained_learning_candidate)) > 0
-        FOR UPDATE OF completion`,
+          AND length(btrim(completion.retained_learning_candidate)) > 0`,
       [userId, sourceEntityId],
     );
     const row = result.rows[0];
