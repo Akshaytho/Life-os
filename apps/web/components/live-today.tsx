@@ -6,6 +6,7 @@ import type { CanonicalCalendarItem, CanonicalCalendarWindow } from "../../../pa
 import { getCanonicalCalendar, LifeOsApiError } from "../lib/life-os-api";
 import { todayRange } from "../lib/today-time";
 import liveStyles from "./live-capture-routing.module.css";
+import { LiveDailyReturn } from "./live-daily-return";
 import { useLifeOsAuth } from "./life-os-auth-provider";
 import styles from "./live-today.module.css";
 
@@ -77,7 +78,7 @@ function safeMessage(error: unknown) {
   return "Life OS could not load Today. Provider details were kept private.";
 }
 
-export function LiveToday() {
+export function LiveToday({ dailyReturnEnabled = false }: { dailyReturnEnabled?: boolean }) {
   const { session, authBusy, signOut } = useLifeOsAuth();
   const [calendar, setCalendar] = useState<CanonicalCalendarWindow>();
   const [readBusy, setReadBusy] = useState(false);
@@ -142,7 +143,7 @@ export function LiveToday() {
             </div>
             <div className={styles.clockBlock}><span>LOCAL NOW</span><strong>{timeLabel(now.toISOString())}</strong></div>
           </div>
-          <p className={styles.orientation}>Today V1 shows only durable Calendar facts. Journey, Memory, direction, focus, and AI guidance stay absent until their own canonical read contracts exist.</p>
+          <p className={styles.orientation}>Today V1 shows durable Calendar facts and, when separately enabled, exact Daily Return reflections. Direction, Journey, Memory, focus, and AI guidance are not composed here yet.</p>
           <nav className={styles.navRow} aria-label="Live Life OS navigation">
             <span>Today / canonical</span>
             <Link href="/calendar">Calendar</Link>
@@ -153,7 +154,7 @@ export function LiveToday() {
         {session && (
           <>
             <section className={liveStyles.sessionRow} aria-label="Authenticated Today session">
-              <span className={liveStyles.sessionState}><i />Authenticated user session · read only</span>
+              <span className={liveStyles.sessionState}><i />Authenticated user session · {dailyReturnEnabled ? "Calendar read + explicit reflection writes" : "read only"}</span>
               <div className={styles.sessionActions}>
                 <button disabled={readBusy} onClick={() => void loadToday()} type="button">{readBusy ? "Reading…" : "Refresh"}</button>
                 <button disabled={authBusy || readBusy} onClick={() => void signOut()} type="button">Sign out</button>
@@ -204,17 +205,25 @@ export function LiveToday() {
               </div>
             </section>
 
+            {dailyReturnEnabled && (
+              <LiveDailyReturn
+                accessToken={session.access_token}
+                localDate={dayKey}
+                timeZone={timeZone}
+              />
+            )}
+
             <aside className={styles.missingDomains}>
               <span>INTENTIONALLY NOT SHOWN</span>
-              <strong>No fake direction, focus, Journey progress, Memory, or AI guidance.</strong>
-              <p>Those areas need their own persisted read models before the live Today page can claim them as current state. When a real read model is unavailable, Life OS stays explicit and empty rather than substituting sample state.</p>
+              <strong>No invented direction, focus, Journey progress, Memory, or AI guidance.</strong>
+              <p>Daily Return appears only from its own persisted REFLECTION model. The remaining areas need their own reviewed composition before Today can claim them as current state; Life OS stays explicit and empty rather than substituting sample state.</p>
             </aside>
           </>
         )}
 
         <footer className={styles.footer}>
           <span>SUPABASE SESSION · CANONICAL CALENDAR · POSTGRESQL RLS</span>
-          <span>READ ONLY · NO HIDDEN WRITES</span>
+          <span>{dailyReturnEnabled ? "EXPLICIT REFLECTION WRITES · NO HIDDEN ROUTING" : "READ ONLY · NO HIDDEN WRITES"}</span>
         </footer>
       </main>
     </div>
