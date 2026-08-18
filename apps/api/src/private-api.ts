@@ -8,6 +8,7 @@ import { handlePrivateDailyReturnRequest, type PrivateDailyReturnApiDependencies
 import { handlePrivateDirectionRequest, type PrivateDirectionApiDependencies } from "./private-direction-api";
 import { handlePrivateDriftRequest, type PrivateDriftApiDependencies } from "./private-drift-api";
 import { handlePrivateJourneyPracticeRequest, type PrivateJourneyPracticeApiDependencies } from "./private-journey-practice-api";
+import { handlePrivatePeriodicReviewsRequest, type PrivatePeriodicReviewsApiDependencies } from "./private-periodic-reviews-api";
 import { handlePrivateProposalActionRequest, type PrivateProposalActionsApiDependencies } from "./private-proposal-actions-api";
 import { handlePrivateReadRequest, type PrivateReadApiDependencies } from "./private-read-api";
 
@@ -22,6 +23,7 @@ export type PrivateApiDependencies =
   & PrivateDriftApiDependencies
   & PrivateJourneyPracticeApiDependencies
   & PrivateAiRetrievalApiDependencies
+  & PrivatePeriodicReviewsApiDependencies
   & {
     directionEnabled?: boolean;
     dailyReturnEnabled?: boolean;
@@ -29,6 +31,7 @@ export type PrivateApiDependencies =
     driftEnabled?: boolean;
     journeyPracticeEnabled?: boolean;
     aiRetrievalEnabled?: boolean;
+    periodicReviewsEnabled?: boolean;
   };
 
 function jsonNotFound(response: ServerResponse) {
@@ -50,7 +53,7 @@ function pathOf(request: IncomingMessage): string {
   }
 }
 
-type RouteFamily = "CAPTURE" | "READ" | "CALENDAR_CONFIRMATION" | "PROPOSAL_ACTION" | "DIRECTION" | "DAILY_RETURN" | "BRAIN_DUMP_NOT_NOW" | "DRIFT" | "JOURNEY_PRACTICE" | "AI_RETRIEVAL";
+type RouteFamily = "CAPTURE" | "READ" | "CALENDAR_CONFIRMATION" | "PROPOSAL_ACTION" | "DIRECTION" | "DAILY_RETURN" | "BRAIN_DUMP_NOT_NOW" | "DRIFT" | "JOURNEY_PRACTICE" | "AI_RETRIEVAL" | "PERIODIC_REVIEWS";
 
 function routeFamily(
   path: string,
@@ -60,6 +63,7 @@ function routeFamily(
   driftEnabled: boolean,
   journeyPracticeEnabled: boolean,
   aiRetrievalEnabled: boolean,
+  periodicReviewsEnabled: boolean,
 ): RouteFamily | undefined {
   if (path === "/api/v1/captures") return "CAPTURE";
   if (path === "/api/v1/calendar") return "READ";
@@ -90,6 +94,7 @@ function routeFamily(
     || /^\/api\/v1\/journey\/practice\/[^/]+\/complete$/.test(path)
   )) return "JOURNEY_PRACTICE";
   if (aiRetrievalEnabled && path === "/api/v1/ask") return "AI_RETRIEVAL";
+  if (periodicReviewsEnabled && path === "/api/v1/reviews/period") return "PERIODIC_REVIEWS";
   return undefined;
 }
 
@@ -106,6 +111,7 @@ export async function handlePrivateApiRequest(
     dependencies.driftEnabled === true,
     dependencies.journeyPracticeEnabled === true,
     dependencies.aiRetrievalEnabled === true,
+    dependencies.periodicReviewsEnabled === true,
   )) {
     case "CAPTURE":
       await handlePrivateCaptureRequest(request, response, dependencies);
@@ -136,6 +142,9 @@ export async function handlePrivateApiRequest(
       return;
     case "AI_RETRIEVAL":
       await handlePrivateAiRetrievalRequest(request, response, dependencies);
+      return;
+    case "PERIODIC_REVIEWS":
+      await handlePrivatePeriodicReviewsRequest(request, response, dependencies);
       return;
     default:
       jsonNotFound(response);

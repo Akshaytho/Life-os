@@ -21,7 +21,8 @@ export type WebWriteIdempotencyScope =
   | "DRIFT_RETURN"
   | "JOURNEY_ACTIVATE"
   | "JOURNEY_PRACTICE_START"
-  | "JOURNEY_PRACTICE_COMPLETE";
+  | "JOURNEY_PRACTICE_COMPLETE"
+  | "PERIODIC_REVIEW_SUBMIT";
 
 const keyPattern = /^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$/;
 

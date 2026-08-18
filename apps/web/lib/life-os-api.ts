@@ -38,6 +38,12 @@ import type {
 import type { InteractionChangeTrace } from "../../../packages/contracts/interaction-change-ledger";
 import type { ProposalState } from "../../../packages/contracts/input-routing";
 import type { CaptureProposalReview } from "../../../packages/contracts/proposal-review";
+import type {
+  GetPeriodicReviewOverviewCommand,
+  PeriodicReviewOverview,
+  PeriodicReviewReceipt,
+  SubmitPeriodicReviewCommand,
+} from "../../../packages/contracts/periodic-reviews";
 
 export class LifeOsApiError extends Error {
   constructor(
@@ -153,6 +159,40 @@ export function askLifeOs(
   return privateRequest<AskLifeOsResponse>(accessToken, "/api/v1/ask", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(command),
+  });
+}
+
+export function getPeriodicReviewOverview(
+  accessToken: string,
+  command: GetPeriodicReviewOverviewCommand,
+): Promise<PeriodicReviewOverview> {
+  const params = new URLSearchParams({
+    kind: command.kind,
+    periodStart: command.periodStart,
+    periodEnd: command.periodEnd,
+    timeZone: command.timeZone,
+    calendarFrom: command.calendarFrom,
+    calendarTo: command.calendarTo,
+  });
+  return privateRequest<PeriodicReviewOverview>(
+    accessToken,
+    `/api/v1/reviews/period?${params.toString()}`,
+  );
+}
+
+export type PeriodicReviewTransportReceipt = Omit<PeriodicReviewReceipt, "status"> & {
+  status: "recorded" | "replayed";
+};
+
+export function submitPeriodicReview(
+  accessToken: string,
+  command: SubmitPeriodicReviewCommand,
+  idempotencyKey: string,
+): Promise<PeriodicReviewTransportReceipt> {
+  return privateRequest<PeriodicReviewTransportReceipt>(accessToken, "/api/v1/reviews/period", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
     body: JSON.stringify(command),
   });
 }

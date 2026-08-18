@@ -148,6 +148,7 @@ export function LiveToday({ dailyReturnEnabled = false }: { dailyReturnEnabled?:
             <span>Today / canonical</span>
             <Link href="/calendar">Calendar</Link>
             <Link href="/capture">Capture / Review</Link>
+            <Link href="/reviews">Week / Month Review</Link>
           </nav>
         </section>
 

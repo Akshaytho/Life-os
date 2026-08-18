@@ -63,3 +63,11 @@ export const journeyPracticeSessionTable = "journey_practice_session" as const;
 export const journeyPracticeCompletionTable = "journey_practice_completion" as const;
 export const requiredJourneyPracticeApplicationTablePrivileges = ["SELECT", "INSERT"] as const;
 export const forbiddenJourneyPracticeApplicationTablePrivileges = ["UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"] as const;
+
+/**
+ * Periodic review revisions use INSERT + supersession UPDATE. Source domains remain
+ * read-only through their existing capabilities; review history is never deleted.
+ */
+export const periodicReviewTable = "periodic_review" as const;
+export const requiredPeriodicReviewApplicationTablePrivileges = ["SELECT", "INSERT", "UPDATE"] as const;
+export const forbiddenPeriodicReviewApplicationTablePrivileges = ["DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"] as const;
