@@ -1,5 +1,14 @@
 import type { CanonicalCalendarWindow } from "../../../packages/contracts/canonical-calendar";
 import type {
+  BrainDumpClassificationReceipt,
+  BrainDumpOverview,
+  ConfirmBrainDumpClassificationCommand,
+  NotNowItemReceipt,
+  NotNowOverview,
+  ParkNotNowItemCommand,
+  ReviewNotNowItemCommand,
+} from "../../../packages/contracts/brain-dump-not-now";
+import type {
   DirectionDecisionOverview,
   SetCurrentDirectionCommand,
 } from "../../../packages/contracts/direction";
@@ -87,6 +96,16 @@ export interface SubmitDailyReturnReviewReceipt {
   recordedAt: string;
   supersededReviewId?: string;
 }
+
+export type BrainDumpClassificationTransportReceipt = Omit<BrainDumpClassificationReceipt, "status"> & {
+  status: "recorded" | "replayed";
+  decisionStatus: "CURRENT";
+};
+
+export type NotNowItemTransportReceipt = Omit<NotNowItemReceipt, "status"> & {
+  status: "recorded" | "replayed";
+  decisionStatus: "CURRENT";
+};
 
 function requiredPublicValue(value: string | undefined, name: string): string {
   const normalized = value?.trim();
@@ -183,6 +202,69 @@ export function getCaptureReview(accessToken: string, captureId: string): Promis
   return privateRequest<CaptureProposalReview>(
     accessToken,
     `/api/v1/captures/${encodeURIComponent(captureId)}/review`,
+  );
+}
+
+export function getBrainDumpOverview(accessToken: string): Promise<BrainDumpOverview> {
+  return privateRequest<BrainDumpOverview>(accessToken, "/api/v1/brain-dump");
+}
+
+export function confirmBrainDumpClassification(
+  accessToken: string,
+  captureId: string,
+  command: ConfirmBrainDumpClassificationCommand,
+  idempotencyKey: string,
+): Promise<BrainDumpClassificationTransportReceipt> {
+  return privateRequest<BrainDumpClassificationTransportReceipt>(
+    accessToken,
+    `/api/v1/brain-dump/${encodeURIComponent(captureId)}/classification`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify(command),
+    },
+  );
+}
+
+export function getNotNowOverview(accessToken: string): Promise<NotNowOverview> {
+  return privateRequest<NotNowOverview>(accessToken, "/api/v1/not-now");
+}
+
+export function parkNotNowItem(
+  accessToken: string,
+  command: ParkNotNowItemCommand,
+  idempotencyKey: string,
+): Promise<NotNowItemTransportReceipt> {
+  return privateRequest<NotNowItemTransportReceipt>(accessToken, "/api/v1/not-now", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Idempotency-Key": idempotencyKey,
+    },
+    body: JSON.stringify(command),
+  });
+}
+
+export function reviewNotNowItem(
+  accessToken: string,
+  rootId: string,
+  command: ReviewNotNowItemCommand,
+  idempotencyKey: string,
+): Promise<NotNowItemTransportReceipt> {
+  return privateRequest<NotNowItemTransportReceipt>(
+    accessToken,
+    `/api/v1/not-now/${encodeURIComponent(rootId)}/review`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify(command),
+    },
   );
 }
 

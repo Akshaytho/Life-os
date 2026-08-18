@@ -49,7 +49,7 @@ export function AppNavigation() {
         <div className={styles.brand}><strong>L/O</strong><span>PRIVATE</span></div>
         <div className={styles.desktopLinks}>{navItems.map((item) => <Destination item={item} path={path} desktop key={item.label} />)}</div>
         <Link href="/capture" className={`${styles.desktopCapture} ${captureActive ? styles.captureActive : ""}`} aria-current={captureActive ? "page" : undefined}>
-          <Icon name="plus" size={22} /><span>Capture</span>
+          <Icon name="plus" size={22} /><span>Brain Dump</span>
         </Link>
       </aside>
 
@@ -57,7 +57,7 @@ export function AppNavigation() {
         <Destination item={navItems[0]} path={path} />
         <Destination item={navItems[1]} path={path} />
         <Link href="/capture" className={`${styles.mobileCapture} ${captureActive ? styles.captureActive : ""}`} aria-label="Capture" aria-current={captureActive ? "page" : undefined}>
-          <Icon name="plus" size={23} /><span>Capture</span>
+          <Icon name="plus" size={23} /><span>Brain Dump</span>
         </Link>
         <Destination item={navItems[2]} path={path} />
         <Destination item={navItems[3]} path={path} />

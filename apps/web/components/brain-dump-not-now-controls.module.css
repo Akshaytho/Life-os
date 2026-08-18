@@ -1,0 +1,119 @@
+.surface {
+  margin-top: 26px;
+  padding: clamp(20px, 4vw, 34px);
+  color: #1b2f31;
+  background: #eee8dc;
+  border: 1px solid rgba(16, 44, 47, .16);
+}
+
+.surface header,
+.classificationRow,
+.finalReview > div {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.surface header span,
+.flowHeading span,
+.finalReview > span,
+.message,
+.boundary {
+  font: 700 10px/1.2 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.surface h2 {
+  max-width: 700px;
+  margin: 7px 0 0;
+  font-size: clamp(27px, 4vw, 44px);
+  line-height: .98;
+  letter-spacing: -.035em;
+}
+
+.surface header a {
+  flex: 0 0 auto;
+  padding: 10px 12px;
+  color: inherit;
+  border: 1px solid currentColor;
+  text-decoration: none;
+  font: 700 10px/1 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  text-transform: uppercase;
+}
+
+.classificationRow {
+  align-items: end;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(16, 44, 47, .18);
+}
+
+.classificationRow label { font-weight: 750; }
+.classificationRow select { flex: 1 1 auto; min-width: 180px; }
+.classificationRow select,
+.classificationRow button,
+.parkingFlow > button,
+.finalReview button {
+  min-height: 42px;
+  border: 1px solid rgba(16, 44, 47, .5);
+  border-radius: 0;
+  padding: 10px 12px;
+  color: inherit;
+  background: transparent;
+  font: 700 10px/1.2 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  text-transform: uppercase;
+}
+
+.classificationRow button:disabled,
+.parkingFlow button:disabled,
+.finalReview button:disabled { opacity: .38; }
+
+.boundary,
+.message {
+  margin: 18px 0 0;
+  padding-top: 15px;
+  border-top: 1px solid rgba(16, 44, 47, .16);
+  line-height: 1.5;
+}
+
+.parkingFlow {
+  display: grid;
+  gap: 18px;
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(16, 44, 47, .18);
+}
+
+.flowHeading h3 { margin: 6px 0 0; font-size: clamp(24px, 3vw, 34px); line-height: 1; }
+.parkingFlow fieldset { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; border: 0; }
+.parkingFlow legend { width: 100%; margin-bottom: 5px; font-weight: 750; }
+.parkingFlow fieldset label { display: flex; align-items: center; gap: 7px; padding: 10px 12px; border: 1px solid rgba(16, 44, 47, .24); }
+.parkingFlow > button { justify-self: start; }
+
+.finalReview {
+  margin-top: 24px;
+  padding: 20px;
+  color: #f5efe4;
+  background: #1b2f31;
+}
+
+.finalReview dl { margin: 16px 0; }
+.finalReview dl div { display: grid; grid-template-columns: minmax(150px, .3fr) 1fr; gap: 14px; padding: 11px 0; border-top: 1px solid rgba(245, 239, 228, .2); }
+.finalReview dt { font-weight: 750; }
+.finalReview dd { margin: 0; }
+.finalReview > div { justify-content: flex-start; }
+.finalReview button { color: inherit; border-color: rgba(245, 239, 228, .55); }
+
+@media (max-width: 680px) {
+  .surface header,
+  .classificationRow,
+  .finalReview > div { display: grid; grid-template-columns: 1fr; }
+  .surface header a,
+  .classificationRow select,
+  .classificationRow button,
+  .parkingFlow > button,
+  .finalReview button { width: 100%; }
+  .finalReview dl div { grid-template-columns: 1fr; gap: 5px; }
+}

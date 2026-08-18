@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { handlePrivateCalendarConfirmationRequest, type PrivateCalendarConfirmationApiDependencies } from "./private-calendar-confirmation-api";
 import { handlePrivateCaptureRequest, type PrivateCaptureApiDependencies } from "./private-capture-api";
 import { appendVaryHeader } from "./private-cors";
+import { handlePrivateBrainDumpNotNowRequest, type PrivateBrainDumpNotNowApiDependencies } from "./private-brain-dump-not-now-api";
 import { handlePrivateDailyReturnRequest, type PrivateDailyReturnApiDependencies } from "./private-daily-return-api";
 import { handlePrivateDirectionRequest, type PrivateDirectionApiDependencies } from "./private-direction-api";
 import { handlePrivateProposalActionRequest, type PrivateProposalActionsApiDependencies } from "./private-proposal-actions-api";
@@ -14,7 +15,8 @@ export type PrivateApiDependencies =
   & PrivateCalendarConfirmationApiDependencies
   & PrivateDirectionApiDependencies
   & PrivateDailyReturnApiDependencies
-  & { directionEnabled?: boolean; dailyReturnEnabled?: boolean };
+  & PrivateBrainDumpNotNowApiDependencies
+  & { directionEnabled?: boolean; dailyReturnEnabled?: boolean; brainDumpNotNowEnabled?: boolean };
 
 function jsonNotFound(response: ServerResponse) {
   response.statusCode = 404;
@@ -35,12 +37,13 @@ function pathOf(request: IncomingMessage): string {
   }
 }
 
-type RouteFamily = "CAPTURE" | "READ" | "CALENDAR_CONFIRMATION" | "PROPOSAL_ACTION" | "DIRECTION" | "DAILY_RETURN";
+type RouteFamily = "CAPTURE" | "READ" | "CALENDAR_CONFIRMATION" | "PROPOSAL_ACTION" | "DIRECTION" | "DAILY_RETURN" | "BRAIN_DUMP_NOT_NOW";
 
 function routeFamily(
   path: string,
   directionEnabled: boolean,
   dailyReturnEnabled: boolean,
+  brainDumpNotNowEnabled: boolean,
 ): RouteFamily | undefined {
   if (path === "/api/v1/captures") return "CAPTURE";
   if (path === "/api/v1/calendar") return "READ";
@@ -54,6 +57,12 @@ function routeFamily(
     || path === "/api/v1/daily-return/logs"
     || path === "/api/v1/daily-return/review"
   )) return "DAILY_RETURN";
+  if (brainDumpNotNowEnabled && (
+    path === "/api/v1/brain-dump"
+    || /^\/api\/v1\/brain-dump\/[^/]+\/classification$/.test(path)
+    || path === "/api/v1/not-now"
+    || /^\/api\/v1\/not-now\/[^/]+\/review$/.test(path)
+  )) return "BRAIN_DUMP_NOT_NOW";
   return undefined;
 }
 
@@ -66,6 +75,7 @@ export async function handlePrivateApiRequest(
     pathOf(request),
     dependencies.directionEnabled === true,
     dependencies.dailyReturnEnabled === true,
+    dependencies.brainDumpNotNowEnabled === true,
   )) {
     case "CAPTURE":
       await handlePrivateCaptureRequest(request, response, dependencies);
@@ -84,6 +94,9 @@ export async function handlePrivateApiRequest(
       return;
     case "DAILY_RETURN":
       await handlePrivateDailyReturnRequest(request, response, dependencies);
+      return;
+    case "BRAIN_DUMP_NOT_NOW":
+      await handlePrivateBrainDumpNotNowRequest(request, response, dependencies);
       return;
     default:
       jsonNotFound(response);

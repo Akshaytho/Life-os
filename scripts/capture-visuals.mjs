@@ -32,8 +32,20 @@ const pages = [
     name: 'capture-real-boundary',
     path: '/capture',
     expected: [
-      'PRIVATE SESSION · CAPTURE',
-      'Sign in before Life OS can read or save private Capture.',
+      'PRIVATE SESSION · BRAIN DUMP',
+      'Sign in before Life OS can read or save your private Brain Dump.',
+    ],
+  },
+  {
+    name: 'not-now-review',
+    path: '/visual-review/not-now',
+    syntheticPrivateBoundary: true,
+    expected: [
+      'DELIBERATE PARKING LOT',
+      'Not abandoned.',
+      'Not committed.',
+      'Temporary inspiration',
+      'Researching without commitment',
     ],
   },
   {

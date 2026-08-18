@@ -3,6 +3,8 @@ import { performance } from "node:perf_hooks";
 import type { Pool } from "pg";
 import type { RuntimeProvenance } from "../../../packages/contracts/runtime-provenance";
 import { PostgresCanonicalCalendarReader } from "../../../packages/database/postgres-canonical-calendar-reader";
+import { PostgresBrainDumpNotNowReader } from "../../../packages/database/postgres-brain-dump-not-now-reader";
+import { PostgresBrainDumpNotNowUnitOfWork } from "../../../packages/database/postgres-brain-dump-not-now-unit-of-work";
 import { PostgresDirectionDecisionReader } from "../../../packages/database/postgres-direction-decision-reader";
 import { PostgresDirectionDecisionUnitOfWork } from "../../../packages/database/postgres-direction-decision-unit-of-work";
 import { PostgresDailyReturnReader } from "../../../packages/database/postgres-daily-return-reader";
@@ -13,6 +15,7 @@ import { PostgresWriteUnitOfWork } from "../../../packages/database/postgres-wri
 import type { SessionVerifier } from "../../../packages/domain/trusted-transport-auth";
 import type { CaptureInterpreter } from "../../../packages/intelligence/capture-interpreter";
 import { createCaptureInterpreterFromEnv } from "./capture-interpreter-runtime";
+import { brainDumpNotNowEnabledForRuntime } from "./brain-dump-not-now-runtime";
 import { dailyReturnEnabledForRuntime } from "./daily-return-runtime";
 import { directionEnabledForRuntime } from "./direction-runtime";
 import type { PrivateApiDependencies } from "./private-api";
@@ -28,6 +31,7 @@ export interface PrivateApiRuntimeOptions {
   monotonicNowMs?: () => number;
   directionEnabled?: boolean;
   dailyReturnEnabled?: boolean;
+  brainDumpNotNowEnabled?: boolean;
 }
 
 function isoClock(now: () => Date) {
@@ -52,6 +56,8 @@ export function createPrivateApiRuntimeDependencies(
   const clock = isoClock(now);
   const directionEnabled = options.directionEnabled ?? directionEnabledForRuntime(env, runtime);
   const dailyReturnEnabled = options.dailyReturnEnabled ?? dailyReturnEnabledForRuntime(env, runtime);
+  const brainDumpNotNowEnabled = options.brainDumpNotNowEnabled
+    ?? brainDumpNotNowEnabledForRuntime(env, runtime);
 
   return {
     sessionVerifier: options.sessionVerifier ?? createSupabaseSessionVerifierFromEnv(env),
@@ -80,6 +86,13 @@ export function createPrivateApiRuntimeDependencies(
       dailyReturnUnitOfWork: new PostgresDailyReturnUnitOfWork(pool),
       dailyReturnClock: clock,
       dailyReturnIds: { next: (prefix: string) => `${prefix}-${uuid()}` },
+    } : {}),
+    brainDumpNotNowEnabled,
+    ...(brainDumpNotNowEnabled ? {
+      brainDumpNotNowReader: new PostgresBrainDumpNotNowReader(pool),
+      brainDumpNotNowUnitOfWork: new PostgresBrainDumpNotNowUnitOfWork(pool),
+      brainDumpNotNowClock: clock,
+      brainDumpNotNowIds: { next: (prefix: string) => `${prefix}-${uuid()}` },
     } : {}),
     runtime,
     telemetry,

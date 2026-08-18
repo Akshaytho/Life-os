@@ -121,5 +121,5 @@ test("migration apply keeps the ledger admin-only and repairs API-role drift eve
   const history = await migrationPool.query<{ count: number }>(
     "SELECT count(*)::int AS count FROM lifeos_schema_migration",
   );
-  assert.equal(history.rows[0].count, 8, "hardening must not rewrite migration history");
+  assert.equal(history.rows[0].count, 9, "hardening must not rewrite migration history");
 });
