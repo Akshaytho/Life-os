@@ -57,7 +57,9 @@ test("rejects 120 oversized Journey/capability decision inputs before persistenc
         context(index),
         deps(unitOfWork),
       ),
-      (error: unknown) => error instanceof JourneyDecisionError && error.code === "INVALID_JOURNEY",
+      (error: unknown) =>
+        error instanceof JourneyDecisionError &&
+        error.code === (index % 2 === 0 ? "INVALID_NAME" : "INVALID_ACTIVE_CAPABILITY"),
       `case ${index} should fail closed`,
     );
     assert.equal(unitOfWork.runs, 0, `case ${index} must not enter the transaction`);
@@ -66,12 +68,12 @@ test("rejects 120 oversized Journey/capability decision inputs before persistenc
 
 test("rejects blank Journey fields and malformed expected-current identifiers", async () => {
   const cases = [
-    { name: "", activeCapability: "Sound Design", expectedCurrentJourneyId: null },
-    { name: "   ", activeCapability: "Sound Design", expectedCurrentJourneyId: null },
-    { name: "Travel Creator", activeCapability: "", expectedCurrentJourneyId: null },
-    { name: "Travel Creator", activeCapability: "   ", expectedCurrentJourneyId: null },
-    { name: "Travel Creator", activeCapability: "Sound Design", expectedCurrentJourneyId: " invalid id " },
-    { name: "Travel Creator", activeCapability: "Sound Design", expectedCurrentJourneyId: "!invalid" },
+    { name: "", activeCapability: "Sound Design", expectedCurrentJourneyId: null, expectedCode: "INVALID_NAME" },
+    { name: "   ", activeCapability: "Sound Design", expectedCurrentJourneyId: null, expectedCode: "INVALID_NAME" },
+    { name: "Travel Creator", activeCapability: "", expectedCurrentJourneyId: null, expectedCode: "INVALID_ACTIVE_CAPABILITY" },
+    { name: "Travel Creator", activeCapability: "   ", expectedCurrentJourneyId: null, expectedCode: "INVALID_ACTIVE_CAPABILITY" },
+    { name: "Travel Creator", activeCapability: "Sound Design", expectedCurrentJourneyId: " invalid id ", expectedCode: "INVALID_JOURNEY" },
+    { name: "Travel Creator", activeCapability: "Sound Design", expectedCurrentJourneyId: "!invalid", expectedCode: "INVALID_JOURNEY" },
   ];
 
   for (const [index, value] of cases.entries()) {
@@ -79,13 +81,15 @@ test("rejects blank Journey fields and malformed expected-current identifiers", 
     await assert.rejects(
       () => activateJourneyDecision(
         {
-          ...value,
+          name: value.name,
+          activeCapability: value.activeCapability,
+          expectedCurrentJourneyId: value.expectedCurrentJourneyId,
           approval: { explicit: true, acknowledgement: "ACTIVATE_JOURNEY" },
         },
         context(200 + index),
         deps(unitOfWork),
       ),
-      (error: unknown) => error instanceof JourneyDecisionError && error.code === "INVALID_JOURNEY",
+      (error: unknown) => error instanceof JourneyDecisionError && error.code === value.expectedCode,
     );
     assert.equal(unitOfWork.runs, 0);
   }
