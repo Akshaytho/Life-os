@@ -18,6 +18,17 @@ const pages = [
     ],
   },
   {
+    name: 'today-daily-return-empty',
+    path: '/',
+    authenticated: true,
+    expected: [
+      'REFLECTION / DAILY RETURN',
+      'Remember the day. Choose the return.',
+      'No Daily Log reflections yet.',
+      'Did I return to my direction after drifting?',
+    ],
+  },
+  {
     name: 'capture-real-boundary',
     path: '/capture',
     expected: [
@@ -76,6 +87,85 @@ const targets = [
   { name: 'desktop-1440', width: 1440, height: 1000 },
 ];
 
+const visualUser = {
+  id: '00000000-0000-4000-8000-000000000001',
+  aud: 'authenticated',
+  role: 'authenticated',
+  email: 'visual-review@example.invalid',
+  email_confirmed_at: '2026-01-01T00:00:00.000Z',
+  phone: '',
+  confirmed_at: '2026-01-01T00:00:00.000Z',
+  last_sign_in_at: '2026-01-01T00:00:00.000Z',
+  app_metadata: { provider: 'email', providers: ['email'] },
+  user_metadata: {},
+  identities: [],
+  created_at: '2026-01-01T00:00:00.000Z',
+  updated_at: '2026-01-01T00:00:00.000Z',
+  is_anonymous: false,
+};
+
+const visualSession = {
+  access_token: 'visual-review-access-token',
+  refresh_token: 'visual-review-refresh-token',
+  token_type: 'bearer',
+  expires_in: 3600,
+  expires_at: 4102444800,
+  user: visualUser,
+};
+
+async function configureAuthenticatedBoundary(context) {
+  await context.addInitScript((session) => {
+    window.localStorage.setItem('sb-127-auth-token', JSON.stringify(session));
+  }, visualSession);
+
+  await context.route('**/auth/v1/**', async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith('/user')) {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(visualUser) });
+      return;
+    }
+    if (url.pathname.endsWith('/token')) {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(visualSession) });
+      return;
+    }
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+  });
+
+  await context.route('**/api/v1/**', async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === '/api/v1/calendar' && route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          from: url.searchParams.get('from'),
+          to: url.searchParams.get('to'),
+          items: [],
+        }),
+      });
+      return;
+    }
+    if (url.pathname === '/api/v1/daily-return' && route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          localDate: url.searchParams.get('date'),
+          logEntries: [],
+          currentReview: null,
+          reviewHistory: [],
+        }),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 404,
+      contentType: 'application/json',
+      body: JSON.stringify({ status: 'visual_review_route_not_stubbed' }),
+    });
+  });
+}
+
 for (const targetPage of pages) {
   for (const target of targets) {
     const context = await browser.newContext({
@@ -84,6 +174,10 @@ for (const targetPage of pages) {
       isMobile: target.width < 600,
       hasTouch: target.width < 600,
     });
+
+    if (targetPage.authenticated) {
+      await configureAuthenticatedBoundary(context);
+    }
 
     const page = await context.newPage();
     await page.goto(`http://127.0.0.1:3000${targetPage.path}`, { waitUntil: 'networkidle' });
