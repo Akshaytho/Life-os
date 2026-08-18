@@ -84,8 +84,8 @@ export function LiveDailyReturn({
   const [reviewSnapshot, setReviewSnapshot] = useState<SubmitDailyReturnReviewCommand>();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const logAttempt = useRef<{ fingerprint: string; key: string }>();
-  const reviewAttempt = useRef<{ fingerprint: string; key: string }>();
+  const logAttempt = useRef<{ fingerprint: string; key: string } | undefined>(undefined);
+  const reviewAttempt = useRef<{ fingerprint: string; key: string } | undefined>(undefined);
 
   useEffect(() => {
     void load(true);
