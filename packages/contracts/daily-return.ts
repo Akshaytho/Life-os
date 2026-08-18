@@ -43,7 +43,6 @@ export interface AppendDailyLogEntryCommand {
   localDate: string;
   timeZone: string;
   body: string;
-  occurredAt: string;
 }
 
 export interface DailyLogEntryReceipt {
