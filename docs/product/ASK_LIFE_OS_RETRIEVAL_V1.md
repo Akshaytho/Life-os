@@ -4,6 +4,10 @@
 **Change class:** ALIGNED extension of AI, Memory, Today, Journey, Calendar, Reviews, and Drift  
 **Activation:** explicit, server-side, disabled by default
 
+> **Active refinement:** `ASK_MEMORY_RETRIEVAL_V1.md` adds current retained Memory
+> after the canonical Memory model became available. That extension preserves every
+> authority and read-only invariant in this contract.
+
 ## Purpose
 
 The recovered Life OS sequence places AI retrieval after Daily Logging / Return
@@ -51,7 +55,7 @@ The answer is assistance, not authority. It cannot mutate Life OS.
 ## Not included
 
 - embeddings or vector similarity;
-- a canonical Memory write model;
+- Memory writes, candidates, superseded history, or consolidation actions;
 - conversation history or chat transcript persistence;
 - retrieval-trace persistence in the Interaction & Change Ledger;
 - background AI, proactive messages, notifications, or scheduled review;

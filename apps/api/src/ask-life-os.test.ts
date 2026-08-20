@@ -7,6 +7,7 @@ import type { DailyReturnReader } from "../../../packages/domain/daily-return-re
 import type { DirectionDecisionReader } from "../../../packages/domain/direction-read";
 import type { DriftReader } from "../../../packages/domain/drift-return-read";
 import type { JourneyPracticeReader } from "../../../packages/domain/journey-practice-read";
+import type { MemoryReader } from "../../../packages/domain/memory-read";
 import type {
   LifeOsAssistant,
   LifeOsAssistantInput,
@@ -170,6 +171,60 @@ function dependencies(assistant = new FixtureAssistant()): AskLifeOsDependencies
       };
     },
   };
+  const memoryReader: MemoryReader = {
+    async getOverview() {
+      return {
+        trustedNow: [],
+        candidates: [{
+          candidateId: "JOURNEY_PRACTICE:candidate-not-retained",
+          domain: "JOURNEY_PRACTICE",
+          entityId: "candidate-not-retained",
+          label: "Unretained candidate",
+          occurredAt: "2026-08-19T11:00:00.000Z",
+          authorityClass: "REFLECTION",
+          suggestedTitle: "Must never enter Ask",
+          body: "Candidate content must remain outside provider context.",
+        }],
+        items: [{
+          itemId: "memory-room-tone-v2",
+          rootId: "memory-room-tone",
+          revision: 2,
+          kind: "LEARNING",
+          title: "Room tone reveals layering choices",
+          body: "A short room tone comparison makes environmental layers easier to hear.",
+          authorityClass: "REFLECTION",
+          relationship: "REINFORCES",
+          relatedRootId: "memory-small-return",
+          relatedTitle: "Return can stay small",
+          status: "CURRENT",
+          retainedAt: "2026-08-18T18:30:00.000Z",
+          recordedAt: "2026-08-18T18:30:01.000Z",
+          source: {
+            domain: "JOURNEY_PRACTICE",
+            entityId: "practice-completion-room-tone",
+            label: "Journey practice · Environmental sound",
+            occurredAt: "2026-08-18T17:45:00.000Z",
+            authorityClass: "REFLECTION",
+          },
+          history: [{
+            itemId: "memory-room-tone-v1",
+            revision: 1,
+            kind: "LEARNING",
+            title: "Superseded title must not enter Ask",
+            body: "Superseded body must not enter Ask.",
+            authorityClass: "REFLECTION",
+            relationship: "NEW",
+            status: "SUPERSEDED",
+            retainedAt: "2026-08-17T18:30:00.000Z",
+            recordedAt: "2026-08-17T18:30:01.000Z",
+            endedAt: "2026-08-18T18:30:00.000Z",
+          }],
+        }],
+        timeCompression: { month: null, weeks: [] },
+        patterns: [],
+      };
+    },
+  };
   return {
     assistant,
     directionReader,
@@ -178,6 +233,7 @@ function dependencies(assistant = new FixtureAssistant()): AskLifeOsDependencies
     brainDumpNotNowReader,
     driftReader,
     journeyPracticeReader,
+    memoryReader,
     clock: { now: () => "2026-08-19T12:00:00.000Z" },
   };
 }
@@ -197,10 +253,15 @@ test("Ask Life OS assembles mode-ranked typed context and returns source-visible
     [["YOU", "DECISION"], ["DRIFT", "DECISION"], ["DRIFT", "USER_SOURCE"], ["JOURNEY", "DECISION"]],
   );
   assert.equal(result.answerAuthority, "AI_OBSERVATION");
-  assert.equal(result.policyVersion, "ask-life-os-retrieval-v1");
+  assert.equal(result.policyVersion, "ask-life-os-retrieval-v1.1");
   assert.equal(result.modelName, "fixture-model");
   assert.ok(result.sources.length <= 24);
   assert.deepEqual(result.citedSourceIds, result.sources.slice(0, 2).map((source) => source.sourceId));
+  const memory = result.sources.find((source) => source.domain === "MEMORY");
+  assert.equal(memory?.authorityClass, "REFLECTION");
+  assert.equal(memory?.memoryProvenance?.revision, 2);
+  assert.equal(JSON.stringify(assistant.inputs[0]).includes("Candidate content"), false);
+  assert.equal(JSON.stringify(assistant.inputs[0]).includes("Superseded body"), false);
 });
 
 test("mode changes context priority without changing source authority", async () => {
@@ -212,6 +273,76 @@ test("mode changes context priority without changing source authority", async ()
   );
   assert.equal(assistant.inputs[0]?.sources[0]?.domain, "CALENDAR");
   assert.equal(assistant.inputs[0]?.sources[0]?.authorityClass, "FACT");
+});
+
+test("Ask selects at most six current Memory items by deterministic word overlap without candidates or history", async () => {
+  const assistant = new FixtureAssistant();
+  const value = dependencies(assistant);
+  value.memoryReader = {
+    async getOverview() {
+      const items = Array.from({ length: 8 }, (_, index) => ({
+        itemId: `memory-item-${index}`,
+        rootId: `memory-root-${index}`,
+        revision: 1,
+        kind: "LEARNING" as const,
+        title: index === 7 ? "Room tone lesson" : `Unrelated retained note ${index}`,
+        body: index === 7 ? "Environmental sound layering became easier to hear." : "Different retained context.",
+        authorityClass: "REFLECTION" as const,
+        relationship: "NEW" as const,
+        status: "CURRENT" as const,
+        retainedAt: `2026-08-${String(10 + index).padStart(2, "0")}T12:00:00.000Z`,
+        recordedAt: `2026-08-${String(10 + index).padStart(2, "0")}T12:00:01.000Z`,
+        source: {
+          domain: "JOURNEY_PRACTICE" as const,
+          entityId: `completion-${index}`,
+          label: "Journey practice · Environmental sound",
+          occurredAt: `2026-08-${String(10 + index).padStart(2, "0")}T11:00:00.000Z`,
+          authorityClass: "REFLECTION" as const,
+        },
+        history: index === 7 ? [{
+          itemId: "memory-item-7-old",
+          revision: 0,
+          kind: "LEARNING" as const,
+          title: "History marker",
+          body: "History must stay outside Ask.",
+          authorityClass: "REFLECTION" as const,
+          relationship: "NEW" as const,
+          status: "SUPERSEDED" as const,
+          retainedAt: "2026-08-09T12:00:00.000Z",
+          recordedAt: "2026-08-09T12:00:01.000Z",
+          endedAt: "2026-08-17T12:00:00.000Z",
+        }] : [],
+      }));
+      return {
+        trustedNow: [],
+        candidates: [{
+          candidateId: "candidate-hidden",
+          domain: "PERIODIC_REVIEW" as const,
+          entityId: "candidate-hidden",
+          label: "Candidate marker",
+          occurredAt: "2026-08-19T11:00:00.000Z",
+          authorityClass: "REFLECTION" as const,
+          suggestedTitle: "Candidate marker",
+          body: "Candidate must stay outside Ask.",
+        }],
+        items,
+        timeCompression: { month: null, weeks: [] },
+        patterns: [],
+      };
+    },
+  };
+
+  const result = await askLifeOs(
+    command({ mode: "ASK", question: "What did I learn about room tone layering?" }),
+    { actorType: "USER", userId: "user-a" },
+    value,
+  );
+  const memories = result.sources.filter((source) => source.domain === "MEMORY");
+  assert.equal(memories.length, 6);
+  assert.ok(memories.some((source) => source.sourceId === "memory:memory-root-7:revision:1"));
+  assert.equal(JSON.stringify(assistant.inputs[0]).includes("Candidate must"), false);
+  assert.equal(JSON.stringify(assistant.inputs[0]).includes("History must"), false);
+  assert.equal(JSON.stringify(memories).includes("overlap"), false);
 });
 
 test("unknown or duplicate model citations fail closed", async () => {
@@ -240,6 +371,7 @@ test("empty canonical context returns no invented answer", async () => {
   };
   empty.driftReader = { async listCurrent() { return []; } };
   empty.journeyPracticeReader = { async getSnapshot() { return { sessions: [] }; } };
+  empty.memoryReader = undefined;
 
   await assert.rejects(
     askLifeOs(command(), { actorType: "USER", userId: "user-a" }, empty),

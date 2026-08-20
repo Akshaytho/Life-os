@@ -58,6 +58,26 @@ async function withServer(
       },
       driftReader: { async listCurrent() { return []; } },
       journeyPracticeReader: { async getSnapshot() { return { sessions: [] }; } },
+      memoryReader: {
+        async getOverview() {
+          return {
+            trustedNow: [], candidates: [], timeCompression: { month: null, weeks: [] }, patterns: [],
+            items: [{
+              itemId: "memory-private-v1", rootId: "memory-private", revision: 1,
+              kind: "LEARNING", title: "Private retained learning",
+              body: "Small comparisons make sound choices easier to hear.",
+              authorityClass: "REFLECTION", relationship: "NEW", status: "CURRENT",
+              retainedAt: "2026-08-18T18:30:00.000Z", recordedAt: "2026-08-18T18:30:01.000Z",
+              source: {
+                domain: "JOURNEY_PRACTICE", entityId: "completion-private",
+                label: "Journey practice · Environmental sound",
+                occurredAt: "2026-08-18T17:45:00.000Z", authorityClass: "REFLECTION",
+              },
+              history: [],
+            }],
+          };
+        },
+      },
       runtime: { environment: "ci", releaseSha: "ask-api-test", platform: "CI" },
       telemetry: { emit(event) { telemetry.push(event); } },
       operationTimer: {
@@ -101,7 +121,10 @@ test("private Ask Life OS returns a read-only source-visible answer and safe tel
     const body = await response.json() as Record<string, any>;
     assert.equal(body.answerAuthority, "AI_OBSERVATION");
     assert.equal(body.sources[0].authorityClass, "DECISION");
-    assert.equal(body.policyVersion, "ask-life-os-retrieval-v1");
+    assert.equal(body.policyVersion, "ask-life-os-retrieval-v1.1");
+    const memory = body.sources.find((source: Record<string, unknown>) => source.domain === "MEMORY");
+    assert.equal(memory.authorityClass, "REFLECTION");
+    assert.equal(memory.memoryProvenance.sourceDomain, "JOURNEY_PRACTICE");
     assert.equal(telemetry.length, 1);
     assert.equal((telemetry[0] as any).operation, "ASK_LIFE_OS");
     const serialized = JSON.stringify(telemetry);

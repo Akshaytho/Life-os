@@ -57,6 +57,47 @@ test("OpenAI assistant sends a no-tools, no-store, strict source-bounded request
   assert.equal(String(request?.body).includes("server-secret"), false);
 });
 
+test("OpenAI assistant forwards code-owned Memory provenance as untrusted read-only context", async () => {
+  let request: RequestInit | undefined;
+  const assistant = new OpenAiLifeOsAssistant({
+    apiKey: "server-secret",
+    model: "reviewed-model",
+    async fetchImpl(_url, init) {
+      request = init;
+      return providerResponse({ answer: "This retained learning remains reflection evidence.", citedSourceIds: ["memory:root-1:revision:2"] });
+    },
+  });
+  await assistant.answer({
+    ...input,
+    sources: [{
+      sourceId: "memory:root-1:revision:2",
+      domain: "MEMORY",
+      authorityClass: "REFLECTION",
+      title: "Retained learning · Room tone",
+      excerpt: "A short comparison made layering easier to hear.",
+      occurredAt: "2026-08-18T18:30:00.000Z",
+      memoryProvenance: {
+        rootId: "root-1",
+        itemId: "item-2",
+        revision: 2,
+        kind: "LEARNING",
+        relationship: "NEW",
+        sourceDomain: "JOURNEY_PRACTICE",
+        sourceEntityId: "completion-1",
+        sourceLabel: "Journey practice · Environmental sound",
+        sourceOccurredAt: "2026-08-18T17:45:00.000Z",
+      },
+    }],
+  });
+  const body = JSON.parse(String(request?.body)) as Record<string, any>;
+  const providerInput = JSON.parse(body.input) as Record<string, any>;
+  assert.equal(providerInput.sources[0].memoryProvenance.revision, 2);
+  assert.equal(providerInput.sources[0].authorityClass, "REFLECTION");
+  assert.match(body.instructions, /MEMORY source is an explicitly retained reflection/);
+  assert.deepEqual(body.tools, []);
+  assert.equal(body.store, false);
+});
+
 test("OpenAI assistant rejects citations outside the supplied context", async () => {
   const assistant = new OpenAiLifeOsAssistant({
     apiKey: "server-secret",

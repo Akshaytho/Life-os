@@ -36,6 +36,7 @@ Authority rules:
 - You cannot create, edit, approve, reject, schedule, retain, promote, or delete anything.
 - Your answer is an AI observation, never a fact or user decision.
 - Active decisions and structured facts outrank reflections and raw user source. Recency does not overrule authority.
+- A MEMORY source is an explicitly retained reflection, never current truth by retention alone. Its nested provenance names the Review or Journey source that gave it meaning.
 - Do not silently resolve contradictions. Name the tension and preserve the active decision as current unless an explicit superseding decision is supplied.
 - Do not diagnose medical or mental-health conditions and do not replace qualified professional care.
 - Do not turn an idea, reflection, or NOT NOW item into a goal or commitment.
@@ -131,6 +132,7 @@ function sourcePayload(source: AiContextSource) {
     title: source.title,
     excerpt: source.excerpt,
     occurredAt: source.occurredAt,
+    ...(source.memoryProvenance ? { memoryProvenance: source.memoryProvenance } : {}),
   };
 }
 

@@ -47,7 +47,10 @@ npm run journey-practice-role:revoke --workspace @life-os/api
 
 `POST /api/v1/ask` is a separately activated, authenticated, read-only AI boundary.
 It assembles a bounded RLS-scoped context package from current Direction, Calendar,
-Daily Return, NOT NOW, Drift, and Journey sources. Source domain and authority labels
+Daily Return, NOT NOW, Drift, and Journey sources. When the independent Memory
+capability is also enabled, Ask adds at most six current retained Memory revisions as
+`MEMORY · REFLECTION`, including their exact Review/Journey source provenance. It
+never sends candidates or superseded history. Source domain and authority labels
 remain code-owned; the model returns only an AI observation and citations to supplied
 source IDs.
 
@@ -58,6 +61,11 @@ Activation requires all of:
 - `LIFE_OS_AI_RETRIEVAL_MODEL=<explicit reviewed model>`
 - `OPENAI_API_KEY=<server-only secret>`
 - read readiness for every referenced RLS table
+
+`LIFE_OS_MEMORY_ENABLED=true` conditionally extends the same readiness proof to
+`memory_item`. Ask continues without Memory when that separate capability is off.
+Selection uses deterministic word overlap with a stable fallback; no vector,
+similarity, confidence, or hidden score reaches the provider or UI.
 
 An API key by itself never activates retrieval. Provider requests use `store: false`
 and no tools. The operation writes no table or domain event, creates no Memory item,

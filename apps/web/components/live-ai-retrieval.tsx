@@ -54,7 +54,14 @@ function SourceCard({ source, cited }: { source: AiContextSource; cited: boolean
       </div>
       <h3>{source.title}</h3>
       <p>{source.excerpt}</p>
-      <time>{dateTimeLabel(source.occurredAt)}</time>
+      {source.memoryProvenance && (
+        <div className={styles.memoryProvenance}>
+          <strong>MEMORY V{source.memoryProvenance.revision} · {source.memoryProvenance.kind.replaceAll("_", " ")} · {source.memoryProvenance.relationship}</strong>
+          <span>Source · {source.memoryProvenance.sourceLabel}</span>
+          <time>{dateTimeLabel(source.memoryProvenance.sourceOccurredAt)}</time>
+        </div>
+      )}
+      <time>{source.memoryProvenance ? "Memory retained · " : ""}{dateTimeLabel(source.occurredAt)}</time>
     </article>
   );
 }
@@ -122,7 +129,7 @@ export function LiveAiRetrieval({
         <span>CONTEXT, NOT CONTROL</span>
         <h1>Ask from what<br />is actually known.</h1>
         <div>
-          <p>Life OS retrieves a small set of current decisions, facts, and reflections. AI can help you think with them. It cannot change them.</p>
+          <p>Life OS retrieves a small set of current decisions, facts, and retained reflections with their sources. AI can help you think with them. It cannot change them.</p>
           <Link href="/">Return to Today</Link>
         </div>
       </section>

@@ -118,6 +118,26 @@ test("Direction runtime dependencies are composed only after the explicit server
   });
 });
 
+test("Ask composes a Memory reader only when the independently reviewed Memory capability is enabled", async () => {
+  await withIdlePool((pool) => {
+    const verifier: SessionVerifier = { async verify() { return { userId: "verified-user" }; } };
+    const assistant = { async answer() { return { answer: "Fixture", citedSourceIds: [], modelName: "fixture" }; } };
+    const withoutMemory = createPrivateApiRuntimeDependencies(
+      pool, {}, runtime, telemetry,
+      { sessionVerifier: verifier, aiRetrievalEnabled: true, memoryEnabled: false, aiAssistant: assistant },
+    );
+    const withMemory = createPrivateApiRuntimeDependencies(
+      pool, {}, runtime, telemetry,
+      { sessionVerifier: verifier, aiRetrievalEnabled: true, memoryEnabled: true, aiAssistant: assistant },
+    );
+
+    assert.ok(withoutMemory.aiAssistant);
+    assert.equal(withoutMemory.memoryReader, undefined);
+    assert.ok(withMemory.aiAssistant);
+    assert.ok(withMemory.memoryReader);
+  });
+});
+
 test("runtime composition requires real Supabase verifier configuration when no verifier is injected", async () => {
   await withIdlePool((pool) => {
     assert.throws(

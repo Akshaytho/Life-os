@@ -7,12 +7,14 @@ import {
   type AskLifeOsCommand,
   type AskLifeOsResponse,
 } from "../../../packages/contracts/ai-retrieval";
+import type { MemoryItem } from "../../../packages/contracts/memory";
 import type { BrainDumpNotNowReader } from "../../../packages/domain/brain-dump-not-now-read";
 import type { CanonicalCalendarReader } from "../../../packages/domain/canonical-calendar-read";
 import type { DailyReturnReader } from "../../../packages/domain/daily-return-read";
 import type { DirectionDecisionReader } from "../../../packages/domain/direction-read";
 import type { DriftReader } from "../../../packages/domain/drift-return-read";
 import type { JourneyPracticeReader } from "../../../packages/domain/journey-practice-read";
+import type { MemoryReader } from "../../../packages/domain/memory-read";
 import type { AuthenticatedUserPrincipal } from "../../../packages/domain/write-boundary";
 import type { LifeOsAssistant } from "../../../packages/intelligence/life-os-assistant";
 import { getCanonicalCalendar } from "./get-canonical-calendar";
@@ -47,6 +49,7 @@ export interface AskLifeOsDependencies {
   brainDumpNotNowReader: BrainDumpNotNowReader;
   driftReader: DriftReader;
   journeyPracticeReader: JourneyPracticeReader;
+  memoryReader?: MemoryReader;
   clock: AiRetrievalClock;
 }
 
@@ -54,17 +57,18 @@ const localDatePattern = /^\d{4}-\d{2}-\d{2}$/;
 const zonedTimestampPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})$/;
 const maxCalendarWindowMs = 14 * 24 * 60 * 60 * 1000;
 const maxSources = 24;
+const maxMemorySources = 6;
 const maxExcerptLength = 480;
-const policyVersion = "ask-life-os-retrieval-v1" as const;
+const policyVersion = "ask-life-os-retrieval-v1.1" as const;
 
 const domainOrder: Record<AiInteractionMode, readonly AiContextDomain[]> = {
-  ASK: ["YOU", "JOURNEY", "CALENDAR", "REVIEWS", "DRIFT", "NOT_NOW"],
-  REFLECT: ["REVIEWS", "JOURNEY", "DRIFT", "YOU", "CALENDAR", "NOT_NOW"],
-  DECIDE: ["YOU", "CALENDAR", "JOURNEY", "NOT_NOW", "REVIEWS", "DRIFT"],
-  REVIEW: ["REVIEWS", "CALENDAR", "JOURNEY", "DRIFT", "YOU", "NOT_NOW"],
-  RESET: ["YOU", "DRIFT", "JOURNEY", "CALENDAR", "REVIEWS", "NOT_NOW"],
-  PLAN: ["CALENDAR", "YOU", "JOURNEY", "REVIEWS", "NOT_NOW", "DRIFT"],
-  CHALLENGE: ["YOU", "DRIFT", "NOT_NOW", "REVIEWS", "JOURNEY", "CALENDAR"],
+  ASK: ["YOU", "JOURNEY", "CALENDAR", "MEMORY", "REVIEWS", "DRIFT", "NOT_NOW"],
+  REFLECT: ["REVIEWS", "MEMORY", "JOURNEY", "DRIFT", "YOU", "CALENDAR", "NOT_NOW"],
+  DECIDE: ["YOU", "CALENDAR", "JOURNEY", "NOT_NOW", "MEMORY", "REVIEWS", "DRIFT"],
+  REVIEW: ["REVIEWS", "CALENDAR", "JOURNEY", "MEMORY", "DRIFT", "YOU", "NOT_NOW"],
+  RESET: ["YOU", "DRIFT", "JOURNEY", "CALENDAR", "MEMORY", "REVIEWS", "NOT_NOW"],
+  PLAN: ["CALENDAR", "YOU", "JOURNEY", "MEMORY", "REVIEWS", "NOT_NOW", "DRIFT"],
+  CHALLENGE: ["YOU", "DRIFT", "NOT_NOW", "MEMORY", "REVIEWS", "JOURNEY", "CALENDAR"],
 };
 
 const authorityOrder: Record<AiContextAuthorityClass, number> = {
@@ -73,6 +77,10 @@ const authorityOrder: Record<AiContextAuthorityClass, number> = {
   REFLECTION: 2,
   USER_SOURCE: 3,
 };
+
+const validMemoryKinds = new Set(["LEARNING", "EXPERIENCE", "REFLECTION", "PERSON_CONTEXT", "DECISION_HISTORY"]);
+const validMemoryRelationships = new Set(["NEW", "REINFORCES", "MODIFIES", "CONTRADICTS"]);
+const validMemorySourceDomains = new Set(["PERIODIC_REVIEW", "JOURNEY_PRACTICE"]);
 
 function requiredUserId(value: string): string {
   const normalized = value.trim();
@@ -167,16 +175,75 @@ function contextSource(input: AiContextSource): AiContextSource {
     || input.sourceId.length > 300
     || !Number.isFinite(Date.parse(input.occurredAt))
   ) throw new AiRetrievalError("AI_RESPONSE_INVALID");
+  const memoryProvenance = input.memoryProvenance;
+  if (memoryProvenance && (
+    input.domain !== "MEMORY"
+    || input.authorityClass !== "REFLECTION"
+    || !memoryProvenance.rootId.trim()
+    || !memoryProvenance.itemId.trim()
+    || !Number.isInteger(memoryProvenance.revision)
+    || memoryProvenance.revision < 1
+    || !validMemoryKinds.has(memoryProvenance.kind)
+    || !validMemoryRelationships.has(memoryProvenance.relationship)
+    || !validMemorySourceDomains.has(memoryProvenance.sourceDomain)
+    || !memoryProvenance.sourceEntityId.trim()
+    || !memoryProvenance.sourceLabel.trim()
+    || !Number.isFinite(Date.parse(memoryProvenance.sourceOccurredAt))
+    || (memoryProvenance.relatedRootId !== undefined && !memoryProvenance.relatedRootId.trim())
+  )) throw new AiRetrievalError("AI_RESPONSE_INVALID");
   return {
     ...input,
     title: compact(input.title, 120),
     excerpt: compact(input.excerpt),
     occurredAt: new Date(input.occurredAt).toISOString(),
+    ...(memoryProvenance ? {
+      memoryProvenance: {
+        ...memoryProvenance,
+        sourceLabel: compact(memoryProvenance.sourceLabel, 180),
+        sourceOccurredAt: new Date(memoryProvenance.sourceOccurredAt).toISOString(),
+      },
+    } : {}),
   };
 }
 
 function joinParts(parts: Array<string | undefined>): string {
   return parts.filter((value): value is string => Boolean(value)).join(" · ");
+}
+
+const ignoredQuestionTerms = new Set([
+  "about", "after", "again", "been", "before", "could", "does", "from", "have",
+  "into", "life", "might", "should", "that", "their", "there", "these", "thing",
+  "this", "what", "when", "where", "which", "with", "would", "your",
+]);
+
+function questionTerms(question: string): Set<string> {
+  const terms = question.toLowerCase().match(/[a-z0-9]+/g) ?? [];
+  return new Set(terms.filter((term) => term.length >= 4 && !ignoredQuestionTerms.has(term)));
+}
+
+function memorySelection(items: MemoryItem[], question: string): MemoryItem[] {
+  const terms = questionTerms(question);
+  return items
+    .map((item) => {
+      const searchable = joinParts([
+        item.title,
+        item.body,
+        item.kind,
+        item.relationship,
+        item.relatedTitle,
+        item.source.label,
+      ]).toLowerCase();
+      const overlap = [...terms].filter((term) => searchable.includes(term)).length;
+      const sourceTime = Date.parse(item.source.occurredAt);
+      return { item, overlap, sourceTime: Number.isFinite(sourceTime) ? sourceTime : 0 };
+    })
+    .sort((left, right) => (
+      right.overlap - left.overlap
+      || right.sourceTime - left.sourceTime
+      || left.item.rootId.localeCompare(right.item.rootId)
+    ))
+    .slice(0, maxMemorySources)
+    .map(({ item }) => item);
 }
 
 function rankSources(mode: AiInteractionMode, sources: AiContextSource[]): AiContextSource[] {
@@ -219,10 +286,11 @@ export async function askLifeOs(
 ): Promise<AskLifeOsResponse> {
   const userId = requiredUserId(principal.userId);
   const normalized = validatedCommand(command);
+  const generatedAt = normalizedTimestamp(dependencies.clock.now());
   const localDates = previousLocalDates(normalized.localDate);
   const readContext = { principal: { actorType: "USER" as const, userId } };
 
-  const [direction, calendar, notNow, drift, journey, ...daily] = await Promise.all([
+  const [direction, calendar, notNow, drift, journey, memory, ...daily] = await Promise.all([
     getDirectionOverview(readContext, { reader: dependencies.directionReader }),
     getCanonicalCalendar(
       { from: normalized.calendarFrom, to: normalized.calendarTo },
@@ -232,6 +300,12 @@ export async function askLifeOs(
     getNotNowOverview(userId, dependencies.brainDumpNotNowReader),
     getDriftOverview(userId, dependencies.driftReader),
     getJourneyPracticeOverview(userId, dependencies.journeyPracticeReader),
+    dependencies.memoryReader
+      ? dependencies.memoryReader.getOverview(userId, {
+          timeZone: normalized.timeZone,
+          now: generatedAt,
+        })
+      : Promise.resolve(undefined),
     ...localDates.map((localDate) => getDailyReturnOverview(
       { principal: readContext.principal, localDate },
       { reader: dependencies.dailyReturnReader },
@@ -414,6 +488,33 @@ export async function askLifeOs(
     }
   }
 
+  for (const item of memorySelection(memory?.items ?? [], normalized.question)) {
+    sources.push(contextSource({
+      sourceId: `memory:${item.rootId}:revision:${item.revision}`,
+      domain: "MEMORY",
+      authorityClass: "REFLECTION",
+      title: `Retained ${item.kind.toLowerCase().replaceAll("_", " ")} · ${item.title}`,
+      excerpt: joinParts([
+        item.body,
+        `Relationship: ${item.relationship}`,
+        item.relatedTitle ? `Related Memory: ${item.relatedTitle}` : undefined,
+      ]),
+      occurredAt: item.retainedAt,
+      memoryProvenance: {
+        rootId: item.rootId,
+        itemId: item.itemId,
+        revision: item.revision,
+        kind: item.kind,
+        relationship: item.relationship,
+        ...(item.relatedRootId ? { relatedRootId: item.relatedRootId } : {}),
+        sourceDomain: item.source.domain,
+        sourceEntityId: item.source.entityId,
+        sourceLabel: item.source.label,
+        sourceOccurredAt: item.source.occurredAt,
+      },
+    }));
+  }
+
   const ranked = rankSources(normalized.mode, sources);
   if (ranked.length === 0) throw new AiRetrievalError("CONTEXT_UNAVAILABLE");
 
@@ -432,7 +533,7 @@ export async function askLifeOs(
     answerAuthority: "AI_OBSERVATION",
     citedSourceIds: result.citedSourceIds,
     sources: ranked,
-    generatedAt: normalizedTimestamp(dependencies.clock.now()),
+    generatedAt,
     policyVersion,
     modelName: result.modelName.trim(),
   };

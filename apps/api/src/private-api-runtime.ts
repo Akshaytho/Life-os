@@ -81,11 +81,11 @@ export function createPrivateApiRuntimeDependencies(
   const driftEnabled = options.driftEnabled ?? driftEnabledForRuntime(env, runtime);
   const journeyPracticeEnabled = options.journeyPracticeEnabled
     ?? journeyPracticeEnabledForRuntime(env, runtime);
+  const memoryEnabled = options.memoryEnabled ?? memoryEnabledForRuntime(env, runtime);
   const aiRetrievalEnabled = options.aiRetrievalEnabled
     ?? aiRetrievalEnabledForRuntime(env, runtime);
   const periodicReviewsEnabled = options.periodicReviewsEnabled
     ?? periodicReviewsEnabledForRuntime(env, runtime);
-  const memoryEnabled = options.memoryEnabled ?? memoryEnabledForRuntime(env, runtime);
 
   return {
     sessionVerifier: options.sessionVerifier ?? createSupabaseSessionVerifierFromEnv(env),
@@ -145,6 +145,7 @@ export function createPrivateApiRuntimeDependencies(
       brainDumpNotNowReader: new PostgresBrainDumpNotNowReader(pool),
       driftReader: new PostgresDriftReader(pool),
       journeyPracticeReader: new PostgresJourneyPracticeReader(pool),
+      ...(memoryEnabled ? { memoryReader: new PostgresMemoryReader(pool) } : {}),
     } : {}),
     periodicReviewsEnabled,
     ...(periodicReviewsEnabled ? {

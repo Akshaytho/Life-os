@@ -19,6 +19,8 @@ test("Ask Life OS UI preserves the read-only authority boundary", async () => {
   assert.match(component, /Nothing changed\./);
   assert.match(component, /NO TOOLS · NO WRITES · NO AUTO-MEMORY/);
   assert.match(component, /It cannot change them\./);
+  assert.match(component, /source\.memoryProvenance/);
+  assert.match(component, /MEMORY V\{source\.memoryProvenance\.revision\}/);
   assert.doesNotMatch(component, /confidence|similarity score|chain-of-thought/i);
 });
 
