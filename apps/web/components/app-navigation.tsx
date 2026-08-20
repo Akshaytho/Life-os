@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { isTodayPath } from "../lib/navigation-paths";
 import styles from "./app-navigation.module.css";
 
-type IconName = "today" | "journey" | "calendar" | "memory" | "you" | "plus";
+type IconName = "today" | "journey" | "calendar" | "memory" | "you" | "plus" | "spark";
 type NavItem = { label: string; icon: IconName; href?: string; match?: (path: string) => boolean };
 
 const navItems: NavItem[] = [
@@ -23,6 +23,7 @@ function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   if (name === "calendar") return <svg {...common}><path d="M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2Z" /><path d="M7 2v4M17 2v4M3 9h18" /></svg>;
   if (name === "memory") return <svg {...common}><path d="M6 3h10a3 3 0 0 1 3 3v15H8a3 3 0 0 1-3-3V4a1 1 0 0 1 1-1Z" /><path d="M8 21a3 3 0 0 1 0-6h11M9 8h6M9 11h4" /></svg>;
   if (name === "you") return <svg {...common}><circle cx="12" cy="8" r="3" /><path d="M5.5 20c.8-4.1 3-6.1 6.5-6.1s5.7 2 6.5 6.1" /></svg>;
+  if (name === "spark") return <svg {...common}><path d="m12 2 1.5 5.1L18 9l-4.5 1.9L12 16l-1.5-5.1L6 9l4.5-1.9L12 2Z" /><path d="m19 15 .7 2.3L22 18l-2.3.7L19 21l-.7-2.3L16 18l2.3-.7L19 15Z" /></svg>;
   return <svg {...common}><path d="M12 5v14M5 12h14" /></svg>;
 }
 
@@ -43,12 +44,16 @@ export function AppNavigation() {
   const path = usePathname();
   const captureActive = path.startsWith("/capture");
   const driftActive = path.startsWith("/drift");
+  const askActive = path.startsWith("/ask");
 
   return (
     <>
       <aside className={styles.desktopDock} aria-label="Primary navigation">
         <div className={styles.brand}><strong>L/O</strong><span>PRIVATE</span></div>
         <div className={styles.desktopLinks}>{navItems.map((item) => <Destination item={item} path={path} desktop key={item.label} />)}</div>
+        <Link href="/ask" className={`${styles.desktopAsk} ${askActive ? styles.askActive : ""}`} aria-current={askActive ? "page" : undefined}>
+          <Icon name="spark" size={17} /><span>Ask</span>
+        </Link>
         <Link href="/drift" className={`${styles.desktopDrift} ${driftActive ? styles.driftActive : ""}`} aria-current={driftActive ? "page" : undefined}>
           <span>I&apos;m<br />drifting</span>
         </Link>
@@ -57,6 +62,9 @@ export function AppNavigation() {
         </Link>
       </aside>
 
+      <Link href="/ask" className={`${styles.mobileAsk} ${askActive ? styles.askActive : ""}`} aria-current={askActive ? "page" : undefined}>
+        <Icon name="spark" size={15} />Ask
+      </Link>
       <Link href="/drift" className={`${styles.mobileDrift} ${driftActive ? styles.driftActive : ""}`} aria-current={driftActive ? "page" : undefined}>
         I&apos;m drifting
       </Link>

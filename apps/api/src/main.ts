@@ -10,6 +10,8 @@ import {
   privateApiEnabledForRuntime,
 } from "./api-runtime";
 import { safeBootstrapDiagnosticCode, safeBootstrapErrorClass } from "./bootstrap-error";
+import { createAiRetrievalDatabaseReadinessProbe } from "./ai-retrieval-database-readiness";
+import { aiRetrievalEnabledForRuntime } from "./ai-retrieval-runtime";
 import { createBrainDumpNotNowDatabaseReadinessProbe } from "./brain-dump-not-now-database-readiness";
 import { brainDumpNotNowEnabledForRuntime } from "./brain-dump-not-now-runtime";
 import { databasePoolConfigurationFromEnv } from "./database-runtime";
@@ -40,6 +42,7 @@ async function main() {
   const brainDumpNotNowEnabled = brainDumpNotNowEnabledForRuntime(process.env, provenance);
   const driftEnabled = driftEnabledForRuntime(process.env, provenance);
   const journeyPracticeEnabled = journeyPracticeEnabledForRuntime(process.env, provenance);
+  const aiRetrievalEnabled = aiRetrievalEnabledForRuntime(process.env, provenance);
   // The database transport contract, including which certificate authority is trusted, is
   // owned by the reviewed runtime configuration rather than assembled here.
   const databaseConfiguration = databasePoolConfigurationFromEnv(process.env);
@@ -59,6 +62,7 @@ async function main() {
     ...(brainDumpNotNowEnabled ? [createBrainDumpNotNowDatabaseReadinessProbe(pool!)] : []),
     ...(driftEnabled ? [createDriftDatabaseReadinessProbe(pool!)] : []),
     ...(journeyPracticeEnabled ? [createJourneyPracticeDatabaseReadinessProbe(pool!)] : []),
+    ...(aiRetrievalEnabled ? [createAiRetrievalDatabaseReadinessProbe(pool!)] : []),
   );
 
   const privateApi = privateApiEnabled
@@ -68,6 +72,7 @@ async function main() {
         brainDumpNotNowEnabled,
         driftEnabled,
         journeyPracticeEnabled,
+        aiRetrievalEnabled,
       })
     : undefined;
   const privateCors = privateApiEnabled ? privateCorsPolicyFromEnv(process.env) : undefined;

@@ -102,6 +102,27 @@ const pages = [
     ],
   },
   {
+    name: 'ask-life-os-real-boundary',
+    path: '/ask',
+    expected: [
+      'PRIVATE SESSION · ASK LIFE OS',
+      'Sign in before AI can receive your private, source-bounded context.',
+    ],
+  },
+  {
+    name: 'ask-life-os-review',
+    path: '/visual-review/ask',
+    syntheticPrivateBoundary: true,
+    expected: [
+      'CONTEXT, NOT CONTROL',
+      /Ask from what\s*is actually known\./,
+      'AI OBSERVATION · READ ONLY',
+      'Nothing changed.',
+      'Cited canonical context',
+      'Current direction',
+    ],
+  },
+  {
     name: 'calendar-real-boundary',
     path: '/calendar',
     expected: [
