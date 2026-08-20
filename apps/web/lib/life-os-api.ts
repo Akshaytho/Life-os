@@ -44,6 +44,13 @@ import type {
   PeriodicReviewReceipt,
   SubmitPeriodicReviewCommand,
 } from "../../../packages/contracts/periodic-reviews";
+import type {
+  GetMemoryOverviewCommand,
+  MemoryOverview,
+  MemoryWriteReceipt,
+  RetainMemoryItemCommand,
+  ReviseMemoryItemCommand,
+} from "../../../packages/contracts/memory";
 
 export class LifeOsApiError extends Error {
   constructor(
@@ -195,6 +202,49 @@ export function submitPeriodicReview(
     headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
     body: JSON.stringify(command),
   });
+}
+
+export function getMemoryOverview(
+  accessToken: string,
+  command: Omit<GetMemoryOverviewCommand, "now">,
+): Promise<MemoryOverview> {
+  const params = new URLSearchParams({ timeZone: command.timeZone });
+  if (command.query) params.set("q", command.query);
+  if (command.kind) params.set("kind", command.kind);
+  return privateRequest<MemoryOverview>(accessToken, `/api/v1/memory?${params.toString()}`);
+}
+
+export type MemoryTransportReceipt = Omit<MemoryWriteReceipt, "status"> & {
+  status: "recorded" | "replayed";
+};
+
+export function retainMemoryItem(
+  accessToken: string,
+  command: RetainMemoryItemCommand,
+  idempotencyKey: string,
+): Promise<MemoryTransportReceipt> {
+  return privateRequest<MemoryTransportReceipt>(accessToken, "/api/v1/memory/items", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+    body: JSON.stringify(command),
+  });
+}
+
+export function reviseMemoryItem(
+  accessToken: string,
+  rootId: string,
+  command: ReviseMemoryItemCommand,
+  idempotencyKey: string,
+): Promise<MemoryTransportReceipt> {
+  return privateRequest<MemoryTransportReceipt>(
+    accessToken,
+    `/api/v1/memory/items/${encodeURIComponent(rootId)}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+      body: JSON.stringify(command),
+    },
+  );
 }
 
 function requiredPublicValue(value: string | undefined, name: string): string {

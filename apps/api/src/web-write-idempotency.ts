@@ -22,7 +22,9 @@ export type WebWriteIdempotencyScope =
   | "JOURNEY_ACTIVATE"
   | "JOURNEY_PRACTICE_START"
   | "JOURNEY_PRACTICE_COMPLETE"
-  | "PERIODIC_REVIEW_SUBMIT";
+  | "PERIODIC_REVIEW_SUBMIT"
+  | "MEMORY_RETAIN"
+  | "MEMORY_REVISE";
 
 const keyPattern = /^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$/;
 

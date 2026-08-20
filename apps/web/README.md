@@ -69,6 +69,19 @@ are no scores, streaks, automatic truth changes, or implicit Memory writes.
 `/visual-review/periodic-reviews` is synthetic-only behind the visual-review gate and
 exists for responsive phone, tablet, and desktop verification.
 
+## Memory
+
+`/memory` is an authenticated real-data-only recall surface. It keeps canonical owner
+references above retained reflections, supports deterministic word/type filtering,
+shows exact source provenance and version history, and requires a second explicit
+confirmation before retaining a Periodic Review or Journey Practice candidate. Memory
+revision preserves the earlier version; there is no delete, score, silent merge,
+vector-confidence display, or automatic AI promotion.
+
+`/visual-review/memory` is synthetic-only behind the visual-review gate and exercises
+trusted anchors, candidate retention copy, retained version history, and month → week
+compression at the responsive review widths.
+
 ## Trust state
 
 Prototype/sample screens must remain visibly distinct from canonical state. Hosted live mode must not silently fall back to sample data because configuration was omitted. High-authority Direction remains separately gated until its server/database activation has passed hosted verification.

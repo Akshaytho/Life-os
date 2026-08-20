@@ -6,8 +6,6 @@ await mkdir(outputDir, { recursive: true });
 
 const browser = await chromium.launch({ headless: true });
 
-const realDataOnly = 'No sample life data will be shown here.';
-
 const pages = [
   {
     name: 'today-real-boundary',
@@ -154,8 +152,21 @@ const pages = [
     name: 'memory-real-boundary',
     path: '/memory',
     expected: [
-      'Memory will show only trusted persisted context.',
-      realDataOnly,
+      'PRIVATE SESSION · MEMORY',
+      'Sign in before Life OS can retrieve your private Memory.',
+    ],
+  },
+  {
+    name: 'memory-review',
+    path: '/visual-review/memory',
+    syntheticPrivateBoundary: true,
+    expected: [
+      'TRUST BEFORE RECENCY',
+      /Remember without\s*flattening history\./,
+      'References to what owns truth now.',
+      'Worth considering—not automatic Memory.',
+      'Selected history with its authority intact.',
+      'No automatic Memory.',
     ],
   },
   {

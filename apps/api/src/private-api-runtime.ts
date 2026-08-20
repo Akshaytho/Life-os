@@ -15,6 +15,8 @@ import { PostgresJourneyPracticeReader } from "../../../packages/database/postgr
 import { PostgresJourneyPracticeUnitOfWork } from "../../../packages/database/postgres-journey-practice-unit-of-work";
 import { PostgresPeriodicReviewReader } from "../../../packages/database/postgres-periodic-review-reader";
 import { PostgresPeriodicReviewUnitOfWork } from "../../../packages/database/postgres-periodic-review-unit-of-work";
+import { PostgresMemoryReader } from "../../../packages/database/postgres-memory-reader";
+import { PostgresMemoryUnitOfWork } from "../../../packages/database/postgres-memory-unit-of-work";
 import { PostgresInteractionChangeLedgerReader } from "../../../packages/database/postgres-interaction-change-ledger-reader";
 import { PostgresProposalReviewReader } from "../../../packages/database/postgres-proposal-review-reader";
 import { PostgresWriteUnitOfWork } from "../../../packages/database/postgres-write-unit-of-work";
@@ -29,6 +31,7 @@ import { directionEnabledForRuntime } from "./direction-runtime";
 import { driftEnabledForRuntime } from "./drift-runtime";
 import { journeyPracticeEnabledForRuntime } from "./journey-practice-runtime";
 import { periodicReviewsEnabledForRuntime } from "./periodic-reviews-runtime";
+import { memoryEnabledForRuntime } from "./memory-runtime";
 import type { PrivateApiDependencies } from "./private-api";
 import { PostgresCalendarProposalConfirmationStore } from "./postgres-calendar-proposal-confirmation-store";
 import { createSupabaseSessionVerifierFromEnv } from "./supabase-session-verifier";
@@ -47,6 +50,7 @@ export interface PrivateApiRuntimeOptions {
   journeyPracticeEnabled?: boolean;
   aiRetrievalEnabled?: boolean;
   periodicReviewsEnabled?: boolean;
+  memoryEnabled?: boolean;
   aiAssistant?: LifeOsAssistant;
 }
 
@@ -81,6 +85,7 @@ export function createPrivateApiRuntimeDependencies(
     ?? aiRetrievalEnabledForRuntime(env, runtime);
   const periodicReviewsEnabled = options.periodicReviewsEnabled
     ?? periodicReviewsEnabledForRuntime(env, runtime);
+  const memoryEnabled = options.memoryEnabled ?? memoryEnabledForRuntime(env, runtime);
 
   return {
     sessionVerifier: options.sessionVerifier ?? createSupabaseSessionVerifierFromEnv(env),
@@ -152,6 +157,13 @@ export function createPrivateApiRuntimeDependencies(
       journeyPracticeReader: new PostgresJourneyPracticeReader(pool),
       driftReader: new PostgresDriftReader(pool),
       brainDumpNotNowReader: new PostgresBrainDumpNotNowReader(pool),
+    } : {}),
+    memoryEnabled,
+    ...(memoryEnabled ? {
+      memoryReader: new PostgresMemoryReader(pool),
+      memoryUnitOfWork: new PostgresMemoryUnitOfWork(pool),
+      memoryClock: clock,
+      memoryIds: { next: (prefix: string) => `${prefix}-${uuid()}` },
     } : {}),
     runtime,
     telemetry,

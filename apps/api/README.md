@@ -83,3 +83,25 @@ npm run periodic-reviews-role:revoke --workspace @life-os/api
 `LIFE_OS_PERIODIC_REVIEWS_ENABLED=true` requires the private API plus Daily Return,
 Brain Dump + NOT NOW, Drift + Return, and Journey Practice flags. V1 refuses production
 activation and performs no automatic Memory promotion or AI-authored submission.
+
+## Memory Activation + Consolidation
+
+`GET /api/v1/memory` retrieves authority-ordered current-owner references, exact
+Periodic Review and Journey Practice candidates, current retained Memory versions,
+and month → week review compression. `POST /api/v1/memory/items` retains one exact
+candidate only after an idempotent user write. `PUT /api/v1/memory/items/:rootId`
+creates a new version while preserving history.
+
+Migration 0013 grants nothing. The separately reversible Memory capability grants
+only `SELECT`, `INSERT`, and `UPDATE` on the forced-RLS `memory_item` table:
+
+```bash
+npm run memory-role --workspace @life-os/api
+npm run memory-role:apply --workspace @life-os/api
+npm run memory-role:revoke --workspace @life-os/api
+```
+
+`LIFE_OS_MEMORY_ENABLED=true` requires the private API plus Direction, Journey
+Practice, and Periodic Reviews. V1 refuses production activation. Candidate retention
+stays `REFLECTION`, uses no vectors or similarity score, emits no raw text in events,
+and never changes a source domain or accepts an AI-authored promotion.
