@@ -9,6 +9,8 @@ import { PostgresDirectionDecisionReader } from "../../../packages/database/post
 import { PostgresDirectionDecisionUnitOfWork } from "../../../packages/database/postgres-direction-decision-unit-of-work";
 import { PostgresDailyReturnReader } from "../../../packages/database/postgres-daily-return-reader";
 import { PostgresDailyReturnUnitOfWork } from "../../../packages/database/postgres-daily-return-unit-of-work";
+import { PostgresDriftReader } from "../../../packages/database/postgres-drift-reader";
+import { PostgresDriftUnitOfWork } from "../../../packages/database/postgres-drift-unit-of-work";
 import { PostgresInteractionChangeLedgerReader } from "../../../packages/database/postgres-interaction-change-ledger-reader";
 import { PostgresProposalReviewReader } from "../../../packages/database/postgres-proposal-review-reader";
 import { PostgresWriteUnitOfWork } from "../../../packages/database/postgres-write-unit-of-work";
@@ -18,6 +20,7 @@ import { createCaptureInterpreterFromEnv } from "./capture-interpreter-runtime";
 import { brainDumpNotNowEnabledForRuntime } from "./brain-dump-not-now-runtime";
 import { dailyReturnEnabledForRuntime } from "./daily-return-runtime";
 import { directionEnabledForRuntime } from "./direction-runtime";
+import { driftEnabledForRuntime } from "./drift-runtime";
 import type { PrivateApiDependencies } from "./private-api";
 import { PostgresCalendarProposalConfirmationStore } from "./postgres-calendar-proposal-confirmation-store";
 import { createSupabaseSessionVerifierFromEnv } from "./supabase-session-verifier";
@@ -32,6 +35,7 @@ export interface PrivateApiRuntimeOptions {
   directionEnabled?: boolean;
   dailyReturnEnabled?: boolean;
   brainDumpNotNowEnabled?: boolean;
+  driftEnabled?: boolean;
 }
 
 function isoClock(now: () => Date) {
@@ -58,6 +62,7 @@ export function createPrivateApiRuntimeDependencies(
   const dailyReturnEnabled = options.dailyReturnEnabled ?? dailyReturnEnabledForRuntime(env, runtime);
   const brainDumpNotNowEnabled = options.brainDumpNotNowEnabled
     ?? brainDumpNotNowEnabledForRuntime(env, runtime);
+  const driftEnabled = options.driftEnabled ?? driftEnabledForRuntime(env, runtime);
 
   return {
     sessionVerifier: options.sessionVerifier ?? createSupabaseSessionVerifierFromEnv(env),
@@ -93,6 +98,13 @@ export function createPrivateApiRuntimeDependencies(
       brainDumpNotNowUnitOfWork: new PostgresBrainDumpNotNowUnitOfWork(pool),
       brainDumpNotNowClock: clock,
       brainDumpNotNowIds: { next: (prefix: string) => `${prefix}-${uuid()}` },
+    } : {}),
+    driftEnabled,
+    ...(driftEnabled ? {
+      driftReader: new PostgresDriftReader(pool),
+      driftUnitOfWork: new PostgresDriftUnitOfWork(pool),
+      driftClock: clock,
+      driftIds: { next: (prefix: string) => `${prefix}-${uuid()}` },
     } : {}),
     runtime,
     telemetry,

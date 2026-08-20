@@ -42,3 +42,14 @@ export const brainDumpClassificationTable = "brain_dump_classification" as const
 export const notNowItemTable = "not_now_item" as const;
 export const requiredBrainDumpNotNowApplicationTablePrivileges = ["SELECT", "INSERT", "UPDATE"] as const;
 export const forbiddenBrainDumpNotNowApplicationTablePrivileges = ["DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"] as const;
+
+/**
+ * Drift occurrences are immutable source rows; decision revisions use INSERT +
+ * supersession UPDATE. The separate capability never receives destructive authority.
+ */
+export const driftOccurrenceTable = "drift_occurrence" as const;
+export const driftDecisionTable = "drift_decision" as const;
+export const requiredDriftOccurrenceApplicationTablePrivileges = ["SELECT", "INSERT"] as const;
+export const forbiddenDriftOccurrenceApplicationTablePrivileges = ["UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"] as const;
+export const requiredDriftDecisionApplicationTablePrivileges = ["SELECT", "INSERT", "UPDATE"] as const;
+export const forbiddenDriftDecisionApplicationTablePrivileges = ["DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"] as const;

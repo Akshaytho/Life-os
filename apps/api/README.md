@@ -8,6 +8,7 @@ Current trust-boundary layers include:
 - owner-scoped proposal review projection
 - Proposal → Confirm → Commit transaction service
 - Brain Dump classification and versioned NOT NOW decisions, independently gated from baseline Capture
+- explicit Drift recording, versioned understanding, and return decisions, independently gated from every canonical owner
 - `createTrustedWebRequestContext` — converts one verified transport session into server-owned USER identity, `WEB_APP` source, request receipt time, and request ID
 
 Framework/HTTP handlers must remain thin. They may extract an opaque session credential and request body/query values, but they must not construct authoritative user identity, source, request time, or request ID from client-controlled fields.
@@ -22,3 +23,11 @@ npm run brain-dump-not-now-role:apply --workspace @life-os/api
 ```
 
 The role tool is reversible with `brain-dump-not-now-role:revoke`. These commands use migration credentials; the running API continues to use the non-owner, non-bypass application role.
+
+Drift + Return has the same separate, reversible capability sequence. Immutable occurrence rows receive only `SELECT` + `INSERT`; only versioned decision rows receive the narrow `UPDATE` needed for supersession:
+
+```bash
+npm run drift-role --workspace @life-os/api
+npm run drift-role:apply --workspace @life-os/api
+npm run drift-role:revoke --workspace @life-os/api
+```

@@ -20,6 +20,8 @@ const knownLifeOsTables = [
   "daily_return_review",
   "brain_dump_classification",
   "not_now_item",
+  "drift_occurrence",
+  "drift_decision",
 ] as const;
 
 export const defaultMigrationDirectory = fileURLToPath(

@@ -20,6 +20,8 @@ import {
   createDirectionDatabaseReadinessProbe,
 } from "./direction-database-readiness";
 import { directionEnabledForRuntime } from "./direction-runtime";
+import { createDriftDatabaseReadinessProbe } from "./drift-database-readiness";
+import { driftEnabledForRuntime } from "./drift-runtime";
 import { privateCorsPolicyFromEnv } from "./private-cors";
 import { createPrivateApiRuntimeDependencies } from "./private-api-runtime";
 import { resolveRuntimeProvenance } from "./runtime-provenance";
@@ -34,6 +36,7 @@ async function main() {
   const directionEnabled = directionEnabledForRuntime(process.env, provenance);
   const dailyReturnEnabled = dailyReturnEnabledForRuntime(process.env, provenance);
   const brainDumpNotNowEnabled = brainDumpNotNowEnabledForRuntime(process.env, provenance);
+  const driftEnabled = driftEnabledForRuntime(process.env, provenance);
   // The database transport contract, including which certificate authority is trusted, is
   // owned by the reviewed runtime configuration rather than assembled here.
   const databaseConfiguration = databasePoolConfigurationFromEnv(process.env);
@@ -51,6 +54,7 @@ async function main() {
     ...(directionEnabled ? [createDirectionDatabaseReadinessProbe(pool!)] : []),
     ...(dailyReturnEnabled ? [createDailyReturnDatabaseReadinessProbe(pool!)] : []),
     ...(brainDumpNotNowEnabled ? [createBrainDumpNotNowDatabaseReadinessProbe(pool!)] : []),
+    ...(driftEnabled ? [createDriftDatabaseReadinessProbe(pool!)] : []),
   );
 
   const privateApi = privateApiEnabled
@@ -58,6 +62,7 @@ async function main() {
         directionEnabled,
         dailyReturnEnabled,
         brainDumpNotNowEnabled,
+        driftEnabled,
       })
     : undefined;
   const privateCors = privateApiEnabled ? privateCorsPolicyFromEnv(process.env) : undefined;

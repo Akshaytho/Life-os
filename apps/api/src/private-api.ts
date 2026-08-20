@@ -5,6 +5,7 @@ import { appendVaryHeader } from "./private-cors";
 import { handlePrivateBrainDumpNotNowRequest, type PrivateBrainDumpNotNowApiDependencies } from "./private-brain-dump-not-now-api";
 import { handlePrivateDailyReturnRequest, type PrivateDailyReturnApiDependencies } from "./private-daily-return-api";
 import { handlePrivateDirectionRequest, type PrivateDirectionApiDependencies } from "./private-direction-api";
+import { handlePrivateDriftRequest, type PrivateDriftApiDependencies } from "./private-drift-api";
 import { handlePrivateProposalActionRequest, type PrivateProposalActionsApiDependencies } from "./private-proposal-actions-api";
 import { handlePrivateReadRequest, type PrivateReadApiDependencies } from "./private-read-api";
 
@@ -16,7 +17,8 @@ export type PrivateApiDependencies =
   & PrivateDirectionApiDependencies
   & PrivateDailyReturnApiDependencies
   & PrivateBrainDumpNotNowApiDependencies
-  & { directionEnabled?: boolean; dailyReturnEnabled?: boolean; brainDumpNotNowEnabled?: boolean };
+  & PrivateDriftApiDependencies
+  & { directionEnabled?: boolean; dailyReturnEnabled?: boolean; brainDumpNotNowEnabled?: boolean; driftEnabled?: boolean };
 
 function jsonNotFound(response: ServerResponse) {
   response.statusCode = 404;
@@ -37,13 +39,14 @@ function pathOf(request: IncomingMessage): string {
   }
 }
 
-type RouteFamily = "CAPTURE" | "READ" | "CALENDAR_CONFIRMATION" | "PROPOSAL_ACTION" | "DIRECTION" | "DAILY_RETURN" | "BRAIN_DUMP_NOT_NOW";
+type RouteFamily = "CAPTURE" | "READ" | "CALENDAR_CONFIRMATION" | "PROPOSAL_ACTION" | "DIRECTION" | "DAILY_RETURN" | "BRAIN_DUMP_NOT_NOW" | "DRIFT";
 
 function routeFamily(
   path: string,
   directionEnabled: boolean,
   dailyReturnEnabled: boolean,
   brainDumpNotNowEnabled: boolean,
+  driftEnabled: boolean,
 ): RouteFamily | undefined {
   if (path === "/api/v1/captures") return "CAPTURE";
   if (path === "/api/v1/calendar") return "READ";
@@ -63,6 +66,10 @@ function routeFamily(
     || path === "/api/v1/not-now"
     || /^\/api\/v1\/not-now\/[^/]+\/review$/.test(path)
   )) return "BRAIN_DUMP_NOT_NOW";
+  if (driftEnabled && (
+    path === "/api/v1/drifts"
+    || /^\/api\/v1\/drifts\/[^/]+\/(understanding|return)$/.test(path)
+  )) return "DRIFT";
   return undefined;
 }
 
@@ -76,6 +83,7 @@ export async function handlePrivateApiRequest(
     dependencies.directionEnabled === true,
     dependencies.dailyReturnEnabled === true,
     dependencies.brainDumpNotNowEnabled === true,
+    dependencies.driftEnabled === true,
   )) {
     case "CAPTURE":
       await handlePrivateCaptureRequest(request, response, dependencies);
@@ -97,6 +105,9 @@ export async function handlePrivateApiRequest(
       return;
     case "BRAIN_DUMP_NOT_NOW":
       await handlePrivateBrainDumpNotNowRequest(request, response, dependencies);
+      return;
+    case "DRIFT":
+      await handlePrivateDriftRequest(request, response, dependencies);
       return;
     default:
       jsonNotFound(response);
