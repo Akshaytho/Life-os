@@ -79,3 +79,20 @@ export const forbiddenPeriodicReviewApplicationTablePrivileges = ["DELETE", "TRU
 export const memoryItemTable = "memory_item" as const;
 export const requiredMemoryApplicationTablePrivileges = ["SELECT", "INSERT", "UPDATE"] as const;
 export const forbiddenMemoryApplicationTablePrivileges = ["DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"] as const;
+
+/** Every user-owned table shipped in the release, including dormant capabilities. */
+export const allPrivateTables = [
+  ...requiredPrivateTables,
+  directionDecisionTable,
+  dailyLogEntryTable,
+  dailyReturnReviewTable,
+  brainDumpClassificationTable,
+  notNowItemTable,
+  driftOccurrenceTable,
+  driftDecisionTable,
+  journeyCapabilityDecisionTable,
+  journeyPracticeSessionTable,
+  journeyPracticeCompletionTable,
+  periodicReviewTable,
+  memoryItemTable,
+] as const;

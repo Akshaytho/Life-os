@@ -79,6 +79,18 @@ test("hosted development refuses the unverified transport mode", () => {
   );
 });
 
+test("production also refuses every unverified database transport", () => {
+  assert.throws(
+    () => databasePoolConfigurationFromEnv({
+      ...developmentEnv(),
+      LIFE_OS_ENVIRONMENT: "production",
+      LIFE_OS_RELEASE_SHA: "4".repeat(40),
+      LIFE_OS_DATABASE_TLS_MODE: "disable",
+    }),
+    assertSanitized,
+  );
+});
+
 test("verify-full requires a reviewed certificate authority path", () => {
   assert.throws(
     () => databasePoolConfigurationFromEnv(developmentEnv({ LIFE_OS_DATABASE_TLS_MODE: "verify-full" })),

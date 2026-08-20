@@ -21,8 +21,5 @@ export function driftEnabledForRuntime(
       "LIFE_OS_DRIFT_RETURN_ENABLED requires LIFE_OS_PRIVATE_API_ENABLED=true",
     );
   }
-  if (provenance.environment === "production") {
-    throw new ApiRuntimeConfigurationError("Drift Detector + Return V1 cannot be activated in production");
-  }
   return true;
 }

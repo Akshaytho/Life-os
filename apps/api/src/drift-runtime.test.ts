@@ -35,12 +35,16 @@ test("reviewed non-production Drift activation requires both explicit flags", ()
   }, runtime), true);
 });
 
-test("Drift V1 refuses production activation", () => {
-  assert.throws(
-    () => driftEnabledForRuntime({
+test("Drift production activation requires the exact private release approval", () => {
+  const releaseSha = "f".repeat(40);
+  const production = { environment: "production" as const, releaseSha, platform: "RAILWAY" as const };
+  assert.throws(() => driftEnabledForRuntime({
       LIFE_OS_PRIVATE_API_ENABLED: "true",
       LIFE_OS_DRIFT_RETURN_ENABLED: "true",
-    }, { environment: "production", releaseSha: "prod", platform: "RAILWAY" }),
-    (error) => error instanceof ApiRuntimeConfigurationError && /cannot be activated in production/.test(error.message),
-  );
+    }, production), ApiRuntimeConfigurationError);
+  assert.equal(driftEnabledForRuntime({
+    LIFE_OS_PRIVATE_API_ENABLED: "true",
+    LIFE_OS_DRIFT_RETURN_ENABLED: "true",
+    LIFE_OS_PRODUCTION_RELEASE_SHA: releaseSha,
+  }, production), true);
 });

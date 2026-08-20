@@ -55,14 +55,20 @@ test("Daily Return can be explicitly enabled in development", () => {
   );
 });
 
-test("Daily Return remains blocked in production", () => {
-  assert.throws(
-    () => dailyReturnEnabledForRuntime({
-      LIFE_OS_ENVIRONMENT: "production",
-      LIFE_OS_RELEASE_SHA: "daily-return-runtime-test",
+test("Daily Return production activation inherits the exact private release approval", () => {
+  const releaseSha = "e".repeat(40);
+  const production = {
+    environment: "production" as const,
+    releaseSha,
+    platform: "RAILWAY" as const,
+  };
+  assert.throws(() => dailyReturnEnabledForRuntime({
       LIFE_OS_PRIVATE_API_ENABLED: "true",
       LIFE_OS_DAILY_RETURN_ENABLED: "true",
-    }),
-    ApiRuntimeConfigurationError,
-  );
+    }, production), ApiRuntimeConfigurationError);
+  assert.equal(dailyReturnEnabledForRuntime({
+    LIFE_OS_PRIVATE_API_ENABLED: "true",
+    LIFE_OS_DAILY_RETURN_ENABLED: "true",
+    LIFE_OS_PRODUCTION_RELEASE_SHA: releaseSha,
+  }, production), true);
 });

@@ -36,14 +36,21 @@ test("Direction runtime can be explicitly enabled in development", () => {
   assert.equal(directionEnabledForRuntime(env({ LIFE_OS_DIRECTION_ENABLED: "true" })), true);
 });
 
-test("Direction runtime remains blocked in production", () => {
-  assert.throws(
-    () => directionEnabledForRuntime({
+test("Direction production activation inherits the exact private release approval", () => {
+  const releaseSha = "d".repeat(40);
+  const production = {
+    environment: "production" as const,
+    releaseSha,
+    platform: "RAILWAY" as const,
+  };
+  assert.throws(() => directionEnabledForRuntime({
       LIFE_OS_ENVIRONMENT: "production",
-      LIFE_OS_RELEASE_SHA: "direction-runtime-test",
       LIFE_OS_PRIVATE_API_ENABLED: "true",
       LIFE_OS_DIRECTION_ENABLED: "true",
-    }),
-    ApiRuntimeConfigurationError,
-  );
+    }, production), ApiRuntimeConfigurationError);
+  assert.equal(directionEnabledForRuntime({
+    LIFE_OS_PRIVATE_API_ENABLED: "true",
+    LIFE_OS_DIRECTION_ENABLED: "true",
+    LIFE_OS_PRODUCTION_RELEASE_SHA: releaseSha,
+  }, production), true);
 });

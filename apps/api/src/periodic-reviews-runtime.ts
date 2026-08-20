@@ -33,8 +33,5 @@ export function periodicReviewsEnabledForRuntime(
       `LIFE_OS_PERIODIC_REVIEWS_ENABLED requires reviewed source capabilities: ${missing.join(", ")}`,
     );
   }
-  if (provenance.environment === "production") {
-    throw new ApiRuntimeConfigurationError("Weekly + Monthly Reviews V1 cannot be activated in production");
-  }
   return true;
 }

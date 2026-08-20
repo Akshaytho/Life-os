@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import type { LifeOsEnvironment } from "../../../packages/contracts/runtime-provenance";
 import {
   forbiddenApplicationTablePrivileges,
   migrationLedgerTable,
@@ -31,7 +32,7 @@ export class ApplicationDbRoleError extends Error {
 
 export interface ApplicationDbRolePlanConfiguration {
   migrationDatabaseUrl: string;
-  environment: "local" | "ci" | "development";
+  environment: LifeOsEnvironment;
   roleName: string;
 }
 

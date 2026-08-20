@@ -83,16 +83,26 @@ test("apply configuration requires a strong-enough synthetic password without ec
   }
 });
 
-test("production provisioning is refused through the shared migration environment boundary", () => {
-  assert.throws(
-    () => applicationDbRolePlanConfigurationFromEnv({
+test("production provisioning requires the exact shared production release approval", () => {
+  const releaseSha = "3".repeat(40);
+  assert.throws(() => applicationDbRolePlanConfigurationFromEnv({
       LIFE_OS_ENVIRONMENT: "production",
-      LIFE_OS_RELEASE_SHA: "prod-release",
+      LIFE_OS_RELEASE_SHA: releaseSha,
       MIGRATION_DATABASE_URL: migrationUrl,
-    }),
-    (error: unknown) =>
-      error instanceof Error &&
-      /refuses production/.test(error.message) &&
-      !error.message.includes("private"),
-  );
+    }), (error: unknown) =>
+    error instanceof Error
+    && /PRODUCTION_RELEASE_SHA/.test(error.message)
+    && !error.message.includes("private"));
+
+  assert.deepEqual(applicationDbRolePlanConfigurationFromEnv({
+    LIFE_OS_ENVIRONMENT: "production",
+    LIFE_OS_RELEASE_SHA: releaseSha,
+    LIFE_OS_PRODUCTION_RELEASE_SHA: releaseSha,
+    MIGRATION_DATABASE_URL: migrationUrl,
+    DATABASE_URL: applicationUrl,
+  }), {
+    migrationDatabaseUrl: migrationUrl,
+    environment: "production",
+    roleName: "lifeos_app",
+  });
 });

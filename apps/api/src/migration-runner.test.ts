@@ -30,9 +30,10 @@ test("current Life OS migration set is contiguous, checksummed and runner-transa
       "0011_journey_activation_practice.sql",
       "0012_periodic_reviews.sql",
       "0013_memory_activation.sql",
+      "0014_production_security_hardening.sql",
     ],
   );
-  assert.deepEqual(migrations.map((migration) => migration.sequence), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+  assert.deepEqual(migrations.map((migration) => migration.sequence), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
   for (const migration of migrations) {
     assert.match(migration.checksumSha256, /^[0-9a-f]{64}$/);
     assert.equal(/^\s*BEGIN\s*;/i.test(migration.body), false);
@@ -78,7 +79,7 @@ test("migration discovery refuses gaps instead of silently skipping schema histo
   }
 });
 
-test("hosted development requires migration credential separation and production is refused", () => {
+test("hosted environments require migration credential separation and production release approval", () => {
   const migrationUrl = "postgresql://migration-user:secret@example.invalid/lifeos";
   const applicationUrl = "postgresql://application-user:other@example.invalid/lifeos";
 
@@ -106,18 +107,35 @@ test("hosted development requires migration credential separation and production
       !error.message.includes("secret"),
   );
 
-  assert.throws(
-    () => migrationRuntimeConfigurationFromEnv({
+  const productionRelease = "2".repeat(40);
+  assert.throws(() => migrationRuntimeConfigurationFromEnv({
       LIFE_OS_ENVIRONMENT: "production",
-      LIFE_OS_RELEASE_SHA: "prod-release",
+      LIFE_OS_RELEASE_SHA: productionRelease,
       MIGRATION_DATABASE_URL: migrationUrl,
-    }),
-    (error: unknown) =>
-      error instanceof MigrationRunnerError &&
-      error.code === "CONFIGURATION_INVALID" &&
-      /refuses production/.test(error.message) &&
-      !error.message.includes("secret"),
-  );
+    }), (error: unknown) =>
+    error instanceof MigrationRunnerError
+    && error.code === "CONFIGURATION_INVALID"
+    && /PRODUCTION_RELEASE_SHA/.test(error.message)
+    && !error.message.includes("secret"));
+
+  assert.deepEqual(migrationRuntimeConfigurationFromEnv({
+    LIFE_OS_ENVIRONMENT: "production",
+    LIFE_OS_RELEASE_SHA: productionRelease,
+    LIFE_OS_PRODUCTION_RELEASE_SHA: productionRelease,
+    MIGRATION_DATABASE_URL: migrationUrl,
+    DATABASE_URL: applicationUrl,
+  }), { migrationDatabaseUrl: migrationUrl, environment: "production" });
+
+  assert.throws(() => migrationRuntimeConfigurationFromEnv({
+    LIFE_OS_ENVIRONMENT: "production",
+    LIFE_OS_RELEASE_SHA: productionRelease,
+    LIFE_OS_PRODUCTION_RELEASE_SHA: productionRelease,
+    MIGRATION_DATABASE_URL: migrationUrl,
+    DATABASE_URL: migrationUrl,
+  }), (error: unknown) =>
+    error instanceof MigrationRunnerError
+    && error.code === "CONFIGURATION_INVALID"
+    && /separate migration and application/.test(error.message));
 });
 
 test("missing migration credential fails closed without echoing other environment values", () => {
