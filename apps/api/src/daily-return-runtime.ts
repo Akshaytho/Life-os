@@ -23,8 +23,5 @@ export function dailyReturnEnabledForRuntime(
       "LIFE_OS_DAILY_RETURN_ENABLED requires LIFE_OS_PRIVATE_API_ENABLED=true",
     );
   }
-  if (provenance.environment === "production") {
-    throw new ApiRuntimeConfigurationError("Daily Return V1 cannot be activated in production");
-  }
   return true;
 }

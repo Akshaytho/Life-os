@@ -4,7 +4,7 @@ import { ApiRuntimeConfigurationError, databaseUrlForRuntime } from "./api-runti
 import { resolveRuntimeProvenance } from "./runtime-provenance";
 
 /**
- * Life OS supports exactly two understandable database transport states. Hosted development
+ * Life OS supports exactly two understandable database transport states. Hosted environments
  * must verify the provider chain and hostname; disposable local/CI PostgreSQL may run without
  * TLS. The ambiguous libpq middle modes (`prefer`, `allow`, `require`, `no-verify`, `verify-ca`)
  * are deliberately unsupported because each one silently accepts an unverified peer.
@@ -192,13 +192,13 @@ export function databasePoolConfigurationFromEnv(
   const environment = resolveRuntimeProvenance(env).environment;
   const mode = resolveDatabaseTlsMode(env);
 
-  // Hosted development talks to a managed provider over the public internet. An unverified
+  // Hosted runtimes talk to a managed provider over the public internet. An unverified
   // transport there is not a degraded mode, it is a different security posture, so the
   // permissive mode is refused outright rather than warned about.
-  if (environment === "development" && mode !== "verify-full") {
+  if ((environment === "development" || environment === "production") && mode !== "verify-full") {
     throw new DatabaseRuntimeConfigurationError(
       "DATABASE_TLS_MODE_UNVERIFIED",
-      "LIFE_OS_DATABASE_TLS_MODE must be verify-full when DATABASE_URL is used in development",
+      "LIFE_OS_DATABASE_TLS_MODE must be verify-full when DATABASE_URL is used in a hosted environment",
     );
   }
 

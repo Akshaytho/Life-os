@@ -15,6 +15,13 @@ const developmentRuntime = {
   platform: "OTHER" as const,
 };
 
+const productionReleaseSha = "a".repeat(40);
+const productionRuntime = {
+  environment: "production" as const,
+  releaseSha: productionReleaseSha,
+  platform: "RAILWAY" as const,
+};
+
 const safePrivateRoleRow = {
   role_superuser: false,
   role_bypass_rls: false,
@@ -83,14 +90,25 @@ test("private API is opt-in and accepts only explicit true/false", () => {
   }
 });
 
-test("private API V1 refuses production activation even when credentials exist", () => {
+test("private API production activation refuses an absent or stale release approval", () => {
   assert.throws(
     () => privateApiEnabledForRuntime(
       { LIFE_OS_PRIVATE_API_ENABLED: "true" },
-      { environment: "production", releaseSha: "prod-release", platform: "OTHER" },
+      productionRuntime,
     ),
-    (error: unknown) => error instanceof ApiRuntimeConfigurationError && /cannot be activated in production/.test(error.message),
+    (error: unknown) => error instanceof ApiRuntimeConfigurationError && /PRODUCTION_RELEASE_SHA/.test(error.message),
   );
+  assert.throws(() => privateApiEnabledForRuntime({
+    LIFE_OS_PRIVATE_API_ENABLED: "true",
+    LIFE_OS_PRODUCTION_RELEASE_SHA: "b".repeat(40),
+  }, productionRuntime), ApiRuntimeConfigurationError);
+});
+
+test("private API production activation accepts only the exact reviewed release", () => {
+  assert.equal(privateApiEnabledForRuntime({
+    LIFE_OS_PRIVATE_API_ENABLED: "true",
+    LIFE_OS_PRODUCTION_RELEASE_SHA: productionReleaseSha,
+  }, productionRuntime), true);
 });
 
 test("database readiness issues only a constant SELECT 1 and returns ready", async () => {

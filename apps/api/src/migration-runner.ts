@@ -3,6 +3,8 @@ import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Pool, PoolClient } from "pg";
+import type { LifeOsEnvironment } from "../../../packages/contracts/runtime-provenance";
+import { productionReleaseApprovedForRuntime } from "./production-release-approval";
 import { resolveRuntimeProvenance } from "./runtime-provenance";
 
 const migrationNamePattern = /^(\d{4})_[a-z0-9_]+\.sql$/;
@@ -25,6 +27,8 @@ const knownLifeOsTables = [
   "journey_capability_decision",
   "journey_practice_session",
   "journey_practice_completion",
+  "periodic_review",
+  "memory_item",
 ] as const;
 
 export const defaultMigrationDirectory = fileURLToPath(
@@ -47,7 +51,7 @@ export class MigrationRunnerError extends Error {
 
 export interface MigrationRuntimeConfiguration {
   migrationDatabaseUrl: string;
-  environment: "local" | "ci" | "development";
+  environment: LifeOsEnvironment;
 }
 
 export interface MigrationFile {
@@ -85,19 +89,22 @@ function requiredText(value: string | undefined, label: string): string {
 
 export function migrationRuntimeConfigurationFromEnv(env: NodeJS.ProcessEnv): MigrationRuntimeConfiguration {
   const runtime = resolveRuntimeProvenance(env);
-  if (runtime.environment === "production") {
-    throw new MigrationRunnerError("Hosted Development Migration V1 refuses production", "CONFIGURATION_INVALID");
+  if (!productionReleaseApprovedForRuntime(env, runtime)) {
+    throw new MigrationRunnerError(
+      "Production migration requires LIFE_OS_PRODUCTION_RELEASE_SHA to match the reviewed release",
+      "CONFIGURATION_INVALID",
+    );
   }
 
   const migrationDatabaseUrl = requiredText(env.MIGRATION_DATABASE_URL, "MIGRATION_DATABASE_URL");
   const applicationDatabaseUrl = optionalText(env.DATABASE_URL);
   if (
-    runtime.environment === "development" &&
+    (runtime.environment === "development" || runtime.environment === "production") &&
     applicationDatabaseUrl &&
     applicationDatabaseUrl === migrationDatabaseUrl
   ) {
     throw new MigrationRunnerError(
-      "Hosted development requires separate migration and application database credentials",
+      "Hosted environments require separate migration and application database credentials",
       "CONFIGURATION_INVALID",
     );
   }

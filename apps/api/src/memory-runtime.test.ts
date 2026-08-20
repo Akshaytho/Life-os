@@ -5,7 +5,7 @@ import { memoryEnabledForRuntime } from "./memory-runtime";
 
 const development = {
   environment: "development" as const,
-  releaseSha: "m".repeat(40),
+  releaseSha: "6".repeat(40),
   platform: "LOCAL" as const,
 };
 
@@ -32,10 +32,12 @@ test("Memory is disabled by default and requires exact canonical source flags", 
   }
 });
 
-test("Memory rejects ambiguous flags and V1 production activation", () => {
+test("Memory rejects ambiguous flags and requires exact production approval", () => {
   assert.throws(() => memoryEnabledForRuntime({ LIFE_OS_MEMORY_ENABLED: "yes" }, development), ApiRuntimeConfigurationError);
-  assert.throws(
-    () => memoryEnabledForRuntime(enabled, { ...development, environment: "production" }),
-    ApiRuntimeConfigurationError,
-  );
+  const production = { ...development, environment: "production" as const };
+  assert.throws(() => memoryEnabledForRuntime(enabled, production), ApiRuntimeConfigurationError);
+  assert.equal(memoryEnabledForRuntime({
+    ...enabled,
+    LIFE_OS_PRODUCTION_RELEASE_SHA: development.releaseSha,
+  }, production), true);
 });

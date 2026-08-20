@@ -23,8 +23,5 @@ export function directionEnabledForRuntime(
   if (!privateApiEnabledForRuntime(env, provenance)) {
     throw new ApiRuntimeConfigurationError("LIFE_OS_DIRECTION_ENABLED requires LIFE_OS_PRIVATE_API_ENABLED=true");
   }
-  if (provenance.environment === "production") {
-    throw new ApiRuntimeConfigurationError("Direction V1 cannot be activated in production");
-  }
   return true;
 }

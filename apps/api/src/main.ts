@@ -32,6 +32,7 @@ import { createMemoryDatabaseReadinessProbe } from "./memory-database-readiness"
 import { memoryEnabledForRuntime } from "./memory-runtime";
 import { privateCorsPolicyFromEnv } from "./private-cors";
 import { createPrivateApiRuntimeDependencies } from "./private-api-runtime";
+import { createProductionDatabaseReadinessProbe } from "./production-database-readiness";
 import { resolveRuntimeProvenance } from "./runtime-provenance";
 import { createConsoleTechnicalTelemetrySink } from "./technical-telemetry";
 
@@ -63,6 +64,9 @@ async function main() {
     : createDatabaseReadinessProbe(pool);
   const readiness = combineReadinessProbes(
     baselineReadiness,
+    ...(privateApiEnabled && provenance.environment === "production"
+      ? [createProductionDatabaseReadinessProbe(pool!)]
+      : []),
     ...(directionEnabled ? [createDirectionDatabaseReadinessProbe(pool!)] : []),
     ...(dailyReturnEnabled ? [createDailyReturnDatabaseReadinessProbe(pool!)] : []),
     ...(brainDumpNotNowEnabled ? [createBrainDumpNotNowDatabaseReadinessProbe(pool!)] : []),

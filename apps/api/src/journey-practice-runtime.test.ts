@@ -29,21 +29,22 @@ test("Journey practice stays off by default and requires the private API", () =>
   );
 });
 
-test("Journey practice refuses production and malformed flag values", () => {
+test("Journey practice rejects malformed values and requires exact production approval", () => {
   assert.throws(
     () => journeyPracticeEnabledForRuntime({
       LIFE_OS_JOURNEY_PRACTICE_ENABLED: "yes",
     }, development),
     (error: unknown) => error instanceof ApiRuntimeConfigurationError,
   );
-  assert.throws(
-    () => journeyPracticeEnabledForRuntime({
+  const releaseSha = "1".repeat(40);
+  const production = { environment: "production" as const, releaseSha, platform: "RAILWAY" as const };
+  assert.throws(() => journeyPracticeEnabledForRuntime({
       LIFE_OS_PRIVATE_API_ENABLED: "true",
       LIFE_OS_JOURNEY_PRACTICE_ENABLED: "true",
-      SUPABASE_URL: "https://example.supabase.co",
-      SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
-      LIFE_OS_ALLOWED_WEB_ORIGIN: "https://life-os.example",
-    }, { environment: "production", releaseSha: "prod", platform: "RAILWAY" }),
-    (error: unknown) => error instanceof ApiRuntimeConfigurationError,
-  );
+    }, production), ApiRuntimeConfigurationError);
+  assert.equal(journeyPracticeEnabledForRuntime({
+    LIFE_OS_PRIVATE_API_ENABLED: "true",
+    LIFE_OS_JOURNEY_PRACTICE_ENABLED: "true",
+    LIFE_OS_PRODUCTION_RELEASE_SHA: releaseSha,
+  }, production), true);
 });

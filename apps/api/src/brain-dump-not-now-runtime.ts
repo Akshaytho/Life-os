@@ -23,10 +23,5 @@ export function brainDumpNotNowEnabledForRuntime(
       "LIFE_OS_BRAIN_DUMP_NOT_NOW_ENABLED requires LIFE_OS_PRIVATE_API_ENABLED=true",
     );
   }
-  if (provenance.environment === "production") {
-    throw new ApiRuntimeConfigurationError(
-      "Brain Dump + NOT NOW V1 cannot be activated in production",
-    );
-  }
   return true;
 }

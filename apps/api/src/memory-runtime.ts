@@ -25,8 +25,5 @@ export function memoryEnabledForRuntime(
       `LIFE_OS_MEMORY_ENABLED requires canonical source capabilities: ${missing.join(", ")}`,
     );
   }
-  if (provenance.environment === "production") {
-    throw new ApiRuntimeConfigurationError("Memory V1 cannot be activated in production");
-  }
   return true;
 }

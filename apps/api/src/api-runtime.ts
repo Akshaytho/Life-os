@@ -1,6 +1,7 @@
 import type { Pool } from "pg";
 import type { RuntimeProvenance } from "../../../packages/contracts/runtime-provenance";
 import { resolveRuntimeProvenance } from "./runtime-provenance";
+import { productionReleaseApprovedForRuntime } from "./production-release-approval";
 import type { ReadinessProbe } from "./api-health";
 import {
   forbiddenApplicationTablePrivileges,
@@ -116,8 +117,8 @@ export function databaseUrlForRuntime(env: NodeJS.ProcessEnv): string | undefine
 
 /**
  * Private transport activation is a deliberate deployment decision, not an inference
- * from the presence of credentials. V1 is development/CI/local only; production stays
- * blocked until a separate production-security review is approved.
+ * from the presence of credentials. Production additionally requires an exact reviewed
+ * release SHA so approval cannot silently carry over to a later deployment.
  */
 export function privateApiEnabledForRuntime(
   env: NodeJS.ProcessEnv,
@@ -128,8 +129,10 @@ export function privateApiEnabledForRuntime(
   if (value !== "true") {
     throw new ApiRuntimeConfigurationError("LIFE_OS_PRIVATE_API_ENABLED must be true or false");
   }
-  if (provenance.environment === "production") {
-    throw new ApiRuntimeConfigurationError("Private API V1 cannot be activated in production");
+  if (!productionReleaseApprovedForRuntime(env, provenance)) {
+    throw new ApiRuntimeConfigurationError(
+      "Private API production activation requires LIFE_OS_PRODUCTION_RELEASE_SHA to match the deployed release",
+    );
   }
   return true;
 }
