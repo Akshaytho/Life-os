@@ -27,6 +27,19 @@ const pages = [
     ],
   },
   {
+    name: 'today-composed-review',
+    path: '/visual-review/today-composed',
+    syntheticPrivateBoundary: true,
+    expected: [
+      'TODAY / SYNTHETIC VISUAL REVIEW',
+      'COMPASS · YOU · DECISION',
+      'HAPPENING NOW · FACT',
+      'DELIBERATE FOCUS · FACT',
+      'JOURNEY · DECISION',
+      'MEMORY · REFLECTION · OPTIONAL CONTEXT',
+    ],
+  },
+  {
     name: 'capture-real-boundary',
     path: '/capture',
     expected: [
