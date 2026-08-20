@@ -18,6 +18,17 @@ const pages = [
     ],
   },
   {
+    name: 'today-daily-return-empty',
+    path: '/visual-review/daily-return',
+    syntheticPrivateBoundary: true,
+    expected: [
+      'REFLECTION / DAILY RETURN',
+      'Remember the day. Choose the return.',
+      'What is worth remembering right now?',
+      'Did I return to my direction after drifting?',
+    ],
+  },
+  {
     name: 'capture-real-boundary',
     path: '/capture',
     expected: [
@@ -76,6 +87,42 @@ const targets = [
   { name: 'desktop-1440', width: 1440, height: 1000 },
 ];
 
+async function configureSyntheticPrivateBoundary(context) {
+  await context.route('**/api/v1/**', async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === '/api/v1/calendar' && route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          from: url.searchParams.get('from'),
+          to: url.searchParams.get('to'),
+          items: [],
+        }),
+      });
+      return;
+    }
+    if (url.pathname === '/api/v1/daily-return' && route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          localDate: url.searchParams.get('date'),
+          logEntries: [],
+          currentReview: null,
+          reviewHistory: [],
+        }),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 404,
+      contentType: 'application/json',
+      body: JSON.stringify({ status: 'visual_review_route_not_stubbed' }),
+    });
+  });
+}
+
 for (const targetPage of pages) {
   for (const target of targets) {
     const context = await browser.newContext({
@@ -85,8 +132,13 @@ for (const targetPage of pages) {
       hasTouch: target.width < 600,
     });
 
+    if (targetPage.syntheticPrivateBoundary) {
+      await configureSyntheticPrivateBoundary(context);
+    }
+
     const page = await context.newPage();
     await page.goto(`http://127.0.0.1:3000${targetPage.path}`, { waitUntil: 'networkidle' });
+
     await page.evaluate(() => document.fonts.ready);
 
     for (const expected of targetPage.expected ?? []) {

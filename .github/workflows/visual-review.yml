@@ -31,6 +31,12 @@ jobs:
           npx playwright install --with-deps chromium
 
       - name: Start Life OS
+        env:
+          LIFE_OS_VISUAL_REVIEW_ENABLED: "true"
+          NEXT_PUBLIC_LIFE_OS_API_BASE_URL: http://127.0.0.1:3000
+          NEXT_PUBLIC_LIFE_OS_DAILY_RETURN_ENABLED: "true"
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: visual-review-publishable-key
+          NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:3000
         run: |
           (cd apps/web && npm run dev -- --hostname 0.0.0.0) > /tmp/life-os-web.log 2>&1 &
           for i in {1..60}; do

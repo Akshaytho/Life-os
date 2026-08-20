@@ -22,7 +22,10 @@ test("real private entry routes require the shared session gate", async () => {
   for (const [path, area, liveSurface] of cases) {
     const page = await source(path);
     assert.match(page, /import \{ LifeOsAuthGate \}/, `${path} must use the shared auth gate`);
-    assert.match(page, new RegExp(`<LifeOsAuthGate[\\s\\S]*area="${area}"[\\s\\S]*<${liveSurface} \\/>[\\s\\S]*<\\/LifeOsAuthGate>`));
+    assert.match(
+      page,
+      new RegExp(`<LifeOsAuthGate[\\s\\S]*area="${area}"[\\s\\S]*<${liveSurface}(?:\\s+[^>]*)?\\s*\\/>[\\s\\S]*<\\/LifeOsAuthGate>`),
+    );
   }
 });
 

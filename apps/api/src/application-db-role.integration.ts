@@ -136,6 +136,7 @@ test("provisioner requires migrations first, then creates a credential that pass
     "0005_proposal_rejection_provenance.sql",
     "0006_safe_fallback_interpreter.sql",
     "0007_direction_decision.sql",
+    "0008_daily_return_review.sql",
   ]);
 
   await assert.rejects(
@@ -177,6 +178,8 @@ test("provisioner requires migrations first, then creates a credential that pass
     await assert.rejects(() => appPool.query("SELECT sequence FROM lifeos_schema_migration"));
     await assert.rejects(() => appPool.query("UPDATE lifeos_schema_migration SET applied_at = now()"));
     await assert.rejects(() => appPool.query("SELECT direction_id FROM direction_decision"));
+    await assert.rejects(() => appPool.query("SELECT daily_log_entry_id FROM daily_log_entry"));
+    await assert.rejects(() => appPool.query("SELECT daily_return_review_id FROM daily_return_review"));
 
     const forbidden = await appPool.query(`
       SELECT
@@ -186,7 +189,12 @@ test("provisioner requires migrations first, then creates a credential that pass
         has_table_privilege(current_user, 'capture_record', 'TRIGGER') AS can_trigger,
         has_table_privilege(current_user, 'direction_decision', 'SELECT') AS can_read_direction,
         has_table_privilege(current_user, 'direction_decision', 'INSERT') AS can_insert_direction,
-        has_table_privilege(current_user, 'direction_decision', 'UPDATE') AS can_update_direction
+        has_table_privilege(current_user, 'direction_decision', 'UPDATE') AS can_update_direction,
+        has_table_privilege(current_user, 'daily_log_entry', 'SELECT') AS can_read_daily_log,
+        has_table_privilege(current_user, 'daily_log_entry', 'INSERT') AS can_insert_daily_log,
+        has_table_privilege(current_user, 'daily_return_review', 'SELECT') AS can_read_daily_review,
+        has_table_privilege(current_user, 'daily_return_review', 'INSERT') AS can_insert_daily_review,
+        has_table_privilege(current_user, 'daily_return_review', 'UPDATE') AS can_update_daily_review
     `);
     assert.deepEqual(forbidden.rows[0], {
       schema_create: false,
@@ -196,6 +204,11 @@ test("provisioner requires migrations first, then creates a credential that pass
       can_read_direction: false,
       can_insert_direction: false,
       can_update_direction: false,
+      can_read_daily_log: false,
+      can_insert_daily_log: false,
+      can_read_daily_review: false,
+      can_insert_daily_review: false,
+      can_update_daily_review: false,
     });
   } finally {
     await appPool.end();

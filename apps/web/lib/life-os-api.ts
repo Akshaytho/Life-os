@@ -3,6 +3,11 @@ import type {
   DirectionDecisionOverview,
   SetCurrentDirectionCommand,
 } from "../../../packages/contracts/direction";
+import type {
+  AppendDailyLogEntryCommand,
+  DailyReturnOverview,
+  SubmitDailyReturnReviewCommand,
+} from "../../../packages/contracts/daily-return";
 import type { InteractionChangeTrace } from "../../../packages/contracts/interaction-change-ledger";
 import type { ProposalState } from "../../../packages/contracts/input-routing";
 import type { CaptureProposalReview } from "../../../packages/contracts/proposal-review";
@@ -64,6 +69,23 @@ export interface SetCurrentDirectionReceipt {
   authorityClass: "DECISION";
   decidedAt: string;
   supersededDirectionId?: string;
+}
+
+export interface AppendDailyLogEntryReceipt {
+  status: "recorded" | "replayed";
+  entryId: string;
+  authorityClass: "REFLECTION";
+  occurredAt: string;
+  recordedAt: string;
+}
+
+export interface SubmitDailyReturnReviewReceipt {
+  status: "current" | "replayed";
+  reviewId: string;
+  authorityClass: "REFLECTION";
+  submittedAt: string;
+  recordedAt: string;
+  supersededReviewId?: string;
 }
 
 function requiredPublicValue(value: string | undefined, name: string): string {
@@ -182,6 +204,55 @@ export function getCanonicalCalendar(
 
 export function getDirectionOverview(accessToken: string): Promise<DirectionDecisionOverview> {
   return privateRequest<DirectionDecisionOverview>(accessToken, "/api/v1/direction");
+}
+
+export function getDailyReturnOverview(
+  accessToken: string,
+  localDate: string,
+): Promise<DailyReturnOverview> {
+  const query = new URLSearchParams({ date: localDate });
+  return privateRequest<DailyReturnOverview>(
+    accessToken,
+    `/api/v1/daily-return?${query.toString()}`,
+  );
+}
+
+export function appendDailyLogEntry(
+  accessToken: string,
+  command: AppendDailyLogEntryCommand,
+  idempotencyKey: string,
+): Promise<AppendDailyLogEntryReceipt> {
+  return privateRequest<AppendDailyLogEntryReceipt>(
+    accessToken,
+    "/api/v1/daily-return/logs",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify(command),
+    },
+  );
+}
+
+export function submitDailyReturnReview(
+  accessToken: string,
+  command: SubmitDailyReturnReviewCommand,
+  idempotencyKey: string,
+): Promise<SubmitDailyReturnReviewReceipt> {
+  return privateRequest<SubmitDailyReturnReviewReceipt>(
+    accessToken,
+    "/api/v1/daily-return/review",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify(command),
+    },
+  );
 }
 
 export function setCurrentDirection(

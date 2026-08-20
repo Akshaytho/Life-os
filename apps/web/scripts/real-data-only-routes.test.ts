@@ -38,7 +38,9 @@ test("real-capable routes use their authenticated live surfaces", async () => {
   const calendar = await routeSource("../app/calendar/page.tsx");
   const capture = await routeSource("../app/capture/page.tsx");
 
-  assert.match(today, /<LiveToday\s*\/>/);
+  assert.match(today, /<LiveToday(?:\s+[^>]*)?\s*\/>/);
+  assert.match(today, /NEXT_PUBLIC_LIFE_OS_DAILY_RETURN_ENABLED/);
+  assert.match(today, /<LiveToday dailyReturnEnabled=\{dailyReturnConfigured\(\)\} \/>/);
   assert.match(calendar, /<LiveCanonicalCalendar\s*\/>/);
   assert.match(capture, /<LiveCaptureRouting\s*\/>/);
 });

@@ -11,6 +11,8 @@ import {
 } from "./api-runtime";
 import { safeBootstrapDiagnosticCode, safeBootstrapErrorClass } from "./bootstrap-error";
 import { databasePoolConfigurationFromEnv } from "./database-runtime";
+import { createDailyReturnDatabaseReadinessProbe } from "./daily-return-database-readiness";
+import { dailyReturnEnabledForRuntime } from "./daily-return-runtime";
 import {
   combineReadinessProbes,
   createDirectionDatabaseReadinessProbe,
@@ -28,6 +30,7 @@ async function main() {
   const port = parsePort(process.env.PORT);
   const privateApiEnabled = privateApiEnabledForRuntime(process.env, provenance);
   const directionEnabled = directionEnabledForRuntime(process.env, provenance);
+  const dailyReturnEnabled = dailyReturnEnabledForRuntime(process.env, provenance);
   // The database transport contract, including which certificate authority is trusted, is
   // owned by the reviewed runtime configuration rather than assembled here.
   const databaseConfiguration = databasePoolConfigurationFromEnv(process.env);
@@ -40,18 +43,24 @@ async function main() {
   const baselineReadiness = privateApiEnabled
     ? createPrivateDatabaseReadinessProbe(pool!)
     : createDatabaseReadinessProbe(pool);
-  const readiness = directionEnabled
-    ? combineReadinessProbes(baselineReadiness, createDirectionDatabaseReadinessProbe(pool!))
-    : baselineReadiness;
+  const readiness = combineReadinessProbes(
+    baselineReadiness,
+    ...(directionEnabled ? [createDirectionDatabaseReadinessProbe(pool!)] : []),
+    ...(dailyReturnEnabled ? [createDailyReturnDatabaseReadinessProbe(pool!)] : []),
+  );
 
   const privateApi = privateApiEnabled
-    ? createPrivateApiRuntimeDependencies(pool!, process.env, provenance, telemetry, { directionEnabled })
+    ? createPrivateApiRuntimeDependencies(pool!, process.env, provenance, telemetry, {
+        directionEnabled,
+        dailyReturnEnabled,
+      })
     : undefined;
   const privateCors = privateApiEnabled ? privateCorsPolicyFromEnv(process.env) : undefined;
 
   // Do not listen with a private surface when the connected application role cannot
   // prove every explicitly enabled RLS/ownership boundary. Direction adds a separate
-  // narrower readiness proof only when its high-authority flag is true.
+  // narrower readiness proof only when its high-authority flag is true. Daily Return
+  // follows the same explicit capability boundary with its own RLS/grant proof.
   if (privateApiEnabled && !(await readiness.check())) {
     throw new ApiRuntimeConfigurationError("Private API database authorization readiness failed");
   }

@@ -16,6 +16,8 @@ const knownLifeOsTables = [
   "routing_interpretation",
   "routing_proposal",
   "proposal_rejection",
+  "daily_log_entry",
+  "daily_return_review",
 ] as const;
 
 export const defaultMigrationDirectory = fileURLToPath(
