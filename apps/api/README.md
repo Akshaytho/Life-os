@@ -62,3 +62,24 @@ Activation requires all of:
 An API key by itself never activates retrieval. Provider requests use `store: false`
 and no tools. The operation writes no table or domain event, creates no Memory item,
 and returns no invented fallback answer on provider failure.
+
+## Weekly + Monthly Reviews
+
+`GET` and `PUT /api/v1/reviews/period` expose the authenticated period read/write
+boundary. Trusted code validates exact Monday–Sunday or calendar-month ranges and
+their local-midnight Calendar instants. The read model compresses Daily Return,
+Calendar, Journey, Drift, NOT NOW, and current weekly reviews without changing any
+source authority. Review answers remain versioned `REFLECTION` rows.
+
+Migration 0012 grants nothing. After the baseline and source capabilities are ready,
+the separately reversible review capability can be inspected and deliberately applied:
+
+```bash
+npm run periodic-reviews-role --workspace @life-os/api
+npm run periodic-reviews-role:apply --workspace @life-os/api
+npm run periodic-reviews-role:revoke --workspace @life-os/api
+```
+
+`LIFE_OS_PERIODIC_REVIEWS_ENABLED=true` requires the private API plus Daily Return,
+Brain Dump + NOT NOW, Drift + Return, and Journey Practice flags. V1 refuses production
+activation and performs no automatic Memory promotion or AI-authored submission.

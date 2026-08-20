@@ -123,6 +123,26 @@ const pages = [
     ],
   },
   {
+    name: 'periodic-reviews-real-boundary',
+    path: '/reviews',
+    expected: [
+      'PRIVATE SESSION · WEEKLY + MONTHLY REVIEWS',
+      'Sign in before Life OS can assemble your private period review.',
+    ],
+  },
+  {
+    name: 'periodic-reviews-review',
+    path: '/visual-review/periodic-reviews',
+    syntheticPrivateBoundary: true,
+    expected: [
+      'TIME COMPRESSION, NOT A SCORE',
+      /Review what\s*meaningfully changed\./,
+      'The period, as recorded.',
+      'Close the loop in your own words.',
+      'No automatic truth changes.',
+    ],
+  },
+  {
     name: 'calendar-real-boundary',
     path: '/calendar',
     expected: [

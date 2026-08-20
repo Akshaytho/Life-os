@@ -26,6 +26,8 @@ import { createDriftDatabaseReadinessProbe } from "./drift-database-readiness";
 import { driftEnabledForRuntime } from "./drift-runtime";
 import { createJourneyPracticeDatabaseReadinessProbe } from "./journey-practice-database-readiness";
 import { journeyPracticeEnabledForRuntime } from "./journey-practice-runtime";
+import { createPeriodicReviewsDatabaseReadinessProbe } from "./periodic-reviews-database-readiness";
+import { periodicReviewsEnabledForRuntime } from "./periodic-reviews-runtime";
 import { privateCorsPolicyFromEnv } from "./private-cors";
 import { createPrivateApiRuntimeDependencies } from "./private-api-runtime";
 import { resolveRuntimeProvenance } from "./runtime-provenance";
@@ -43,6 +45,7 @@ async function main() {
   const driftEnabled = driftEnabledForRuntime(process.env, provenance);
   const journeyPracticeEnabled = journeyPracticeEnabledForRuntime(process.env, provenance);
   const aiRetrievalEnabled = aiRetrievalEnabledForRuntime(process.env, provenance);
+  const periodicReviewsEnabled = periodicReviewsEnabledForRuntime(process.env, provenance);
   // The database transport contract, including which certificate authority is trusted, is
   // owned by the reviewed runtime configuration rather than assembled here.
   const databaseConfiguration = databasePoolConfigurationFromEnv(process.env);
@@ -63,6 +66,7 @@ async function main() {
     ...(driftEnabled ? [createDriftDatabaseReadinessProbe(pool!)] : []),
     ...(journeyPracticeEnabled ? [createJourneyPracticeDatabaseReadinessProbe(pool!)] : []),
     ...(aiRetrievalEnabled ? [createAiRetrievalDatabaseReadinessProbe(pool!)] : []),
+    ...(periodicReviewsEnabled ? [createPeriodicReviewsDatabaseReadinessProbe(pool!)] : []),
   );
 
   const privateApi = privateApiEnabled
@@ -73,6 +77,7 @@ async function main() {
         driftEnabled,
         journeyPracticeEnabled,
         aiRetrievalEnabled,
+        periodicReviewsEnabled,
       })
     : undefined;
   const privateCors = privateApiEnabled ? privateCorsPolicyFromEnv(process.env) : undefined;

@@ -13,6 +13,8 @@ import { PostgresDriftReader } from "../../../packages/database/postgres-drift-r
 import { PostgresDriftUnitOfWork } from "../../../packages/database/postgres-drift-unit-of-work";
 import { PostgresJourneyPracticeReader } from "../../../packages/database/postgres-journey-practice-reader";
 import { PostgresJourneyPracticeUnitOfWork } from "../../../packages/database/postgres-journey-practice-unit-of-work";
+import { PostgresPeriodicReviewReader } from "../../../packages/database/postgres-periodic-review-reader";
+import { PostgresPeriodicReviewUnitOfWork } from "../../../packages/database/postgres-periodic-review-unit-of-work";
 import { PostgresInteractionChangeLedgerReader } from "../../../packages/database/postgres-interaction-change-ledger-reader";
 import { PostgresProposalReviewReader } from "../../../packages/database/postgres-proposal-review-reader";
 import { PostgresWriteUnitOfWork } from "../../../packages/database/postgres-write-unit-of-work";
@@ -26,6 +28,7 @@ import { dailyReturnEnabledForRuntime } from "./daily-return-runtime";
 import { directionEnabledForRuntime } from "./direction-runtime";
 import { driftEnabledForRuntime } from "./drift-runtime";
 import { journeyPracticeEnabledForRuntime } from "./journey-practice-runtime";
+import { periodicReviewsEnabledForRuntime } from "./periodic-reviews-runtime";
 import type { PrivateApiDependencies } from "./private-api";
 import { PostgresCalendarProposalConfirmationStore } from "./postgres-calendar-proposal-confirmation-store";
 import { createSupabaseSessionVerifierFromEnv } from "./supabase-session-verifier";
@@ -43,6 +46,7 @@ export interface PrivateApiRuntimeOptions {
   driftEnabled?: boolean;
   journeyPracticeEnabled?: boolean;
   aiRetrievalEnabled?: boolean;
+  periodicReviewsEnabled?: boolean;
   aiAssistant?: LifeOsAssistant;
 }
 
@@ -75,6 +79,8 @@ export function createPrivateApiRuntimeDependencies(
     ?? journeyPracticeEnabledForRuntime(env, runtime);
   const aiRetrievalEnabled = options.aiRetrievalEnabled
     ?? aiRetrievalEnabledForRuntime(env, runtime);
+  const periodicReviewsEnabled = options.periodicReviewsEnabled
+    ?? periodicReviewsEnabledForRuntime(env, runtime);
 
   return {
     sessionVerifier: options.sessionVerifier ?? createSupabaseSessionVerifierFromEnv(env),
@@ -134,6 +140,18 @@ export function createPrivateApiRuntimeDependencies(
       brainDumpNotNowReader: new PostgresBrainDumpNotNowReader(pool),
       driftReader: new PostgresDriftReader(pool),
       journeyPracticeReader: new PostgresJourneyPracticeReader(pool),
+    } : {}),
+    periodicReviewsEnabled,
+    ...(periodicReviewsEnabled ? {
+      periodicReviewReader: new PostgresPeriodicReviewReader(pool),
+      periodicReviewUnitOfWork: new PostgresPeriodicReviewUnitOfWork(pool),
+      periodicReviewClock: clock,
+      periodicReviewIds: { next: (prefix: string) => `${prefix}-${uuid()}` },
+      dailyReturnReader: new PostgresDailyReturnReader(pool),
+      canonicalCalendarReader: new PostgresCanonicalCalendarReader(pool),
+      journeyPracticeReader: new PostgresJourneyPracticeReader(pool),
+      driftReader: new PostgresDriftReader(pool),
+      brainDumpNotNowReader: new PostgresBrainDumpNotNowReader(pool),
     } : {}),
     runtime,
     telemetry,

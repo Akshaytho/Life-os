@@ -59,6 +59,16 @@ and states that no Life OS state or chat transcript changed.
 `/visual-review/ask` is available only under the existing visual-review gate and uses
 clearly synthetic source-visible content without calling a provider.
 
+## Weekly + Monthly Reviews
+
+`/reviews` is an authenticated real-data-only period review surface linked from Today.
+It navigates exact local weeks/months, shows source records with their owning domain and
+authority, and saves only the user's six-part review as versioned `REFLECTION`. There
+are no scores, streaks, automatic truth changes, or implicit Memory writes.
+
+`/visual-review/periodic-reviews` is synthetic-only behind the visual-review gate and
+exists for responsive phone, tablet, and desktop verification.
+
 ## Trust state
 
 Prototype/sample screens must remain visibly distinct from canonical state. Hosted live mode must not silently fall back to sample data because configuration was omitted. High-authority Direction remains separately gated until its server/database activation has passed hosted verification.

@@ -38,6 +38,7 @@ test("real-capable routes use their authenticated live surfaces", async () => {
   const calendar = await routeSource("../app/calendar/page.tsx");
   const capture = await routeSource("../app/capture/page.tsx");
   const ask = await routeSource("../app/ask/page.tsx");
+  const reviews = await routeSource("../app/reviews/page.tsx");
 
   assert.match(today, /<LiveToday(?:\s+[^>]*)?\s*\/>/);
   assert.match(today, /NEXT_PUBLIC_LIFE_OS_DAILY_RETURN_ENABLED/);
@@ -46,6 +47,8 @@ test("real-capable routes use their authenticated live surfaces", async () => {
   assert.match(capture, /<LiveCaptureRouting\s*\/>/);
   assert.match(ask, /<LifeOsAuthGate/);
   assert.match(ask, /<LiveAiRetrieval\s*\/>/);
+  assert.match(reviews, /<LifeOsAuthGate/);
+  assert.match(reviews, /<LivePeriodicReviews\s*\/>/);
 });
 
 test("unfinished Memory route fails closed instead of fabricating state", async () => {
