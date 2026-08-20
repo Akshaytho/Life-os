@@ -6,6 +6,7 @@ import { handlePrivateBrainDumpNotNowRequest, type PrivateBrainDumpNotNowApiDepe
 import { handlePrivateDailyReturnRequest, type PrivateDailyReturnApiDependencies } from "./private-daily-return-api";
 import { handlePrivateDirectionRequest, type PrivateDirectionApiDependencies } from "./private-direction-api";
 import { handlePrivateDriftRequest, type PrivateDriftApiDependencies } from "./private-drift-api";
+import { handlePrivateJourneyPracticeRequest, type PrivateJourneyPracticeApiDependencies } from "./private-journey-practice-api";
 import { handlePrivateProposalActionRequest, type PrivateProposalActionsApiDependencies } from "./private-proposal-actions-api";
 import { handlePrivateReadRequest, type PrivateReadApiDependencies } from "./private-read-api";
 
@@ -18,7 +19,14 @@ export type PrivateApiDependencies =
   & PrivateDailyReturnApiDependencies
   & PrivateBrainDumpNotNowApiDependencies
   & PrivateDriftApiDependencies
-  & { directionEnabled?: boolean; dailyReturnEnabled?: boolean; brainDumpNotNowEnabled?: boolean; driftEnabled?: boolean };
+  & PrivateJourneyPracticeApiDependencies
+  & {
+    directionEnabled?: boolean;
+    dailyReturnEnabled?: boolean;
+    brainDumpNotNowEnabled?: boolean;
+    driftEnabled?: boolean;
+    journeyPracticeEnabled?: boolean;
+  };
 
 function jsonNotFound(response: ServerResponse) {
   response.statusCode = 404;
@@ -39,7 +47,7 @@ function pathOf(request: IncomingMessage): string {
   }
 }
 
-type RouteFamily = "CAPTURE" | "READ" | "CALENDAR_CONFIRMATION" | "PROPOSAL_ACTION" | "DIRECTION" | "DAILY_RETURN" | "BRAIN_DUMP_NOT_NOW" | "DRIFT";
+type RouteFamily = "CAPTURE" | "READ" | "CALENDAR_CONFIRMATION" | "PROPOSAL_ACTION" | "DIRECTION" | "DAILY_RETURN" | "BRAIN_DUMP_NOT_NOW" | "DRIFT" | "JOURNEY_PRACTICE";
 
 function routeFamily(
   path: string,
@@ -47,6 +55,7 @@ function routeFamily(
   dailyReturnEnabled: boolean,
   brainDumpNotNowEnabled: boolean,
   driftEnabled: boolean,
+  journeyPracticeEnabled: boolean,
 ): RouteFamily | undefined {
   if (path === "/api/v1/captures") return "CAPTURE";
   if (path === "/api/v1/calendar") return "READ";
@@ -70,6 +79,12 @@ function routeFamily(
     path === "/api/v1/drifts"
     || /^\/api\/v1\/drifts\/[^/]+\/(understanding|return)$/.test(path)
   )) return "DRIFT";
+  if (journeyPracticeEnabled && (
+    path === "/api/v1/journey"
+    || path === "/api/v1/journey/activate"
+    || path === "/api/v1/journey/practice"
+    || /^\/api\/v1\/journey\/practice\/[^/]+\/complete$/.test(path)
+  )) return "JOURNEY_PRACTICE";
   return undefined;
 }
 
@@ -84,6 +99,7 @@ export async function handlePrivateApiRequest(
     dependencies.dailyReturnEnabled === true,
     dependencies.brainDumpNotNowEnabled === true,
     dependencies.driftEnabled === true,
+    dependencies.journeyPracticeEnabled === true,
   )) {
     case "CAPTURE":
       await handlePrivateCaptureRequest(request, response, dependencies);
@@ -108,6 +124,9 @@ export async function handlePrivateApiRequest(
       return;
     case "DRIFT":
       await handlePrivateDriftRequest(request, response, dependencies);
+      return;
+    case "JOURNEY_PRACTICE":
+      await handlePrivateJourneyPracticeRequest(request, response, dependencies);
       return;
     default:
       jsonNotFound(response);

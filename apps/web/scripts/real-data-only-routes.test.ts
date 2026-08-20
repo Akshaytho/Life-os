@@ -45,13 +45,7 @@ test("real-capable routes use their authenticated live surfaces", async () => {
   assert.match(capture, /<LiveCaptureRouting\s*\/>/);
 });
 
-test("unfinished Journey and Memory routes fail closed instead of fabricating state", async () => {
-  for (const relativePath of [
-    "../app/journey/page.tsx",
-    "../app/journey/travel-creator/sound-design/page.tsx",
-    "../app/memory/page.tsx",
-  ] as const) {
-    const source = await routeSource(relativePath);
-    assert.match(source, /<RealDataOnlySurface/);
-  }
+test("unfinished Memory route fails closed instead of fabricating state", async () => {
+  const source = await routeSource("../app/memory/page.tsx");
+  assert.match(source, /<RealDataOnlySurface/);
 });

@@ -64,16 +64,41 @@ const pages = [
     name: 'journey-real-boundary',
     path: '/journey',
     expected: [
-      'Journey will appear only when it is real.',
-      realDataOnly,
+      'PRIVATE SESSION · JOURNEY',
+      'Sign in before Life OS can read or record your private Journey evidence.',
     ],
   },
   {
     name: 'journey-sound-design-real-boundary',
     path: '/journey/travel-creator/sound-design',
     expected: [
-      'Sound Design will appear only from real Journey state.',
-      realDataOnly,
+      'PRIVATE SESSION · JOURNEY / SOUND DESIGN',
+      'Sign in before Life OS can read or record private Sound Design practice.',
+    ],
+  },
+  {
+    name: 'journey-activation-review',
+    path: '/visual-review/journey-activation',
+    syntheticPrivateBoundary: true,
+    expected: [
+      'DELIBERATE CAPABILITY',
+      /Choose deliberately\.\s*Then practise for evidence\./,
+      'Travel Creator → Sound Design',
+      'Environmental sound',
+      'Review activation',
+    ],
+  },
+  {
+    name: 'journey-practice-review',
+    path: '/visual-review/journey-practice',
+    syntheticPrivateBoundary: true,
+    expected: [
+      'DELIBERATE CAPABILITY',
+      /Sound is the\s*work now\./,
+      'Travel Creator',
+      'ACTIVE PRACTICE',
+      'Evidence, not streaks.',
+      'RETAINED-LEARNING CANDIDATE · NOT MEMORY',
     ],
   },
   {

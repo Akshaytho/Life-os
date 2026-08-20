@@ -1,11 +1,14 @@
-import { RealDataOnlySurface } from "../../components/real-data-only-surface";
+import { LifeOsAuthGate } from "../../components/life-os-auth-gate";
+import { LiveJourneyPractice } from "../../components/live-journey-practice";
 
 export default function JourneyPage() {
   return (
-    <RealDataOnlySurface
+    <LifeOsAuthGate
       area="Journey"
-      title="Journey will appear only when it is real."
-      description="This area is not backed by a canonical Journey read model yet, so Life OS will not fill it with sample goals, progress, or history."
-    />
+      title="Sign in before Life OS can read or record your private Journey evidence."
+      description="Journey activation is an explicit decision. The private API verifies your session and PostgreSQL RLS keeps capability choices, practice, and reflections inside your user scope."
+    >
+      <LiveJourneyPractice />
+    </LifeOsAuthGate>
   );
 }

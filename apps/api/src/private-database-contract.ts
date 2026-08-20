@@ -53,3 +53,13 @@ export const requiredDriftOccurrenceApplicationTablePrivileges = ["SELECT", "INS
 export const forbiddenDriftOccurrenceApplicationTablePrivileges = ["UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"] as const;
 export const requiredDriftDecisionApplicationTablePrivileges = ["SELECT", "INSERT", "UPDATE"] as const;
 export const forbiddenDriftDecisionApplicationTablePrivileges = ["DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"] as const;
+
+/**
+ * Journey activation and practice evidence are append-only. Completion is a
+ * separate fact row, so the capability never needs UPDATE or DELETE.
+ */
+export const journeyCapabilityDecisionTable = "journey_capability_decision" as const;
+export const journeyPracticeSessionTable = "journey_practice_session" as const;
+export const journeyPracticeCompletionTable = "journey_practice_completion" as const;
+export const requiredJourneyPracticeApplicationTablePrivileges = ["SELECT", "INSERT"] as const;
+export const forbiddenJourneyPracticeApplicationTablePrivileges = ["UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"] as const;

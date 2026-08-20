@@ -22,6 +22,9 @@ const knownLifeOsTables = [
   "not_now_item",
   "drift_occurrence",
   "drift_decision",
+  "journey_capability_decision",
+  "journey_practice_session",
+  "journey_practice_completion",
 ] as const;
 
 export const defaultMigrationDirectory = fileURLToPath(
