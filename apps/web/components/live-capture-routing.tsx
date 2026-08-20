@@ -18,6 +18,7 @@ import captureStyles from "./capture-routing.module.css";
 import liveStyles from "./live-capture-routing.module.css";
 import { useLifeOsAuth } from "./life-os-auth-provider";
 import { ProposalDecisionControls } from "./proposal-decision-controls";
+import { BrainDumpNotNowControls } from "./brain-dump-not-now-controls";
 
 function humanEnum(value: string) {
   return value.replaceAll("_", " ").toLowerCase().replace(/(^|\s)\S/g, (letter) => letter.toUpperCase());
@@ -360,12 +361,12 @@ export function LiveCaptureRouting() {
 
       <section className={captureStyles.hero}>
         <div className={captureStyles.heroTop}>
-          <span>CAPTURE / REVIEW</span>
+          <span>BRAIN DUMP / REVIEW</span>
           <span>AUTHENTICATED DEVELOPMENT</span>
         </div>
         <div className={captureStyles.heroGrid}>
-          <div><span className="section-kicker">REAL PRIVATE TRANSPORT</span><h1>You say it.<br />Life OS saves the source, then shows its work.</h1></div>
-          <p>This development surface uses your Supabase session and the private Railway API. AI or fallback interpretation can propose; you resolve missing Calendar details, then make a separate Apply decision.</p>
+          <div><span className="section-kicker">NEAR-ZERO-FRICTION CAPTURE</span><h1>Put it down.<br />Keep your direction.</h1></div>
+          <p>Brain Dump saves your exact thought first. Interpretation can organize or suggest, but only you can classify it, park it in NOT NOW, or approve a separate domain change.</p>
         </div>
       </section>
 
@@ -379,7 +380,7 @@ export function LiveCaptureRouting() {
           <section className={captureStyles.captureInstrument} aria-label="Live Capture input">
             <form onSubmit={submitCapture}>
               <div className={captureStyles.instrumentTopline}>
-                <span>YOUR CAPTURE</span>
+                <span>YOUR BRAIN DUMP</span>
                 <span>PERSISTED SOURCE · USER DECISION REQUIRED</span>
               </div>
               <textarea
@@ -423,6 +424,10 @@ export function LiveCaptureRouting() {
           {review ? (
             <>
               <LiveReview review={review} />
+              <BrainDumpNotNowControls
+                accessToken={session.access_token}
+                captureId={review.source.captureId}
+              />
               {review.interpretation?.clarification && (
                 <aside className={captureStyles.clarification}>
                   <div><span>NEEDS YOU</span><strong>Life OS will not fill this gap by guessing.</strong></div>

@@ -33,3 +33,12 @@ export const requiredDailyLogApplicationTablePrivileges = ["SELECT", "INSERT"] a
 export const forbiddenDailyLogApplicationTablePrivileges = ["UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"] as const;
 export const requiredDailyReviewApplicationTablePrivileges = ["SELECT", "INSERT", "UPDATE"] as const;
 export const forbiddenDailyReviewApplicationTablePrivileges = ["DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"] as const;
+
+/**
+ * Brain Dump classification and NOT NOW review are separately activated. Both
+ * tables preserve revisions by INSERT + supersession UPDATE; DELETE is never needed.
+ */
+export const brainDumpClassificationTable = "brain_dump_classification" as const;
+export const notNowItemTable = "not_now_item" as const;
+export const requiredBrainDumpNotNowApplicationTablePrivileges = ["SELECT", "INSERT", "UPDATE"] as const;
+export const forbiddenBrainDumpNotNowApplicationTablePrivileges = ["DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"] as const;

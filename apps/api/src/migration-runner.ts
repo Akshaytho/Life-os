@@ -18,6 +18,8 @@ const knownLifeOsTables = [
   "proposal_rejection",
   "daily_log_entry",
   "daily_return_review",
+  "brain_dump_classification",
+  "not_now_item",
 ] as const;
 
 export const defaultMigrationDirectory = fileURLToPath(

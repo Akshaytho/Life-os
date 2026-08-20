@@ -17,7 +17,7 @@ Then open `http://localhost:3000`.
 
 ## Live private mode
 
-The web app now has real Supabase browser authentication and authenticated Life OS API flows for Capture/Review/Trace, proposal decisions, canonical Calendar/Today reads, and the separately gated Direction experience.
+The web app now has real Supabase browser authentication and authenticated Life OS API flows for Brain Dump/Capture/Review/Trace, explicit NOT NOW decisions, proposal decisions, canonical Calendar/Today reads, and the separately gated Direction experience.
 
 A hosted phone-usable deployment must set:
 

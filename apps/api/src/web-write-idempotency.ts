@@ -12,7 +12,10 @@ export type WebWriteIdempotencyScope =
   | "CAPTURE_CREATE"
   | "DIRECTION_SET_CURRENT"
   | "DAILY_LOG_APPEND"
-  | "DAILY_RETURN_SUBMIT";
+  | "DAILY_RETURN_SUBMIT"
+  | "BRAIN_DUMP_CLASSIFY"
+  | "NOT_NOW_PARK"
+  | "NOT_NOW_REVIEW";
 
 const keyPattern = /^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$/;
 

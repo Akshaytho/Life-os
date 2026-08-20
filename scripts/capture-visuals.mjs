@@ -32,8 +32,19 @@ const pages = [
     name: 'capture-real-boundary',
     path: '/capture',
     expected: [
-      'PRIVATE SESSION · CAPTURE',
-      'Sign in before Life OS can read or save private Capture.',
+      'PRIVATE SESSION · BRAIN DUMP',
+      'Sign in before Life OS can read or save your private Brain Dump.',
+    ],
+  },
+  {
+    name: 'not-now-review',
+    path: '/visual-review/not-now',
+    syntheticPrivateBoundary: true,
+    expected: [
+      'DELIBERATE PARKING LOT',
+      /Not abandoned\.\s*Not committed\./,
+      'Temporary inspiration',
+      'Researching without commitment',
     ],
   },
   {
@@ -142,7 +153,10 @@ for (const targetPage of pages) {
     await page.evaluate(() => document.fonts.ready);
 
     for (const expected of targetPage.expected ?? []) {
-      await page.getByText(expected, { exact: true }).first().waitFor({ state: 'visible', timeout: 8000 });
+      const expectedText = expected instanceof RegExp
+        ? page.getByText(expected)
+        : page.getByText(expected, { exact: true });
+      await expectedText.first().waitFor({ state: 'visible', timeout: 8000 });
     }
 
     await page.screenshot({

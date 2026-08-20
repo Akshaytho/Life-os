@@ -16,7 +16,7 @@ test("real private entry routes require the shared session gate", async () => {
   const cases = [
     ["../app/page.tsx", "Today", "LiveToday"],
     ["../app/calendar/page.tsx", "Calendar", "LiveCanonicalCalendar"],
-    ["../app/capture/page.tsx", "Capture", "LiveCaptureRouting"],
+    ["../app/capture/page.tsx", "Brain Dump", "LiveCaptureRouting"],
   ] as const;
 
   for (const [path, area, liveSurface] of cases) {

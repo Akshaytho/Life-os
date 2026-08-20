@@ -137,6 +137,7 @@ test("provisioner requires migrations first, then creates a credential that pass
     "0006_safe_fallback_interpreter.sql",
     "0007_direction_decision.sql",
     "0008_daily_return_review.sql",
+    "0009_brain_dump_not_now.sql",
   ]);
 
   await assert.rejects(
