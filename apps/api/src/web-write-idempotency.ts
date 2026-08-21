@@ -10,6 +10,7 @@ export class WebWriteIdempotencyError extends Error {
 
 export type WebWriteIdempotencyScope =
   | "CAPTURE_CREATE"
+  | "CALENDAR_MANUAL_CREATE"
   | "DIRECTION_SET_CURRENT"
   | "DAILY_LOG_APPEND"
   | "DAILY_RETURN_SUBMIT"
