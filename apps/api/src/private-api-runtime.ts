@@ -3,6 +3,7 @@ import { performance } from "node:perf_hooks";
 import type { Pool } from "pg";
 import type { RuntimeProvenance } from "../../../packages/contracts/runtime-provenance";
 import { PostgresCanonicalCalendarReader } from "../../../packages/database/postgres-canonical-calendar-reader";
+import { PostgresManualCalendarUnitOfWork } from "../../../packages/database/postgres-manual-calendar-unit-of-work";
 import { PostgresBrainDumpNotNowReader } from "../../../packages/database/postgres-brain-dump-not-now-reader";
 import { PostgresBrainDumpNotNowUnitOfWork } from "../../../packages/database/postgres-brain-dump-not-now-unit-of-work";
 import { PostgresDirectionDecisionReader } from "../../../packages/database/postgres-direction-decision-reader";
@@ -94,6 +95,9 @@ export function createPrivateApiRuntimeDependencies(
     proposalReviewReader: new PostgresProposalReviewReader(pool),
     interactionLedgerReader: new PostgresInteractionChangeLedgerReader(pool),
     canonicalCalendarReader: new PostgresCanonicalCalendarReader(pool),
+    manualCalendarUnitOfWork: new PostgresManualCalendarUnitOfWork(pool),
+    manualCalendarClock: clock,
+    manualCalendarIds: { next: (prefix: "calendar" | "event") => `${prefix}-${uuid()}` },
     unitOfWork: new PostgresWriteUnitOfWork(pool),
     calendarConfirmationStore: new PostgresCalendarProposalConfirmationStore(pool),
     interpreter: options.interpreter ?? createCaptureInterpreterFromEnv(env),
