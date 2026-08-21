@@ -34,7 +34,9 @@ const pages = [
       'TODAY / SYNTHETIC VISUAL REVIEW',
       'COMPASS · YOU · DECISION',
       'HAPPENING NOW · FACT',
-      'DELIBERATE FOCUS · FACT',
+      'DO NEXT · SUGGESTION · FROM FACT',
+      'Stay with Software work for the next five minutes.',
+      'See this commitment',
       'JOURNEY · DECISION',
       'MEMORY · REFLECTION · OPTIONAL CONTEXT',
     ],
@@ -69,6 +71,7 @@ const pages = [
       'Temporary inspiration',
       'I am still returning',
       'RESOLVED · Return to my direction · provenance retained',
+      'See my next action.',
     ],
   },
   {
