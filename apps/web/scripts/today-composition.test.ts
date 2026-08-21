@@ -56,8 +56,11 @@ test("composed Today visual fixture is synthetic-only", async () => {
 
 test("mobile Today keeps current reality above the dock and preserves a safe scroll end", async () => {
   const styles = await source("../components/live-today.module.css");
+  const compositionStyles = await source("../components/today-composition.module.css");
   assert.match(styles, /padding-bottom: calc\(142px \+ env\(safe-area-inset-bottom\)\)/);
   assert.match(styles, /\.heroGrid \{\s*grid-template-columns: minmax\(0, 1fr\) auto/);
-  assert.match(styles, /\.primarySignal,\s*\.nextSignal \{[\s\S]*min-height: 128px/);
+  assert.match(styles, /\.primarySignal,\s*\.nextSignal \{[\s\S]*min-height: 112px/);
   assert.match(styles, /\.orientation \{\s*display: none/);
+  assert.match(compositionStyles, /@media\(max-width:400px\)/);
+  assert.match(compositionStyles, /-webkit-line-clamp:3/);
 });
