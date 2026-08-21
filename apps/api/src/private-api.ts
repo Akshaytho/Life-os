@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { handlePrivateCalendarConfirmationRequest, type PrivateCalendarConfirmationApiDependencies } from "./private-calendar-confirmation-api";
+import { handlePrivateManualCalendarRequest, type PrivateManualCalendarApiDependencies } from "./private-manual-calendar-api";
 import { handlePrivateCaptureRequest, type PrivateCaptureApiDependencies } from "./private-capture-api";
 import { appendVaryHeader } from "./private-cors";
 import { handlePrivateAiRetrievalRequest, type PrivateAiRetrievalApiDependencies } from "./private-ai-retrieval-api";
@@ -18,6 +19,7 @@ export type PrivateApiDependencies =
   & PrivateCaptureApiDependencies
   & PrivateProposalActionsApiDependencies
   & PrivateCalendarConfirmationApiDependencies
+  & PrivateManualCalendarApiDependencies
   & PrivateDirectionApiDependencies
   & PrivateDailyReturnApiDependencies
   & PrivateBrainDumpNotNowApiDependencies
@@ -56,7 +58,7 @@ function pathOf(request: IncomingMessage): string {
   }
 }
 
-type RouteFamily = "CAPTURE" | "READ" | "CALENDAR_CONFIRMATION" | "PROPOSAL_ACTION" | "DIRECTION" | "DAILY_RETURN" | "BRAIN_DUMP_NOT_NOW" | "DRIFT" | "JOURNEY_PRACTICE" | "AI_RETRIEVAL" | "PERIODIC_REVIEWS" | "MEMORY";
+type RouteFamily = "CAPTURE" | "READ" | "CALENDAR_CONFIRMATION" | "MANUAL_CALENDAR" | "PROPOSAL_ACTION" | "DIRECTION" | "DAILY_RETURN" | "BRAIN_DUMP_NOT_NOW" | "DRIFT" | "JOURNEY_PRACTICE" | "AI_RETRIEVAL" | "PERIODIC_REVIEWS" | "MEMORY";
 
 function routeFamily(
   path: string,
@@ -70,6 +72,7 @@ function routeFamily(
   memoryEnabled: boolean,
 ): RouteFamily | undefined {
   if (path === "/api/v1/captures") return "CAPTURE";
+  if (path === "/api/v1/calendar/commitments") return "MANUAL_CALENDAR";
   if (path === "/api/v1/calendar") return "READ";
   if (/^\/api\/v1\/captures\/[^/]+\/review$/.test(path)) return "READ";
   if (/^\/api\/v1\/interactions\/[^/]+\/trace$/.test(path)) return "READ";
@@ -131,6 +134,9 @@ export async function handlePrivateApiRequest(
       return;
     case "CALENDAR_CONFIRMATION":
       await handlePrivateCalendarConfirmationRequest(request, response, dependencies);
+      return;
+    case "MANUAL_CALENDAR":
+      await handlePrivateManualCalendarRequest(request, response, dependencies);
       return;
     case "PROPOSAL_ACTION":
       await handlePrivateProposalActionRequest(request, response, dependencies);
