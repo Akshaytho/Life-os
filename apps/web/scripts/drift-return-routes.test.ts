@@ -32,6 +32,15 @@ test("resolved Drift returns to Today for an immediate next action", async () =>
   assert.match(styles, /\.resolved a \{ width: 100%; \}/);
 });
 
+test("390px Drift keeps the first record action clear of persistent controls", async () => {
+  const styles = await source("../components/live-drift.module.css");
+  assert.match(styles, /@media \(max-width: 400px\)/);
+  assert.match(styles, /\.hero \{ padding: 28px 0 22px; \}/);
+  assert.match(styles, /\.capture \{ gap: 13px; padding: 20px 0; \}/);
+  assert.match(styles, /\.capture textarea \{ height: 100px; min-height: 100px/);
+  assert.match(styles, /\.capture button \{ min-height: 46px; \}/);
+});
+
 test("synthetic Drift visual route fails closed and covers recorded, returning, and resolved states", async () => {
   const visual = await source("../app/visual-review/drift/page.tsx");
   assert.match(visual, /LIFE_OS_VISUAL_REVIEW_ENABLED/);
