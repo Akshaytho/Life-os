@@ -19,15 +19,29 @@ test("Today composition is independently browser-gated and keeps the Calendar-on
   assert.match(live, /getMemoryOverview/);
 });
 
-test("Today focus remains a source-labeled projection with no write", async () => {
+test("Today next action stays source-labeled, five-minute, and write-free", async () => {
   const component = await source("../components/today-composition.tsx");
-  assert.match(component, /DELIBERATE FOCUS · \{deliberate\.authority\}/);
+  assert.match(component, /DO NEXT · \{deliberate\.authority\}/);
+  assert.match(component, /sourceAuthority: "FACT"/);
+  assert.match(component, /sourceAuthority: "DECISION"/);
   assert.match(component, /item\.commitment === "Fixed"/);
+  assert.match(component, /next five minutes/);
+  assert.match(component, /Try five minutes of/);
   assert.match(component, /model\.direction \? "DECISION" : "EMPTY"/);
   assert.match(component, /Not a task or Calendar commitment/);
   assert.match(component, /MEMORY · REFLECTION · OPTIONAL CONTEXT/);
   assert.match(component, /Return is the goal, not zero drift/);
   assert.doesNotMatch(component, /retainMemoryItem|startJourneyPractice|recordDriftReturn|confirmCalendar/);
+});
+
+test("Today puts movement before metrics and keeps deployment wording out of the user surface", async () => {
+  const live = await source("../components/live-today.tsx");
+  assert.doesNotMatch(live, /LIVE DEV/);
+  assert.ok(live.indexOf('part="DETAIL"') < live.indexOf('className={styles.readout}'));
+
+  const compositionStyles = await source("../components/today-composition.module.css");
+  assert.match(compositionStyles, /\.focus a\{width:100%\}/);
+  assert.match(compositionStyles, /min-height:48px/);
 });
 
 test("composed Today visual fixture is synthetic-only", async () => {
