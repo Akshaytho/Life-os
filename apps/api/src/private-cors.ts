@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-const ALLOWED_METHODS = ["GET", "POST"] as const;
+const ALLOWED_METHODS = ["GET", "POST", "PUT"] as const;
 const ALLOWED_HEADERS = ["Authorization", "Content-Type", "Idempotency-Key"] as const;
 const allowedHeaderNames = new Set(ALLOWED_HEADERS.map((value) => value.toLowerCase()));
 const allowedMethodNames = new Set<string>(ALLOWED_METHODS);
