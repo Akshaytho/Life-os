@@ -104,6 +104,7 @@ export interface WriteTransaction {
   markRoutingProposalRejected(proposalId: string, userId: string): Promise<void>;
   getStoredCalendarProposalForUpdate(proposalId: string, userId: string): Promise<StoredCalendarProposal | undefined>;
   findAppliedProposal(proposalId: string): Promise<AppliedProposalRecord | undefined>;
+  findCalendarPlanBySourceProposalId(sourceProposalId: string, userId: string): Promise<CalendarPlanRecord | undefined>;
   createCalendarPlan(record: CalendarPlanRecord): Promise<void>;
   appendDomainEvent(event: DomainEventRecord): Promise<void>;
   markProposalApplied(record: AppliedProposalRecord): Promise<void>;
