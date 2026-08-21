@@ -88,7 +88,8 @@ button:disabled { opacity: .38; }
 .returnReview > div { display: flex; gap: 9px; margin-top: 18px; }
 .review button,
 .returnReview button { color: inherit; border-color: rgba(245,239,227,.55); }
-.resolved { margin: 28px 0 0; padding: 18px 0; border-top: 1px solid rgba(15,45,48,.16); color: rgba(24,50,53,.65); }
+.resolved { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin: 28px 0 0; padding: 18px 0; border-top: 1px solid rgba(15,45,48,.16); color: rgba(24,50,53,.65); }
+.resolved a { display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 0 15px; color: #f5efe3; background: #183235; font: 750 13px/1.2 ui-sans-serif, system-ui, sans-serif; letter-spacing: 0; text-transform: none; text-decoration: none; }
 .message { margin: 26px 0 0; padding: 18px 0; border-top: 1px solid rgba(15,45,48,.2); line-height: 1.5; }
 
 @media (min-width: 1000px) { .canvas { padding-inline: 44px; } }
@@ -109,4 +110,6 @@ button:disabled { opacity: .38; }
   .returnReview > div { flex-direction: column; }
   .understanding,
   .returnSection { padding: 18px 14px; }
+  .resolved { align-items: stretch; flex-direction: column; }
+  .resolved a { width: 100%; }
 }
