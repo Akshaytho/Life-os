@@ -23,6 +23,15 @@ test("Drift is an explicit global private action with no automatic direction mut
   assert.doesNotMatch(surface, /percentage|streakCount|driftScore/);
 });
 
+test("resolved Drift returns to Today for an immediate next action", async () => {
+  const surface = await source("../components/live-drift.tsx");
+  const styles = await source("../components/live-drift.module.css");
+  assert.match(surface, /RESOLVED ·/);
+  assert.match(surface, /<Link href="\/">See my next action\.<\/Link>/);
+  assert.match(styles, /\.resolved a/);
+  assert.match(styles, /\.resolved a \{ width: 100%; \}/);
+});
+
 test("synthetic Drift visual route fails closed and covers recorded, returning, and resolved states", async () => {
   const visual = await source("../app/visual-review/drift/page.tsx");
   assert.match(visual, /LIFE_OS_VISUAL_REVIEW_ENABLED/);
