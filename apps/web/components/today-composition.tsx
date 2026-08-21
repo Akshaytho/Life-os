@@ -20,8 +20,8 @@ function nextAction(items: CanonicalCalendarItem[], now: string, journey: Journe
   if (current) return {
     authority: "SUGGESTION",
     sourceAuthority: "FACT",
-    title: `Stay with ${current.title} for the next five minutes.`,
-    reason: "Suggested from the fixed Calendar commitment already happening. Nothing new was added to Calendar.",
+    title: `Stay with ${current.title} · 5 minutes.`,
+    reason: "From the fixed Calendar commitment already happening. No new commitment was created.",
     href: "/calendar",
     cta: "See this commitment",
   } as const;
@@ -29,8 +29,8 @@ function nextAction(items: CanonicalCalendarItem[], now: string, journey: Journe
   if (journey.openSession) return {
     authority: "SUGGESTION",
     sourceAuthority: "FACT",
-    title: `Give five focused minutes to ${label(journey.openSession.technique)} practice.`,
-    reason: "Suggested from a Journey practice session already in progress. No new Journey decision was created.",
+    title: `Continue ${label(journey.openSession.technique)} practice · 5 minutes.`,
+    reason: "From the Journey practice session already in progress. No new Journey decision was created.",
     href: "/journey",
     cta: "Return to practice",
   } as const;
@@ -40,8 +40,8 @@ function nextAction(items: CanonicalCalendarItem[], now: string, journey: Journe
     return {
       authority: "SUGGESTION",
       sourceAuthority: "FACT",
-      title: `Use five minutes to get ready for ${next.title}.`,
-      reason: "Suggested from the next canonical Calendar event because it begins within an hour. Nothing new was added to Calendar.",
+      title: `Get ready for ${next.title} · 5 minutes.`,
+      reason: "From the next canonical Calendar event because it begins within an hour. No new commitment was created.",
       href: "/calendar",
       cta: "See what is next",
     } as const;
@@ -50,8 +50,8 @@ function nextAction(items: CanonicalCalendarItem[], now: string, journey: Journe
   if (journey.activation) return {
     authority: "SUGGESTION",
     sourceAuthority: "DECISION",
-    title: `Try five minutes of ${label(journey.activation.startingTechnique)}.`,
-    reason: "Suggested from your active Journey decision. Not a task or Calendar commitment.",
+    title: `Try ${label(journey.activation.startingTechnique)} · 5 minutes.`,
+    reason: "From your active Journey decision. Not a task or Calendar commitment.",
     href: "/journey",
     cta: "Open Journey",
   } as const;
@@ -66,8 +66,19 @@ function nextAction(items: CanonicalCalendarItem[], now: string, journey: Journe
   } as const;
 }
 
-export function TodayComposition({ model, calendar, now, part }: { model: TodayCompositionModel; calendar: CanonicalCalendarItem[]; now: string; part: "COMPASS" | "DETAIL" }) {
+export function TodayNextAction({ model, calendar, now }: { model: TodayCompositionModel; calendar: CanonicalCalendarItem[]; now: string }) {
   const deliberate = nextAction(calendar, now, model.journey);
+  return (
+    <article className={styles.focus} data-authority={deliberate.authority}>
+      <span>DO NEXT · {deliberate.authority}{deliberate.sourceAuthority !== "EMPTY" ? ` · FROM ${deliberate.sourceAuthority}` : ""}</span>
+      <h2>{deliberate.title}</h2>
+      <p>{deliberate.reason}</p>
+      {deliberate.href && deliberate.cta && <Link href={deliberate.href}>{deliberate.cta}</Link>}
+    </article>
+  );
+}
+
+export function TodayComposition({ model, part }: { model: TodayCompositionModel; part: "COMPASS" | "DETAIL" }) {
   const latest = model.journey.openSession ?? model.journey.completedSessions[0] ?? null;
   if (part === "COMPASS") return (
     <section className={styles.compass} aria-label="Current Direction compass">
@@ -78,13 +89,7 @@ export function TodayComposition({ model, calendar, now, part }: { model: TodayC
   );
   return (
     <>
-      <section className={styles.orientation} aria-label="Do next and Journey orientation">
-        <article className={styles.focus} data-authority={deliberate.authority}>
-          <span>DO NEXT · {deliberate.authority}{deliberate.sourceAuthority !== "EMPTY" ? ` · FROM ${deliberate.sourceAuthority}` : ""}</span>
-          <h2>{deliberate.title}</h2>
-          <p>{deliberate.reason}</p>
-          {deliberate.href && deliberate.cta && <Link href={deliberate.href}>{deliberate.cta}</Link>}
-        </article>
+      <section className={styles.orientation} aria-label="Journey orientation">
         <article className={styles.journey}>
           <span>JOURNEY · {model.journey.activation ? "DECISION" : "EMPTY"}</span>
           <h2>{model.journey.activation ? label(model.journey.activation.capabilityCode) : "No active capability"}</h2>
