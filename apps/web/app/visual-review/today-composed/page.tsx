@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import type { CanonicalCalendarItem } from "../../../../../packages/contracts/canonical-calendar";
-import { TodayComposition, type TodayCompositionModel } from "../../../components/today-composition";
+import { TodayComposition, TodayNextAction, type TodayCompositionModel } from "../../../components/today-composition";
 import styles from "../../../components/live-today.module.css";
 
 function enabled() { return process.env.LIFE_OS_VISUAL_REVIEW_ENABLED?.trim().toLowerCase() === "true" }
@@ -18,8 +18,12 @@ export default function Page(){
   return <div className="life-app"><main className={styles.canvas}>
     <header className="system-bar"><div className="wordmark">LIFE<span>/</span>OS</div><div className="system-state"><i/>PRIVATE · TODAY COMPOSITION</div></header>
     <section className={styles.hero}><div className={styles.heroTop}><span>TODAY / SYNTHETIC VISUAL REVIEW</span><span>ASIA/KOLKATA</span></div><div className={styles.heroGrid}><div><span className="section-kicker">CURRENT REALITY</span><h1>Wednesday, August 19</h1></div><div className={styles.clockBlock}><span>LOCAL NOW</span><strong>5:30 PM</strong></div></div><p className={styles.orientation}>Direction guides. Calendar constrains. Journey supplies evidence. Reflection stays reflection.</p></section>
-    <TodayComposition calendar={calendar} model={model} now={now} part="COMPASS"/>
-    <section className={styles.nowSection}><article className={styles.primarySignal} data-state="current"><span>HAPPENING NOW · FACT</span><strong>Software work</strong><p>9:30 AM → 6:00 PM · Work · Fixed</p></article><article className={styles.nextSignal}><span>NEXT CANONICAL EVENT</span><strong>Nothing else is committed.</strong><p>No suggestion was promoted into Calendar.</p></article></section>
-    <TodayComposition calendar={calendar} model={model} now={now} part="DETAIL"/>
+    <TodayComposition model={model} part="COMPASS"/>
+    <section className={styles.nowSection}>
+      <article className={styles.primarySignal} data-state="current"><span>HAPPENING NOW · FACT</span><strong>Software work</strong><p>9:30 AM → 6:00 PM · Work · Fixed</p></article>
+      <TodayNextAction calendar={calendar} model={model} now={now}/>
+      <article className={styles.nextSignal}><span>NEXT CANONICAL EVENT</span><strong>Nothing else is committed.</strong><p>No suggestion was promoted into Calendar.</p></article>
+    </section>
+    <TodayComposition model={model} part="DETAIL"/>
   </main></div>;
 }

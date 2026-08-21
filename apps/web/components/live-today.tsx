@@ -9,7 +9,7 @@ import liveStyles from "./live-capture-routing.module.css";
 import { LiveDailyReturn } from "./live-daily-return";
 import { useLifeOsAuth } from "./life-os-auth-provider";
 import styles from "./live-today.module.css";
-import { TodayComposition, type TodayCompositionModel } from "./today-composition";
+import { TodayComposition, TodayNextAction, type TodayCompositionModel } from "./today-composition";
 
 function localDayKey(value: Date) {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
@@ -152,7 +152,7 @@ export function LiveToday({ dailyReturnEnabled = false, compositionEnabled = fal
       <main className={styles.canvas}>
         <header className="system-bar">
           <div className="wordmark">LIFE<span>/</span>OS</div>
-          <div className="system-state"><i />PRIVATE · LIVE DEV</div>
+          <div className="system-state"><i />PRIVATE · TODAY</div>
         </header>
 
         <section className={styles.hero}>
@@ -175,6 +175,33 @@ export function LiveToday({ dailyReturnEnabled = false, compositionEnabled = fal
 
         {session && (
           <>
+            {composition && <TodayComposition model={composition} part="COMPASS" />}
+
+            <section className={styles.nowSection} aria-label="Current, next action, and upcoming canonical Calendar state">
+              <article className={styles.primarySignal} data-state={current ? "current" : "open"}>
+                <span>{current ? "HAPPENING NOW" : "NO CURRENT CANONICAL EVENT"}</span>
+                <strong>{current?.title ?? "Calendar is open at this moment."}</strong>
+                <p>{current ? `${timeLabel(current.startsAt)} → ${timeLabel(current.endsAt)} · ${current.category} · ${current.commitment}` : "Life OS will not invent an activity for this gap."}</p>
+              </article>
+
+              {composition && <TodayNextAction calendar={items} model={composition} now={now.toISOString()} />}
+
+              <article className={styles.nextSignal}>
+                <span>NEXT CANONICAL EVENT</span>
+                <strong>{next?.title ?? "Nothing else is committed today."}</strong>
+                <p>{next ? `${timeLabel(next.startsAt)} → ${timeLabel(next.endsAt)} · ${next.category} · ${next.commitment}` : "No suggestion has been promoted into Calendar fact for the rest of this day."}</p>
+              </article>
+            </section>
+
+            {composition && <TodayComposition model={composition} part="DETAIL" />}
+
+            <section className={styles.readout} aria-label="Today canonical Calendar summary">
+              <div><strong>{items.length}</strong><span>canonical events</span></div>
+              <div><strong>{durationLabel(occupied)}</strong><span>occupied by Calendar facts</span></div>
+              <div><strong>{completed}</strong><span>completed by clock</span></div>
+              <div><strong>{upcoming}</strong><span>still ahead</span></div>
+            </section>
+
             <section className={liveStyles.sessionRow} aria-label="Authenticated Today session">
               <span className={liveStyles.sessionState}><i />Authenticated user session · {dailyReturnEnabled ? "Calendar read + explicit reflection writes" : "read only"}</span>
               <div className={styles.sessionActions}>
@@ -184,30 +211,6 @@ export function LiveToday({ dailyReturnEnabled = false, compositionEnabled = fal
             </section>
 
             {readMessage && <section className={liveStyles.flowStatus} aria-live="polite"><span>TODAY READ</span><p>{readMessage}</p></section>}
-
-            {composition && <TodayComposition calendar={items} model={composition} now={now.toISOString()} part="COMPASS" />}
-
-            <section className={styles.nowSection} aria-label="Current and next canonical Calendar state">
-              <article className={styles.primarySignal} data-state={current ? "current" : "open"}>
-                <span>{current ? "HAPPENING NOW" : "NO CURRENT CANONICAL EVENT"}</span>
-                <strong>{current?.title ?? "Calendar is open at this moment."}</strong>
-                <p>{current ? `${timeLabel(current.startsAt)} → ${timeLabel(current.endsAt)} · ${current.category} · ${current.commitment}` : "Life OS will not invent an activity for this gap."}</p>
-              </article>
-              <article className={styles.nextSignal}>
-                <span>NEXT CANONICAL EVENT</span>
-                <strong>{next?.title ?? "Nothing else is committed today."}</strong>
-                <p>{next ? `${timeLabel(next.startsAt)} → ${timeLabel(next.endsAt)} · ${next.category} · ${next.commitment}` : "No suggestion has been promoted into Calendar fact for the rest of this day."}</p>
-              </article>
-            </section>
-
-            <section className={styles.readout} aria-label="Today canonical Calendar summary">
-              <div><strong>{items.length}</strong><span>canonical events</span></div>
-              <div><strong>{durationLabel(occupied)}</strong><span>occupied by Calendar facts</span></div>
-              <div><strong>{completed}</strong><span>completed by clock</span></div>
-              <div><strong>{upcoming}</strong><span>still ahead</span></div>
-            </section>
-
-            {composition && <TodayComposition calendar={items} model={composition} now={now.toISOString()} part="DETAIL" />}
 
             <section className={styles.timeline} aria-label="Today's canonical Calendar events">
               <div className={styles.sectionHeading}>

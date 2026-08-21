@@ -117,12 +117,41 @@ test("browser preflight allows only the reviewed private transport surface", asy
 
     assert.equal(response.status, 204);
     assert.equal(response.headers.get("access-control-allow-origin"), browserOrigin);
-    assert.equal(response.headers.get("access-control-allow-methods"), "GET, POST");
+    assert.equal(response.headers.get("access-control-allow-methods"), "GET, POST, PUT");
     assert.equal(response.headers.get("access-control-allow-headers"), "Authorization, Content-Type, Idempotency-Key");
     assert.equal(response.headers.get("access-control-allow-credentials"), null);
     assert.ok(varyFields(response).includes("origin"));
     assert.ok(varyFields(response).includes("access-control-request-method"));
     assert.ok(varyFields(response).includes("access-control-request-headers"));
+  });
+});
+
+test("browser preflight allows reviewed PUT revisions and rejects PATCH or DELETE", async () => {
+  await withServer({ health, privateApi: authenticationBoundaryOnly(), privateCors: browserCors }, async (baseUrl) => {
+    const put = await fetch(`${baseUrl}/api/v1/captures/capture-1/review`, {
+      method: "OPTIONS",
+      headers: {
+        Origin: browserOrigin,
+        "Access-Control-Request-Method": "PUT",
+        "Access-Control-Request-Headers": "authorization, content-type, idempotency-key",
+      },
+    });
+
+    assert.equal(put.status, 204);
+    assert.equal(put.headers.get("access-control-allow-methods"), "GET, POST, PUT");
+
+    for (const method of ["PATCH", "DELETE"]) {
+      const response = await fetch(`${baseUrl}/api/v1/captures/capture-1/review`, {
+        method: "OPTIONS",
+        headers: {
+          Origin: browserOrigin,
+          "Access-Control-Request-Method": method,
+          "Access-Control-Request-Headers": "authorization, content-type, idempotency-key",
+        },
+      });
+      assert.equal(response.status, 403);
+      assert.deepEqual(await response.json(), { status: "cors_preflight_rejected" });
+    }
   });
 });
 

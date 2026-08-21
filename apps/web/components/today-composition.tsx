@@ -15,24 +15,70 @@ export interface TodayCompositionModel {
 
 function label(value: string) { return value.replaceAll("_", " ") }
 
-function focus(items: CanonicalCalendarItem[], now: string, journey: JourneyPracticeOverview) {
+function nextAction(items: CanonicalCalendarItem[], now: string, journey: JourneyPracticeOverview) {
   const current = items.find((item) => item.commitment === "Fixed" && Date.parse(item.startsAt) <= Date.parse(now) && Date.parse(item.endsAt) > Date.parse(now));
-  if (current) return { authority: "FACT", title: current.title, reason: "Protect the Calendar commitment already happening." };
-  if (journey.openSession) return { authority: "FACT", title: `Active ${label(journey.openSession.technique)} practice`, reason: "Finish or deliberately stop the practice already in progress." };
+  if (current) return {
+    authority: "SUGGESTION",
+    sourceAuthority: "FACT",
+    title: `Stay with ${current.title} · 5 minutes.`,
+    reason: "From the fixed Calendar commitment already happening. No new commitment was created.",
+    href: "/calendar",
+    cta: "See this commitment",
+  } as const;
+
+  if (journey.openSession) return {
+    authority: "SUGGESTION",
+    sourceAuthority: "FACT",
+    title: `Continue ${label(journey.openSession.technique)} practice · 5 minutes.`,
+    reason: "From the Journey practice session already in progress. No new Journey decision was created.",
+    href: "/journey",
+    cta: "Return to practice",
+  } as const;
+
   const next = items.find((item) => Date.parse(item.startsAt) > Date.parse(now));
   if (next && Date.parse(next.startsAt) - Date.parse(now) <= 60 * 60 * 1000) {
-    return { authority: "FACT", title: `Leave room for ${next.title}`, reason: "The next canonical commitment begins within an hour." };
+    return {
+      authority: "SUGGESTION",
+      sourceAuthority: "FACT",
+      title: `Get ready for ${next.title} · 5 minutes.`,
+      reason: "From the next canonical Calendar event because it begins within an hour. No new commitment was created.",
+      href: "/calendar",
+      cta: "See what is next",
+    } as const;
   }
+
   if (journey.activation) return {
     authority: "SUGGESTION",
-    title: `One small ${label(journey.activation.startingTechnique)} experiment`,
-    reason: "Derived from the active Journey capability. Not a task or Calendar commitment.",
-  };
-  return { authority: "EMPTY", title: "No deliberate focus is claimed.", reason: "Life OS did not invent one without an active owner." };
+    sourceAuthority: "DECISION",
+    title: `Try ${label(journey.activation.startingTechnique)} · 5 minutes.`,
+    reason: "From your active Journey decision. Not a task or Calendar commitment.",
+    href: "/journey",
+    cta: "Open Journey",
+  } as const;
+
+  return {
+    authority: "EMPTY",
+    sourceAuthority: "EMPTY",
+    title: "No next action is claimed.",
+    reason: "Life OS did not invent work without a current owner.",
+    href: null,
+    cta: null,
+  } as const;
 }
 
-export function TodayComposition({ model, calendar, now, part }: { model: TodayCompositionModel; calendar: CanonicalCalendarItem[]; now: string; part: "COMPASS" | "DETAIL" }) {
-  const deliberate = focus(calendar, now, model.journey);
+export function TodayNextAction({ model, calendar, now }: { model: TodayCompositionModel; calendar: CanonicalCalendarItem[]; now: string }) {
+  const deliberate = nextAction(calendar, now, model.journey);
+  return (
+    <article className={styles.focus} data-authority={deliberate.authority}>
+      <span>DO NEXT · {deliberate.authority}{deliberate.sourceAuthority !== "EMPTY" ? ` · FROM ${deliberate.sourceAuthority}` : ""}</span>
+      <h2>{deliberate.title}</h2>
+      <p>{deliberate.reason}</p>
+      {deliberate.href && deliberate.cta && <Link href={deliberate.href}>{deliberate.cta}</Link>}
+    </article>
+  );
+}
+
+export function TodayComposition({ model, part }: { model: TodayCompositionModel; part: "COMPASS" | "DETAIL" }) {
   const latest = model.journey.openSession ?? model.journey.completedSessions[0] ?? null;
   if (part === "COMPASS") return (
     <section className={styles.compass} aria-label="Current Direction compass">
@@ -43,12 +89,7 @@ export function TodayComposition({ model, calendar, now, part }: { model: TodayC
   );
   return (
     <>
-      <section className={styles.orientation} aria-label="Today focus and Journey orientation">
-        <article className={styles.focus} data-authority={deliberate.authority}>
-          <span>DELIBERATE FOCUS · {deliberate.authority}</span>
-          <h2>{deliberate.title}</h2>
-          <p>{deliberate.reason}</p>
-        </article>
+      <section className={styles.orientation} aria-label="Journey orientation">
         <article className={styles.journey}>
           <span>JOURNEY · {model.journey.activation ? "DECISION" : "EMPTY"}</span>
           <h2>{model.journey.activation ? label(model.journey.activation.capabilityCode) : "No active capability"}</h2>
