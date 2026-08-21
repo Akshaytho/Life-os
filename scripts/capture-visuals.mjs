@@ -35,7 +35,7 @@ const pages = [
       'COMPASS · YOU · DECISION',
       'HAPPENING NOW · FACT',
       'DO NEXT · SUGGESTION · FROM FACT',
-      'Stay with Software work for the next five minutes.',
+      'Stay with Software work · 5 minutes.',
       'See this commitment',
       'JOURNEY · DECISION',
       'MEMORY · REFLECTION · OPTIONAL CONTEXT',
