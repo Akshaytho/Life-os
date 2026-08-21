@@ -91,7 +91,7 @@
   grid-template-columns: auto auto minmax(0, 1fr);
   align-items: center;
   gap: 18px;
-  margin-top: 26px;
+  margin-top: 18px;
   padding: 18px 0;
   border-top: 1px solid rgba(24, 42, 44, 0.18);
   border-bottom: 1px solid rgba(24, 42, 44, 0.18);
@@ -109,7 +109,7 @@
 }
 
 .calendarSurface {
-  margin-top: 34px;
+  margin-top: 28px;
 }
 
 .windowHeader {
@@ -229,6 +229,14 @@
 }
 
 @media (max-width: 800px) {
+  .canvas {
+    padding-bottom: calc(142px + env(safe-area-inset-bottom));
+  }
+
+  .hero {
+    padding: 22px 0 14px;
+  }
+
   .heroGrid,
   .dayGroup,
   .eventCard {
@@ -236,7 +244,24 @@
   }
 
   .heroGrid {
+    gap: 12px;
     align-items: start;
+    margin-top: 14px;
+  }
+
+  .heroGrid h1 {
+    margin-top: 7px;
+    font-size: clamp(38px, 10vw, 46px);
+  }
+
+  .heroGrid p {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+
+  .navRow {
+    margin-top: 14px;
+    padding-top: 10px;
   }
 
   .sessionActions {
@@ -248,13 +273,33 @@
   }
 
   .factBoundary {
-    grid-template-columns: 1fr;
+    grid-template-columns: auto 1fr;
+    gap: 10px 14px;
+    margin-top: 14px;
+    padding: 14px 0;
+  }
+
+  .factBoundary p {
+    grid-column: 1 / -1;
+    font-size: 13px;
+  }
+
+  .factBoundary strong {
+    font-size: 32px;
   }
 
   .windowHeader,
   .footer {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .calendarSurface {
+    margin-top: 22px;
+  }
+
+  .windowHeader h2 {
+    font-size: 38px;
   }
 
   .dayGroup {
@@ -269,4 +314,13 @@
     justify-items: start;
     text-align: left;
   }
+}
+
+@media (max-width: 400px) {
+  .canvas { padding-inline: 18px; }
+  .hero { padding-top: 16px; }
+  .heroGrid h1 { font-size: 37px; }
+  .heroGrid p { display: none; }
+  .heroTop { font-size: 10px; }
+  .navRow { gap: 12px; overflow-x: auto; white-space: nowrap; }
 }
