@@ -1,0 +1,55 @@
+name: Temporary Production CORS Verification
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/production-cors-verification.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify-production-cors:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe reviewed browser CORS surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          api='https://life-osapi-development.up.railway.app'
+          origin='https://life-osweb-development.up.railway.app'
+
+          probe_allowed() {
+            local path="$1"
+            local method="$2"
+            local status
+            status=$(curl --fail-with-body --silent --show-error \
+              --output /tmp/body --dump-header /tmp/headers --write-out '%{http_code}' \
+              --request OPTIONS "${api}${path}" \
+              --header "Origin: ${origin}" \
+              --header "Access-Control-Request-Method: ${method}" \
+              --header 'Access-Control-Request-Headers: authorization, content-type, idempotency-key')
+            test "$status" = '204'
+            grep -Fqi "access-control-allow-origin: ${origin}" /tmp/headers
+            grep -Fqi 'access-control-allow-methods: GET, POST, PUT' /tmp/headers
+          }
+
+          probe_rejected() {
+            local path="$1"
+            local method="$2"
+            local status
+            status=$(curl --silent --show-error \
+              --output /tmp/body --dump-header /tmp/headers --write-out '%{http_code}' \
+              --request OPTIONS "${api}${path}" \
+              --header "Origin: ${origin}" \
+              --header "Access-Control-Request-Method: ${method}" \
+              --header 'Access-Control-Request-Headers: authorization, content-type, idempotency-key')
+            test "$status" = '403'
+            grep -Fq '"status":"cors_preflight_rejected"' /tmp/body
+          }
+
+          probe_allowed '/api/v1/reviews/period' PUT
+          probe_allowed '/api/v1/memory/items/lifeos-cors-probe' PUT
+          probe_rejected '/api/v1/reviews/period' PATCH
+          probe_rejected '/api/v1/memory/items/lifeos-cors-probe' DELETE
