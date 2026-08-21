@@ -152,7 +152,7 @@ export function LiveToday({ dailyReturnEnabled = false, compositionEnabled = fal
       <main className={styles.canvas}>
         <header className="system-bar">
           <div className="wordmark">LIFE<span>/</span>OS</div>
-          <div className="system-state"><i />PRIVATE · LIVE DEV</div>
+          <div className="system-state"><i />PRIVATE · TODAY</div>
         </header>
 
         <section className={styles.hero}>
@@ -200,14 +200,14 @@ export function LiveToday({ dailyReturnEnabled = false, compositionEnabled = fal
               </article>
             </section>
 
+            {composition && <TodayComposition calendar={items} model={composition} now={now.toISOString()} part="DETAIL" />}
+
             <section className={styles.readout} aria-label="Today canonical Calendar summary">
               <div><strong>{items.length}</strong><span>canonical events</span></div>
               <div><strong>{durationLabel(occupied)}</strong><span>occupied by Calendar facts</span></div>
               <div><strong>{completed}</strong><span>completed by clock</span></div>
               <div><strong>{upcoming}</strong><span>still ahead</span></div>
             </section>
-
-            {composition && <TodayComposition calendar={items} model={composition} now={now.toISOString()} part="DETAIL" />}
 
             <section className={styles.timeline} aria-label="Today's canonical Calendar events">
               <div className={styles.sectionHeading}>
