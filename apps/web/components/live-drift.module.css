@@ -113,3 +113,16 @@ button:disabled { opacity: .38; }
   .resolved { align-items: stretch; flex-direction: column; }
   .resolved a { width: 100%; }
 }
+
+@media (max-width: 400px) {
+  .hero { padding: 28px 0 22px; }
+  .hero h1 { margin: 8px 0 16px; font-size: 44px; line-height: .91; }
+  .hero > div { gap: 14px; }
+  .hero p { font-size: 16px; line-height: 1.35; }
+  .capture { gap: 13px; padding: 20px 0; }
+  .sectionTitle { gap: 5px; }
+  .sectionTitle strong { font-size: 20px; }
+  .capture textarea { height: 100px; min-height: 100px; padding: 11px 12px; }
+  .capture small { font-size: 8px; line-height: 1.25; }
+  .capture button { min-height: 46px; }
+}
