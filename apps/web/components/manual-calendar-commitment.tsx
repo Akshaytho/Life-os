@@ -51,8 +51,7 @@ function toIso(value: string): string | undefined {
 }
 
 function displayDateTime(value: string) {
-  const date = new Date(value);
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(date);
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }
 
 export function ManualCalendarCommitmentForm({
@@ -70,7 +69,7 @@ export function ManualCalendarCommitmentForm({
   const [draft, setDraft] = useState<Draft>({ ...emptyDraft, ...initialDraft });
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const attempt = useRef<Attempt>();
+  const attempt = useRef<Attempt | undefined>(undefined);
 
   function update<K extends keyof Draft>(key: K, value: Draft[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -142,8 +141,12 @@ export function ManualCalendarCommitmentForm({
   if (stage === "REVIEW") {
     const command = normalizedCommand();
     if (!command) {
-      setStage("EDIT");
-      return null;
+      return (
+        <section className={styles.review} aria-label="Review manual Calendar commitment">
+          <p className={styles.message}>The draft is no longer valid.</p>
+          <div className={styles.reviewActions}><button onClick={() => setStage("EDIT")} type="button">Return to edit</button></div>
+        </section>
+      );
     }
     return (
       <section className={styles.review} aria-label="Review manual Calendar commitment">
