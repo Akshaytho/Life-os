@@ -341,8 +341,8 @@
   .nextSignal {
     grid-column: 1;
     grid-row: auto;
-    min-height: 128px;
-    padding: 18px;
+    min-height: 112px;
+    padding: 15px;
   }
 
   .primarySignal strong,
