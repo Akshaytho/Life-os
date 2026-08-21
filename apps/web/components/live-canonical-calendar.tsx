@@ -6,6 +6,7 @@ import type { CanonicalCalendarItem, CanonicalCalendarWindow } from "../../../pa
 import { getCanonicalCalendar, LifeOsApiError } from "../lib/life-os-api";
 import liveStyles from "./live-capture-routing.module.css";
 import { useLifeOsAuth } from "./life-os-auth-provider";
+import { ManualCalendarCommitmentForm } from "./manual-calendar-commitment";
 import styles from "./live-canonical-calendar.module.css";
 
 function calendarRange() {
@@ -75,7 +76,7 @@ export function LiveCanonicalCalendar() {
     if (!token) return;
 
     setReadBusy(true);
-    setReadMessage("Reading canonical Calendar state through the private RLS boundary…");
+    setReadMessage("Reading canonical Calendar state…");
     try {
       const range = calendarRange();
       const result = await getCanonicalCalendar(token, range.from, range.to);
@@ -97,37 +98,33 @@ export function LiveCanonicalCalendar() {
       <main className={styles.canvas}>
         <header className="system-bar">
           <div className="wordmark">LIFE<span>/</span>OS</div>
-          <div className="system-state"><i />PRIVATE · LIVE DEV</div>
+          <div className="system-state"><i />PRIVATE · CALENDAR</div>
         </header>
 
         <section className={styles.hero}>
           <div className={styles.heroTop}><span>CANONICAL CALENDAR</span><span>{timeZone}</span></div>
           <div className={styles.heroGrid}>
-            <div><span className="section-kicker">TIME-BOUND FACTS</span><h1>See what Life OS actually committed.</h1></div>
-            <p>This view reads durable Calendar facts only. AI observations and proposals stay in Capture/Review; they appear here only after your explicit Apply decision created canonical state.</p>
+            <div><span className="section-kicker">TIME-BOUND REALITY</span><h1>Commit time. See what is real.</h1></div>
+            <p>Manual commitments work without AI. You choose exact details, review once, then the confirmed time block becomes a Calendar FACT.</p>
           </div>
-          <nav className={styles.navRow} aria-label="Life OS live development navigation">
-            <Link href="/capture">Capture / Review</Link>
-            <span>Calendar / canonical read</span>
+          <nav className={styles.navRow} aria-label="Life OS Calendar navigation">
+            <Link href="/">Today</Link>
+            <Link href="/capture">Brain Dump</Link>
+            <span>Calendar</span>
           </nav>
         </section>
 
         {session && (
           <>
-            <section className={liveStyles.sessionRow} aria-label="Authenticated Calendar session">
-              <span className={liveStyles.sessionState}><i />Authenticated user session · canonical read only</span>
-              <div className={styles.sessionActions}>
-                <button disabled={readBusy} onClick={() => void loadCalendar()} type="button">{readBusy ? "Reading…" : "Refresh"}</button>
-                <button disabled={authBusy || readBusy} onClick={() => void signOut()} type="button">Sign out</button>
-              </div>
-            </section>
-
-            {readMessage && <section className={liveStyles.flowStatus} aria-live="polite"><span>CALENDAR READ</span><p>{readMessage}</p></section>}
+            <ManualCalendarCommitmentForm
+              accessToken={session.access_token}
+              onCommitted={() => loadCalendar(session.access_token)}
+            />
 
             <section className={styles.factBoundary}>
-              <span>AUTHORITY CLASS</span>
+              <span>CALENDAR AUTHORITY</span>
               <strong>FACT</strong>
-              <p>Every item below already exists in canonical Calendar state. This surface cannot confirm, apply, reject, edit, or create events.</p>
+              <p>Only the final “Commit to Calendar” action creates a fact. Drafts and reviews do not write, and AI is not involved in manual entry.</p>
             </section>
 
             <section className={styles.calendarSurface} aria-label="Canonical Calendar facts">
@@ -157,12 +154,22 @@ export function LiveCanonicalCalendar() {
                 ))}
               </div>
             </section>
+
+            <section className={liveStyles.sessionRow} aria-label="Authenticated Calendar session">
+              <span className={liveStyles.sessionState}><i />Authenticated user session · explicit Calendar writes</span>
+              <div className={styles.sessionActions}>
+                <button disabled={readBusy} onClick={() => void loadCalendar()} type="button">{readBusy ? "Reading…" : "Refresh"}</button>
+                <button disabled={authBusy || readBusy} onClick={() => void signOut()} type="button">Sign out</button>
+              </div>
+            </section>
+
+            {readMessage && <section className={liveStyles.flowStatus} aria-live="polite"><span>CALENDAR STATE</span><p>{readMessage}</p></section>}
           </>
         )}
 
         <footer className={styles.footer}>
           <span>SUPABASE SESSION · PRIVATE API · POSTGRESQL RLS</span>
-          <span>READ ONLY · CANONICAL FACTS</span>
+          <span>MANUAL CONFIRMATION · CANONICAL FACTS</span>
         </footer>
       </main>
     </div>
