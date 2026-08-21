@@ -232,7 +232,8 @@ function DriftCard({
 
       {resolved && (
         <p className={styles.resolved}>
-          RESOLVED · {current?.returnPosture ? returnLabels[current.returnPosture] : "return recorded"} · provenance retained
+          <span>RESOLVED · {current?.returnPosture ? returnLabels[current.returnPosture] : "return recorded"} · provenance retained</span>
+          <Link href="/">See my next action.</Link>
         </p>
       )}
     </article>
